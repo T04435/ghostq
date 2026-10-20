@@ -1,0 +1,126 @@
+import { z } from "zod";
+
+/** Response shapes seen in the day-1 probes (research/qloo-probes.md). Unknown fields are ignored. */
+
+// Some tags come back without a name (live, 21 Oct): parse them as optional and drop them.
+const tagRef = z.object({ id: z.string().optional(), tag_id: z.string().optional(), name: z.string().optional(), type: z.string().optional() });
+
+/** Spotify id: under properties.external on /search, top-level external on insights. Its shape varies (an object, a list, other fields), so it's read leniently. */
+const external = z.object({ spotify: z.unknown() }).partial();
+
+function spotifyIds(value: unknown): string[] {
+  const items = Array.isArray(value) ? value : [value];
+  return items.flatMap((x) => (x && typeof x === "object" && "id" in x && typeof x.id === "string" ? [x.id] : []));
+}
+
+const entity = z.object({
+  entity_id: z.string(),
+  properties: z.object({ external: external.optional() }).partial().optional(),
+  external: external.optional(),
+  name: z.string(),
+  popularity: z.number().optional(),
+  tags: z.array(tagRef).optional().default([]),
+  query: z.object({ affinity: z.number().optional() }).partial().optional(),
+});
+
+export type QlooEntity = {
+  id: string;
+  name: string;
+  popularity: number | null;
+  affinity: number | null;
+  tags: { id: string; name: string; type: string }[];
+  spotifyIds: string[];
+};
+
+function toEntity(e: z.infer<typeof entity>): QlooEntity {
+  return {
+    id: e.entity_id,
+    name: e.name,
+    popularity: e.popularity ?? null,
+    affinity: e.query?.affinity ?? null,
+    spotifyIds: [...spotifyIds(e.properties?.external?.spotify), ...spotifyIds(e.external?.spotify)],
+    tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
+  };
+}
+
+/** GET /search */
+/** The search result for this Spotify artist if Qloo links it, else an exact name match, else the top result. */
+export function pickArtist(results: QlooEntity[], name: string, spotifyId?: string): QlooEntity | undefined {
+  return (
+    (spotifyId ? results.find((r) => r.spotifyIds.includes(spotifyId)) : undefined) ??
+    results.find((r) => r.name.toLowerCase() === name.trim().toLowerCase()) ??
+    results[0]
+  );
+}
+
+export function parseSearch(json: unknown): QlooEntity[] {
+  const parsed = z.object({ results: z.array(entity).default([]) }).parse(json);
+  return parsed.results.map(toEntity);
+}
+
+/** GET /v2/insights with an entity filter.type */
+export function parseEntities(json: unknown): QlooEntity[] {
+  const parsed = z.object({ results: z.object({ entities: z.array(entity).default([]) }) }).parse(json);
+  return parsed.results.entities.map(toEntity);
+}
+
+export type QlooTag = { id: string; name: string; affinity: number | null; popularity: number | null };
+
+/** GET /v2/insights?filter.type=urn:tag and GET /v2/tags (semantic search) */
+export function parseTags(json: unknown): QlooTag[] {
+  const parsed = z
+    .object({
+      results: z.object({
+        tags: z
+          .array(
+            z.object({
+              id: z.string().optional(),
+              tag_id: z.string().optional(),
+              name: z.string(),
+              popularity: z.number().optional(),
+              query: z.object({ affinity: z.number().optional() }).partial().optional(),
+            }),
+          )
+          .default([]),
+      }),
+    })
+    .parse(json);
+  return parsed.results.tags
+    .map((t) => ({ id: t.id ?? t.tag_id ?? "", name: t.name, affinity: t.query?.affinity ?? null, popularity: t.popularity ?? null }))
+    .filter((t) => t.id);
+}
+
+export type Demographics = { age: Record<string, number>; gender: Record<string, number> };
+
+/** GET /v2/insights?filter.type=urn:demographics. Small acts come back empty (probe 3b). */
+export function parseDemographics(json: unknown): Demographics | null {
+  const parsed = z
+    .object({
+      results: z.object({
+        demographics: z
+          .array(z.object({ query: z.object({ age: z.record(z.string(), z.number()).optional(), gender: z.record(z.string(), z.number()).optional() }) }))
+          .default([]),
+      }),
+    })
+    .parse(json);
+  const first = parsed.results.demographics[0];
+  if (!first?.query.age && !first?.query.gender) return null;
+  return { age: first.query.age ?? {}, gender: first.query.gender ?? {} };
+}
+
+/** Genre tags for a city carry noise such as "Drag Race" (probe 4d): keep music genres only. */
+export function isMusicGenre(tagId: string): boolean {
+  return tagId.startsWith("urn:tag:genre:music:");
+}
+
+/** GET /v2/insights?filter.type=urn:heatmap: geohash cells with affinity (probe 21 Oct). */
+export function parseHeatmap(json: unknown): { geohash: string; affinity: number }[] {
+  const parsed = z
+    .object({
+      results: z.object({
+        heatmap: z.array(z.object({ location: z.object({ geohash: z.string() }), query: z.object({ affinity: z.number() }) })).default([]),
+      }),
+    })
+    .parse(json);
+  return parsed.results.heatmap.map((c) => ({ geohash: c.location.geohash, affinity: c.query.affinity }));
+}
