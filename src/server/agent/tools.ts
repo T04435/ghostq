@@ -1,9 +1,8 @@
 import "server-only";
 import { tool } from "ai";
 import { z, ZodError } from "zod";
-import { describeAges, PLACES, type Brief } from "@/lib/brief";
-import { topAgeBands } from "@/lib/fan-profile";
-import { isMusicGenre, pickArtist, type QlooEntity } from "@/lib/qloo-parse";
+import { describeCrowd, type Brief, type Crowd } from "@/lib/brief";
+import { isMusicGenre, type QlooEntity } from "@/lib/qloo-parse";
 import { SignalRegistry, type Signal } from "@/lib/signals";
 import * as qloo from "@/server/qloo/api";
 import { QlooError } from "@/server/qloo/client";
@@ -15,17 +14,19 @@ export class RunState {
   /** The act is in Qloo's search but not in the taste graph (probe 2c). */
   actInvalid = false;
   genreTagIds: string[] = [];
+  /** Read from Qloo before the agent starts (server/crowd.ts). */
+  crowdInfo: Crowd | null = null;
   readonly artistNames = new Set<string>();
   chosen: { signalIds: string[]; angle: string } | null = null;
   qlooCalls = 0;
   qlooCached = 0;
 
   constructor(readonly brief: Brief) {
-    if (brief.artist) this.artistNames.add(brief.artist);
+    this.artistNames.add(brief.artist);
   }
 
-  get crowd(): qloo.Crowd {
-    return { place: this.brief.place, ages: this.brief.ages };
+  get crowd(): qloo.CrowdSignal {
+    return { place: this.crowdInfo?.place ?? null, ages: this.crowdInfo?.ages.map((a) => a.age) ?? [] };
   }
 
   onCall = (log: { cached: boolean }) => {
@@ -58,31 +59,11 @@ async function guard(run: () => Promise<ToolOutput>): Promise<ToolOutput> {
 }
 
 export function createTools(state: RunState) {
-  const crowdName = () => `${describeAges(state.brief.ages)} in ${PLACES[state.brief.place].name}`;
+  const crowdName = () => (state.crowdInfo ? describeCrowd(state.crowdInfo) : "this crowd");
 
   return {
-    find_artist: tool({
-      description: "Search Qloo for the artist in the brief. Returns the best match and its genre tags. Call this first when the brief names an artist.",
-      inputSchema: z.object({ name: z.string().min(1).max(80) }),
-      execute: ({ name }) =>
-        guard(async () => {
-          const results = await qloo.searchArtist(name, state.onCall);
-          // The Spotify pick from the brief pins the match when Qloo links that Spotify id.
-          const match = pickArtist(results, name, state.brief.spotifyId);
-          const exact = match && (match.spotifyIds.includes(state.brief.spotifyId ?? "") || match.name.toLowerCase() === name.trim().toLowerCase());
-          if (!match) return { ok: false, summary: `Qloo has no artist called ${name}. Use sound_from_words with the brief's sound, or with genres you'd expect.`, signals: [] };
-          state.act = match;
-          state.artistNames.add(match.name);
-          const genres = match.tags.filter((t) => t.type.startsWith("urn:tag:genre")).slice(0, 6);
-          state.genreTagIds = genres.map((g) => g.id);
-          const signals = genres.map((g) => state.signals.add("genre", g.name, `Qloo search: ${match.name}'s tags`, null));
-          const note = exact ? "" : ` (closest match to "${name}"; check it's the right act)`;
-          return { ok: true, summary: `Found ${match.name}${note}. Genres: ${names(signals) || "none listed"}.`, signals, raw: { name: match.name, popularity: match.popularity, tags: match.tags } };
-        }),
-    }),
-
     sound_from_words: tool({
-      description: "Map the artist's own words for their sound (or genres you infer) to Qloo music genre tags, by semantic search. Use when the brief has no artist, or Qloo doesn't know the artist.",
+      description: "Map genre or mood words to Qloo music genre tags, by semantic search. Use when the artist's own genre tags are thin or missing.",
       inputSchema: z.object({ words: z.string().min(2).max(160) }),
       execute: ({ words }) =>
         guard(async () => {
@@ -125,24 +106,6 @@ export function createTools(state: RunState) {
           const ranked = await qloo.rescoreForCrowd(list.map((a) => a.id), state.crowd, state.onCall);
           const signals = state.addArtists(ranked.length ? ranked : list, `Qloo insights: genre artists ranked for ${crowdName()}`);
           return { ok: true, summary: `In these genres, best fit for this crowd first: ${names(signals)}.`, signals, raw: ranked.map((a) => ({ name: a.name, affinity: a.affinity })) };
-        }),
-    }),
-
-    fan_profile: tool({
-      description: "Age and gender skew of the found artist's fans. Often empty for small acts.",
-      inputSchema: z.object({}),
-      execute: () =>
-        guard(async () => {
-          if (!state.act || state.actInvalid) return { ok: false, summary: "No usable artist in Qloo, so no fan profile. The brief's age band stands in.", signals: [] };
-          const demo = await qloo.artistDemographics(state.act.id, state.onCall);
-          if (!demo) return { ok: false, summary: `Qloo has no fan profile for ${state.act.name} yet. The brief's age band stands in.`, signals: [] };
-          const source = `Qloo demographics: ${state.act.name}`;
-          const gender = Object.entries(demo.gender).sort((a, b) => b[1] - a[1])[0];
-          const signals = [
-            ...topAgeBands(demo).map((band) => state.signals.add("crowd", `Fans skew ${describeAges([band.age])}`, source, band.skew)),
-            ...(gender && gender[1] > 0 ? [state.signals.add("crowd", `Fans skew ${gender[0]}`, source, gender[1])] : []),
-          ];
-          return { ok: true, summary: `Fans: ${names(signals)}.`, signals, raw: demo };
         }),
     }),
 

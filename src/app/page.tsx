@@ -6,11 +6,12 @@ export default function Home() {
       <div className="grid gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Write a song for your next crowd</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Tell GhostQ your sound and who you&apos;re playing to. An agent reads that crowd&apos;s taste through Qloo, then writes an original song sheet. Every line shows the
-          Qloo signal behind it.
+          Name an artist. GhostQ reads their crowd from Qloo (where the fans are, how old they are, what they love), then writes an original song for that crowd. Every
+          line shows the Qloo signal behind it.
         </p>
       </div>
       <GhostQApp />
     </div>
   );
 }
+

@@ -27,7 +27,7 @@ export function CompareView() {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/plain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(last.brief) });
+      const response = await fetch("/api/plain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: last.brief, crowd: last.sheet?.crowd }) });
       const body = (await response.json()) as PlainSong & { error?: string };
       if (!response.ok) throw new Error(body.error ?? `The server returned ${response.status}`);
       setPlain(body);
@@ -49,7 +49,7 @@ export function CompareView() {
   const sheet = last.sheet;
   return (
     <div className="grid gap-4">
-      <p className="text-sm text-muted-foreground">Brief: {describeBrief(last.brief)}</p>
+      <p className="text-sm text-muted-foreground">Brief: {describeBrief(last.brief, sheet.crowd)}</p>
       {!plain && (
         <div>
           <Button onClick={writePlain} disabled={busy}>

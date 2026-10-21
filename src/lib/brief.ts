@@ -36,30 +36,45 @@ export type AgeBand = keyof typeof AGE_BANDS;
 /** Qloo has no language filter (probe 10b): the writer writes in this language. */
 export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German"] as const;
 
-export const briefSchema = z
-  .object({
-    artist: z.string().trim().max(80).optional(),
-    /** Set when the artist was picked from Spotify search: pins the Qloo match. */
-    spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(),
-    sound: z.string().trim().max(160).optional(),
-    place: z.enum(Object.keys(PLACES) as [PlaceId, ...PlaceId[]]),
-    /** One to three age bands; Qloo takes them comma-separated in one signal (checked live, 21 Oct). */
-    ages: z.array(z.enum(Object.keys(AGE_BANDS) as [AgeBand, ...AgeBand[]])).min(1).max(3),
-    language: z.enum(LANGUAGES),
-    story: z.string().trim().max(280).optional(),
-  })
-  .refine((b) => Boolean(b.artist || b.sound), { message: "Give an artist or describe your sound", path: ["artist"] });
+export type Language = (typeof LANGUAGES)[number];
+
+/** What the user gives before a run: the artist and, optionally, a story seed. Everything else comes from Qloo. */
+export const briefSchema = z.object({
+  artist: z.string().trim().min(1, "Give an artist").max(80),
+  /** Set when the artist was picked from Spotify search: pins the Qloo match. */
+  spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(),
+  story: z.string().trim().max(280).optional(),
+  /**
+   * Answers to what the run asked for when Qloo had no data (never asked up front). The run stops with an "ask" event;
+   * the page sends the same brief again with these filled in, and the run carries on (Qloo calls come from cache).
+   */
+  answers: z
+    .object({
+      /** The artist's sound in the user's words, when Qloo doesn't know the artist. */
+      sound: z.string().trim().min(2).max(160).optional(),
+      place: z.enum(Object.keys(PLACES) as [PlaceId, ...PlaceId[]]).optional(),
+      ages: z.array(z.enum(Object.keys(AGE_BANDS) as [AgeBand, ...AgeBand[]])).min(1).max(3).optional(),
+    })
+    .optional(),
+});
 export type Brief = z.infer<typeof briefSchema>;
+export type AskField = "sound" | "place" | "ages";
+
+/** The crowd the run reads from Qloo's data on the artist's fans. Null place: Qloo had no location data, so taste is read worldwide. */
+export type Crowd = {
+  /** Where each value came from: Qloo's data on the fans, or the user's answer when Qloo had none. */
+  from: { place: "qloo" | "you"; ages: "qloo" | "you" };
+  place: PlaceId | null;
+  /** The place's heatmap cell rank among Qloo's cells, e.g. 10 of 4,931. */
+  placeRank: { rank: number; of: number } | null;
+  /** Up to three age bands the fans skew towards, strongest first; empty when Qloo has no fan data. */
+  ages: { age: AgeBand; skew: number | null }[];
+  language: Language;
+};
 
 export const EXAMPLE_BRIEFS: { label: string; brief: Brief }[] = [
-  {
-    label: "Melbourne indie, 25–29",
-    brief: { artist: "Teenage Joans", spotifyId: "6i78AQeGl4IGuGePiz3woE", place: "melbourne", ages: ["25_to_29"], language: "English", story: "Last tram home after a share-house party" },
-  },
-  {
-    label: "Bedroom pop in Mexico City, Spanish",
-    brief: { sound: "dreamy lo-fi bedroom pop", place: "mexico-city", ages: ["24_and_younger"], language: "Spanish" },
-  },
+  { label: "Teenage Joans · last tram home", brief: { artist: "Teenage Joans", spotifyId: "6i78AQeGl4IGuGePiz3woE", story: "Last tram home after a share-house party" } },
+  { label: "Natalia Lafourcade · rain on the metro", brief: { artist: "Natalia Lafourcade", story: "Rain on the metro, going home to my mother's" } },
 ];
 
 /** "25–29" or "24 and under, 25–29 and 30–34", in Qloo's order. */
@@ -68,15 +83,14 @@ export function describeAges(ages: AgeBand[]): string {
   return labels.length > 1 ? `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}` : (labels[0] ?? "");
 }
 
-export function describeBrief(b: Brief): string {
-  const place = PLACES[b.place];
-  return [
-    b.artist ? `Artist: ${b.artist}.` : null,
-    b.sound ? `Their sound in their words: "${b.sound}".` : null,
-    `Crowd: ${describeAges(b.ages)} in ${place.name}, ${place.country}.`,
-    `Language: ${b.language}.`,
-    b.story ? `Story seed: "${b.story}".` : null,
-  ]
+export function describeCrowd(c: Crowd): string {
+  const ages = c.ages.length ? describeAges(c.ages.map((a) => a.age)) : "all ages";
+  const where = c.place ? `${PLACES[c.place].name}, ${PLACES[c.place].country}` : "worldwide";
+  return `${ages} in ${where}`;
+}
+
+export function describeBrief(b: Brief, crowd: Crowd): string {
+  return [`Artist: ${b.artist}.`, `Crowd (read from Qloo's data on the artist's fans): ${describeCrowd(crowd)}.`, `Language: ${crowd.language}.`, b.story ? `Story seed: "${b.story}".` : null]
     .filter(Boolean)
     .join(" ");
 }

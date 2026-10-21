@@ -6,9 +6,9 @@ import { z } from "zod";
 const tagRef = z.object({ id: z.string().optional(), tag_id: z.string().optional(), name: z.string().optional(), type: z.string().optional() });
 
 /** Spotify id: under properties.external on /search, top-level external on insights. Its shape varies (an object, a list, other fields), so it's read leniently. */
-const external = z.object({ spotify: z.unknown() }).partial();
+const external = z.object({ spotify: z.unknown(), musicbrainz: z.unknown() }).partial();
 
-function spotifyIds(value: unknown): string[] {
+function idsOf(value: unknown): string[] {
   const items = Array.isArray(value) ? value : [value];
   return items.flatMap((x) => (x && typeof x === "object" && "id" in x && typeof x.id === "string" ? [x.id] : []));
 }
@@ -30,6 +30,8 @@ export type QlooEntity = {
   affinity: number | null;
   tags: { id: string; name: string; type: string }[];
   spotifyIds: string[];
+  /** MusicBrainz artist id, for the voice match (server/musicbrainz.ts). */
+  musicbrainzId: string | null;
 };
 
 function toEntity(e: z.infer<typeof entity>): QlooEntity {
@@ -38,7 +40,8 @@ function toEntity(e: z.infer<typeof entity>): QlooEntity {
     name: e.name,
     popularity: e.popularity ?? null,
     affinity: e.query?.affinity ?? null,
-    spotifyIds: [...spotifyIds(e.properties?.external?.spotify), ...spotifyIds(e.external?.spotify)],
+    spotifyIds: [...idsOf(e.properties?.external?.spotify), ...idsOf(e.external?.spotify)],
+    musicbrainzId: [...idsOf(e.properties?.external?.musicbrainz), ...idsOf(e.external?.musicbrainz)][0] ?? null,
     tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
   };
 }

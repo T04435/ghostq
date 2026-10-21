@@ -8,6 +8,9 @@ const sheet: SongSheet = {
   tempo: 174,
   feel: "Breathless pop-punk (G4) that slumps into a singalong.",
   angle: "a",
+  artist: "Fictional Band",
+  crowd: { from: { place: "qloo", ages: "qloo" }, place: "melbourne", placeRank: { rank: 1, of: 10 }, ages: [{ age: "25_to_29", skew: 0.27 }], language: "English" },
+  voice: { voice: "male", source: "test" },
   language: "English",
   productionBrief: "Palm-muted eighths in the verses (G2, G4), a Mac DeMarco wobble on the lead, and a tram bell in the bridge like M1.",
   warnings: [],
@@ -19,7 +22,7 @@ const sheet: SongSheet = {
 };
 
 describe("buildSingPrompt", () => {
-  const prompt = buildSingPrompt(sheet);
+  const prompt = buildSingPrompt(sheet, "male");
 
   it("tags the sections and keeps the lyrics verbatim", () => {
     expect(prompt).toContain("[Verse 1]\nShoes in my hand\nTexta on my wrist");
@@ -30,5 +33,13 @@ describe("buildSingPrompt", () => {
     expect(prompt).not.toMatch(/\b[TGM]\d+\b/);
     expect(prompt).not.toContain("Mac DeMarco");
     expect(prompt).toContain("Key: E major. Tempo: 174 BPM.");
+  });
+
+  it("names the lead vocal, and drops the lyrics for an instrumental", () => {
+    expect(prompt).toContain("a male lead vocal");
+    expect(buildSingPrompt(sheet, "female")).toContain("a female lead vocal");
+    const instrumental = buildSingPrompt(sheet, "instrumental");
+    expect(instrumental).toContain("No vocals");
+    expect(instrumental).not.toContain("Shoes in my hand");
   });
 });

@@ -2,7 +2,7 @@
 
 An AI ghostwriter that knows your next crowd. Give it your sound (an artist, or your own words), a city, an age band and a language. An agent reads that crowd's taste through [Qloo](https://www.qloo.com/) and writes an original song sheet: lyrics, chords, structure, melody notes and a production brief, with a receipt on every line showing the Qloo signal behind it.
 
-Built for the Qloo Agentic Hackathon 2026. Status: **beta** (v0.1.0-beta.1). It writes the song sheet and can have it sung and produced by Google Lyria.
+Built for the Qloo Agentic Hackathon 2026. Status: **v1.0.0**. It writes the song sheet and can have it sung and produced by Google Lyria.
 
 ## Run it locally
 

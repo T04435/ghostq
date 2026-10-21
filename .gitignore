@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# Saved songs and audio in local development (Qloo-derived data stays out of the repo)
+/.data/

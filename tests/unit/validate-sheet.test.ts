@@ -45,6 +45,17 @@ describe("validateSong", () => {
   });
 });
 
+describe("film and book titles", () => {
+  it("flags a title from the signals in a lyric, but not a short one-word title", () => {
+    const r = new SignalRegistry();
+    r.add("theme", "Love", "Qloo", 0.7);
+    r.add("movie", "Little Women", "Qloo", 0.9);
+    r.add("movie", "Up", "Qloo", 0.8);
+    const problems = validateSong(song([{ text: "Like little women on the stairs", signalIds: ["T1"] }, { text: "We go up the hill", signalIds: ["T1"] }]), r.all(), []);
+    expect(problems.map((p) => p.issue)).toEqual(["names a film or book (Little Women); use its mood, not its title"]);
+  });
+});
+
 describe("dropUnknownIds", () => {
   it("keeps only real ids", () => {
     const fixed = dropUnknownIds(song([{ text: "a", signalIds: ["T1", "X9"] }]), registry.all());

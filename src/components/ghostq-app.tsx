@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BriefForm } from "@/components/brief-form";
-import { RunSteps, type StepItem } from "@/components/run-steps";
+import { applyStepEvent, RunSteps, type StepItem } from "@/components/run-steps";
 import { SongSheetView } from "@/components/song-sheet-view";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import type { Brief } from "@/lib/brief";
+import { AskCard } from "@/components/ask-card";
+import { CrowdCard } from "@/components/crowd-card";
+import type { Brief, Crowd } from "@/lib/brief";
 import { loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
@@ -19,6 +21,10 @@ export function GhostQApp() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Extract<RunEvent, { type: "done" }> | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [crowd, setCrowd] = useState<{ artist: string; crowd: Crowd } | null>(null);
+  // The run stopped to ask (Qloo had no data); answering sends the same brief again with the answers.
+  const [ask, setAsk] = useState<{ brief: Brief; event: Extract<RunEvent, { type: "ask" }> } | null>(null);
+  const current = useRef<Brief | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -33,33 +39,17 @@ export function GhostQApp() {
   }, []);
 
   function apply(event: RunEvent, n: number) {
-    switch (event.type) {
-      case "note":
-        setItems((xs) => [...xs, { kind: "note", key: `n${n}`, text: event.text }]);
-        break;
-      case "step-start":
-        setItems((xs) => [...xs, { kind: "step", key: event.id, label: event.label, input: event.input, status: "running", signals: [], raw: null }]);
-        break;
-      case "step-end":
-        setItems((xs) => xs.map((x) => (x.kind === "step" && x.key === event.id ? { ...x, status: event.ok ? "ok" : "failed", summary: event.summary, signals: event.signals, raw: event.raw } : x)));
-        break;
-      case "writing":
-        setItems((xs) => [...xs, { kind: "writing", key: "writing", signalCount: event.signalCount, done: false }]);
-        break;
-      case "sheet":
-        setItems((xs) => xs.map((x) => (x.kind === "writing" ? { ...x, done: true } : x)));
-        setSheet(event.sheet);
-        break;
-      case "error":
-        setError(event.message);
-        break;
-      case "done":
-        setDone(event);
-        break;
-    }
+    setItems((xs) => applyStepEvent(xs, event, n));
+    if (event.type === "crowd") setCrowd({ artist: event.artist, crowd: event.crowd });
+    if (event.type === "ask" && current.current) setAsk({ brief: current.current, event });
+    if (event.type === "sheet") setSheet(event.sheet);
+    if (event.type === "error") setError(event.message);
+    if (event.type === "done") setDone(event);
   }
 
   async function run(brief: Brief) {
+    current.current = brief;
+    setAsk(null);
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
@@ -68,6 +58,7 @@ export function GhostQApp() {
     setSheet(null);
     setError(null);
     setDone(null);
+    setCrowd(null);
     let finalSheet: SongSheet | null = null;
     try {
       const response = await fetch("/api/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(brief), signal: controller.signal });
@@ -112,8 +103,17 @@ export function GhostQApp() {
               <Label htmlFor="raw">Show raw data</Label>
             </div>
           </div>
-          {items.length === 0 && <p className="text-sm text-muted-foreground">Starting the agent…</p>}
+          {items.length === 0 && <p className="text-sm text-muted-foreground">Finding the artist on Qloo…</p>}
+          {crowd && <CrowdCard artist={crowd.artist} crowd={crowd.crowd} />}
           <RunSteps items={items} showRaw={showRaw} />
+          {ask && (
+            <AskCard
+              fields={ask.event.fields}
+              message={ask.event.message}
+              busy={busy}
+              onAnswer={(answers) => void run({ ...ask.brief, answers: { ...ask.brief.answers, ...answers } })}
+            />
+          )}
           {done && (
             <p className="text-sm text-muted-foreground">
               {done.qlooCalls} Qloo calls{done.qlooCached ? ` (+${done.qlooCached} from cache)` : ""} · {done.seconds} s

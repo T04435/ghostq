@@ -1,3 +1,4 @@
+import type { AskField, Crowd } from "./brief";
 import type { Signal } from "./signals";
 import type { SongSheet } from "./song-sheet";
 
@@ -6,6 +7,9 @@ export type RunEvent =
   | { type: "note"; text: string }
   | { type: "step-start"; id: string; tool: string; label: string; input: unknown }
   | { type: "step-end"; id: string; ok: boolean; summary: string; signals: Signal[]; raw: unknown }
+  | { type: "crowd"; artist: string; crowd: Crowd }
+  /** The run stopped: Qloo has no data for these. The page asks, then sends the brief again with the answers. */
+  | { type: "ask"; fields: AskField[]; artist: string; message: string }
   | { type: "writing"; signalCount: number }
   | { type: "sheet"; sheet: SongSheet }
   | { type: "error"; message: string }
@@ -13,10 +17,10 @@ export type RunEvent =
 
 export const TOOL_LABELS: Record<string, string> = {
   find_artist: "Find the artist on Qloo",
-  sound_from_words: "Turn your words into genres",
+  read_crowd: "Read the artist's crowd",
+  sound_from_words: "Turn words into genres",
   sound_alikes: "Who you sound like",
   artists_in_genres: "Artists in your genres, ranked for this crowd",
-  fan_profile: "Who your fans are",
   crowd_tags: "What this crowd cares about",
   local_scene: "The local scene",
   crowd_taste: "What this crowd watches and reads",

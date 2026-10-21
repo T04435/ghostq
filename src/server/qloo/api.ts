@@ -3,14 +3,19 @@ import { PLACES, type AgeBand, type PlaceId } from "@/lib/brief";
 import { parseDemographics, parseEntities, parseHeatmap, parseSearch, parseTags, type QlooEntity } from "@/lib/qloo-parse";
 import { qlooGet, type CallLog, type QlooParams } from "./client";
 
-export type Crowd = { place: PlaceId; ages: AgeBand[] };
+/** A Qloo crowd signal. No place: taste worldwide; no ages: all ages. */
+export type CrowdSignal = { place: PlaceId | null; ages: AgeBand[] };
 export type OnCall = (log: CallLog) => void;
 
 const RADIUS_M = 15_000;
 
-function crowdParams({ place, ages }: Crowd): QlooParams {
-  const p = PLACES[place];
-  return { "signal.location": `POINT(${p.lon} ${p.lat})`, "signal.location.radius": RADIUS_M, "signal.demographics.age": ages.join(",") };
+function crowdParams({ place, ages }: CrowdSignal): QlooParams {
+  const p = place ? PLACES[place] : null;
+  return {
+    "signal.location": p ? `POINT(${p.lon} ${p.lat})` : undefined,
+    "signal.location.radius": p ? RADIUS_M : undefined,
+    "signal.demographics.age": ages.length ? ages.join(",") : undefined,
+  };
 }
 
 export async function searchArtist(name: string, onCall?: OnCall): Promise<QlooEntity[]> {
@@ -39,7 +44,7 @@ export async function artistDemographics(entityId: string, onCall?: OnCall) {
 }
 
 /** Tags this crowd over-indexes on: theme (lyric subjects), style, or music genre. Optional act signal blends the act's fans in. */
-export async function crowdTags(kind: "theme" | "style" | "genre", crowd: Crowd, actEntityId: string | undefined, onCall?: OnCall) {
+export async function crowdTags(kind: "theme" | "style" | "genre", crowd: CrowdSignal, actEntityId: string | undefined, onCall?: OnCall) {
   const type = { theme: "urn:tag:theme:qloo", style: "urn:tag:style:qloo", genre: "urn:tag:genre:music" }[kind];
   return parseTags(
     await qlooGet(
@@ -51,7 +56,7 @@ export async function crowdTags(kind: "theme" | "style" | "genre", crowd: Crowd,
 }
 
 /** Step 2 of the local-scene query: artists in these genres, for this crowd, optionally near the act (probes 4e, 4f). */
-export async function sceneArtists(genreTagIds: string[], crowd: Crowd, actEntityId: string | undefined, onCall?: OnCall) {
+export async function sceneArtists(genreTagIds: string[], crowd: CrowdSignal, actEntityId: string | undefined, onCall?: OnCall) {
   return parseEntities(
     await qlooGet(
       "/v2/insights",
@@ -62,7 +67,7 @@ export async function sceneArtists(genreTagIds: string[], crowd: Crowd, actEntit
 }
 
 /** Films and books this crowd loves, for lyric imagery (probes 6a, 6b). */
-export async function crowdTaste(type: "movie" | "book", crowd: Crowd, onCall?: OnCall) {
+export async function crowdTaste(type: "movie" | "book", crowd: CrowdSignal, onCall?: OnCall) {
   return parseEntities(await qlooGet("/v2/insights", { "filter.type": `urn:entity:${type}`, ...crowdParams(crowd), take: 10 }, onCall));
 }
 
@@ -72,7 +77,7 @@ export async function fanAudiences(entityId: string, onCall?: OnCall) {
 }
 
 /** Re-order a shortlist by fit with this crowd (probe 9). */
-export async function rescoreForCrowd(entityIds: string[], crowd: Crowd, onCall?: OnCall) {
+export async function rescoreForCrowd(entityIds: string[], crowd: CrowdSignal, onCall?: OnCall) {
   return parseEntities(
     await qlooGet("/v2/insights", { "filter.type": "urn:entity:artist", "filter.results.entities": entityIds.join(","), ...crowdParams(crowd), take: entityIds.length }, onCall),
   );

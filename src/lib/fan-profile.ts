@@ -2,18 +2,6 @@ import { AGE_BANDS, PLACES, type AgeBand, type PlaceId } from "./brief";
 import { geohash } from "./geohash";
 import type { Demographics } from "./qloo-parse";
 
-/** What Qloo knows about the artist's fans, for pre-filling the crowd. */
-export type FanProfile = {
-  artist: string;
-  /** Up to three age bands the fans skew towards, strongest first, with Qloo's signed skew; empty when Qloo has no fan data. */
-  ages: { age: AgeBand; skew: number }[];
-  /** The listed city where the fans' taste is strongest, from Qloo's world heatmap; null when unknown. */
-  place: PlaceId | null;
-  placeAffinity: number | null;
-  /** That city's cell rank among all of Qloo's cells, e.g. 1 of 660. */
-  placeRank: { rank: number; of: number } | null;
-};
-
 /** A band counts as the fans' when Qloo's skew for it is at least this (signed fraction; Tame Impala's top three were 0.27, 0.21, 0.17). */
 export const AGE_SKEW_THRESHOLD = 0.1;
 

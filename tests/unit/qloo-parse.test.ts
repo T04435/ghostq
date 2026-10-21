@@ -17,7 +17,7 @@ describe("parseSearch", () => {
       ],
     };
     expect(parseSearch(json)).toEqual([
-      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
+      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
     ]);
   });
 
@@ -98,5 +98,12 @@ describe("spotify ids in odd shapes", () => {
       ],
     };
     expect(parseSearch(json).map((e) => e.spotifyIds)).toEqual([["x1", "x2"], [], ["x3"]]);
+  });
+});
+
+describe("musicbrainz id", () => {
+  it("is read from the search result's external ids", () => {
+    const json = { results: [{ entity_id: "A", name: "A", properties: { external: { musicbrainz: { id: "63aa26c3-d59b-4da4-84ac-716b54f1ef4d" } } } }] };
+    expect(parseSearch(json)[0].musicbrainzId).toBe("63aa26c3-d59b-4da4-84ac-716b54f1ef4d");
   });
 });

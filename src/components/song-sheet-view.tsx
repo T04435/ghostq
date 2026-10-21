@@ -1,12 +1,15 @@
 "use client";
 
-import { Check, Copy, Download, Loader2, Mic, TriangleAlert } from "lucide-react";
+import { Check, Copy, Download, Link2, Loader2, Mic, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { VOICES, type Voice } from "@/lib/voice";
+import { describeCrowd } from "@/lib/brief";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, type SongSheet } from "@/lib/song-sheet";
 
@@ -21,19 +24,31 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
   crowd: "Crowd",
 };
 
-export function SongSheetView({ sheet }: { sheet: SongSheet }) {
+/** readOnly: a shared song page (no singing); audioUrl: a saved sung version to play. */
+export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
-  const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string }>({ status: "idle" });
+  const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
+  const [linkCopied, setLinkCopied] = useState(false);
+  // The lead vocal: matched to the artist when MusicBrainz knows it; otherwise the user must choose (no default).
+  const [voice, setVoice] = useState<Voice | null>(sheet.voice?.voice ?? null);
   useEffect(() => () => {
-    if (song.url) URL.revokeObjectURL(song.url);
+    if (song.url?.startsWith("blob:")) URL.revokeObjectURL(song.url);
   }, [song.url]);
 
+  async function copyLink() {
+    if (!sheet.id) return;
+    await navigator.clipboard.writeText(`${location.origin}/song/${sheet.id}`);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 1500);
+  }
+
   async function sing() {
+    if (!voice) return;
     setSong({ status: "singing" });
     try {
-      const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sheet) });
+      const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sheet, voice, songId: sheet.id }) });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? `The server returned ${response.status}`);
@@ -65,9 +80,9 @@ export function SongSheetView({ sheet }: { sheet: SongSheet }) {
       <CardHeader>
         <CardTitle className="text-2xl">{sheet.title}</CardTitle>
         <CardDescription>
-          {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
+          For {sheet.artist}&apos;s crowd: {describeCrowd(sheet.crowd)}. {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
         </CardDescription>
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-2">
           <Button variant="outline" size="sm" onClick={copy}>
             {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
             {copied ? "Copied" : "Copy"}
@@ -76,11 +91,42 @@ export function SongSheetView({ sheet }: { sheet: SongSheet }) {
             <Download aria-hidden />
             Download .md
           </Button>
-          <Button size="sm" onClick={sing} disabled={song.status === "singing"}>
+          {sheet.id && (
+            <Button variant="outline" size="sm" onClick={copyLink}>
+              {linkCopied ? <Check aria-hidden /> : <Link2 aria-hidden />}
+              {linkCopied ? "Link copied" : "Copy share link"}
+            </Button>
+          )}
+          {!readOnly && (
+          <>
+          <Select value={voice ?? undefined} onValueChange={(v) => setVoice(v as Voice)}>
+            <SelectTrigger size="sm" className="w-48" aria-label="Voice">
+              <SelectValue placeholder="Choose a voice" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(VOICES) as Voice[]).map((v) => (
+                <SelectItem key={v} value={v}>
+                  {VOICES[v].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={sing} disabled={song.status === "singing" || !voice}>
             {song.status === "singing" ? <Loader2 className="animate-spin" aria-hidden /> : <Mic aria-hidden />}
             {song.status === "singing" ? "Singing… (can take a few minutes)" : song.status === "done" ? "Sing again" : "Sing it"}
           </Button>
+          </>
+          )}
         </div>
+        {!readOnly && (
+        <p className="text-xs text-muted-foreground">
+          {sheet.voice?.voice
+            ? voice === sheet.voice.voice
+              ? `Voice matched to the artist from ${sheet.voice.source}.`
+              : `You changed the voice; the artist's is ${VOICES[sheet.voice.voice].label.toLowerCase()} (${sheet.voice.source}).`
+            : `${sheet.voice?.source ?? "The artist's voice is unknown"}, so choose a voice before singing.`}
+        </p>
+        )}
         {song.status === "done" && song.url && (
           <div className="grid gap-1 pt-2">
             <audio controls src={song.url} className="w-full">

@@ -1,5 +1,7 @@
 import { z } from "zod";
+import type { Crowd } from "./brief";
 import type { Signal } from "./signals";
+import type { VoiceMatch } from "./voice";
 
 export const lineSchema = z.object({
   text: z.string().describe("One sung line, in the brief's language"),
@@ -27,6 +29,14 @@ export type WrittenSong = z.infer<typeof writtenSongSchema>;
 
 /** What the app keeps and shows: the song plus the signals it cites. */
 export type SongSheet = WrittenSong & {
+  /** Set once the song is saved: its share link is /song/{id}. */
+  id?: string;
+  /** Qloo's name for the artist the song was written from. */
+  artist: string;
+  /** The crowd it was written for, read from Qloo. */
+  crowd: Crowd;
+  /** The lead vocal that matches the artist, for singing. */
+  voice: VoiceMatch;
   language: string;
   signals: Signal[];
   /** Problems the validator found and couldn't fix after the repair pass. */
