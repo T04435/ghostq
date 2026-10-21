@@ -178,7 +178,7 @@ function normalize(song: SavedSong | null): SavedSong | null {
   if (!song) return null;
   const { voice, ...sheet } = song.sheet as SavedSong["sheet"] & { voice?: unknown };
   const audio = song.audio && "voice" in song.audio ? { vocals: toVocalLine(String(song.audio.voice)), createdAt: song.audio.createdAt } : song.audio;
-  return { ...song, audio, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice) } };
+  return { ...song, audio, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice, sheet) } };
 }
 
 function store(): Store {

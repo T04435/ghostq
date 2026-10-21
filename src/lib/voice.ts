@@ -90,18 +90,23 @@ export function deliveryFromTags(tags: string[], artist: string): Pick<VocalMatc
   const list = (names: string[]) => [...new Set(names)].slice(0, 3).join(", ");
   if (rap.length && sung.length) return { delivery: "both", deliverySource: `Qloo's tags for ${artist}: ${list(rap)} and ${list(sung)}` };
   if (rap.length) return { delivery: "rap", deliverySource: `Qloo's tags for ${artist}: ${list(rap)}` };
-  return { delivery: "sung", deliverySource: tags.length ? `no rap in Qloo's tags for ${artist}` : `Qloo has no genres for ${artist}` };
+  if (sung.length) return { delivery: "sung", deliverySource: `Qloo's tags for ${artist}: ${list(sung)}` };
+  return { delivery: "sung", deliverySource: tags.length ? `Qloo's tags for ${artist} (no rap)` : `Qloo has no genres for ${artist}` };
 }
 
 // ---- Songs saved before 22 Oct ------------------------------------------------------------------------------------
 
 const LEGACY: Record<string, Gender[]> = { male: ["male"], female: ["female"], duet: ["male", "female"] };
 
-/** A sheet's vocals as stored. Before 22 Oct a sheet kept one lead voice ({voice: "male" | "female" | "duet" | null}). */
-export function normalizeVocals(raw: unknown): VocalMatch {
+/**
+ * A sheet's vocals as stored. Before 22 Oct a sheet kept one lead voice ({voice: "male" | "female" | "duet" | null}) and
+ * no rap or sung: that is read from the sheet's own genre and style receipts (the artist's Qloo tags).
+ */
+export function normalizeVocals(raw: unknown, sheet?: { artist?: string; signals?: { kind: string; label: string }[] }): VocalMatch {
   const v = (raw ?? {}) as Partial<VocalMatch> & { voice?: string | null };
   if (Array.isArray(v.voices) && v.delivery) return v as VocalMatch;
-  return { voices: (v.voice && LEGACY[v.voice]) || [], source: v.source ?? "unknown", delivery: "sung", deliverySource: "this song was written before GhostQ read rap or sung" };
+  const tags = (sheet?.signals ?? []).filter((s) => s.kind === "genre" || s.kind === "style").map((s) => s.label);
+  return { voices: (v.voice && LEGACY[v.voice]) || [], source: v.source ?? "unknown", ...deliveryFromTags(tags, sheet?.artist ?? "the artist") };
 }
 
 /** The vocals a saved song was sung with: JSON, or one of the old voice names. */
