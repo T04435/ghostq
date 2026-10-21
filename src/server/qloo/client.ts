@@ -37,7 +37,7 @@ export type CallLog = { path: string; params: QlooParams; ms: number; cached: bo
  * params; a failed call is not cached. One retry on a 5xx or network error.
  */
 export async function qlooGet<T>(path: string, params: QlooParams, onCall?: (log: CallLog) => void): Promise<T> {
-  if (!env.QLOO_API_KEY) throw new QlooError("Qloo isn't configured: set QLOO_API_KEY in .env.local", 0);
+  if (!env.QLOO_API_KEY) throw new QlooError("Qloo isn't configured (QLOO_API_KEY)", 0);
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params).sort(([a], [b]) => a.localeCompare(b))) {
     if (value !== undefined && value !== "") query.set(key, String(value));

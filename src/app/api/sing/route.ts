@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   // The voice is required: Lyria picking its own voice put a female voice on a male artist's song (user, 21 Oct).
   const body = z.object({ sheet: sheetSchema, voice: z.enum(Object.keys(VOICES) as [Voice, ...Voice[]]), songId: z.string().refine(isSongId).optional() }).safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "Choose a voice before singing" }, { status: 400 });
-  if (!providerStatus().gemini) return Response.json({ error: "GEMINI_API_KEY is missing in .env.local" }, { status: 503 });
+  if (!providerStatus().gemini) return Response.json({ error: "Singing isn't available right now." }, { status: 503 });
   try {
     const { audio } = await generateSong(buildSingPrompt(body.data.sheet as SongSheet, body.data.voice));
     // Kept with the saved song so the share link plays it and a reload doesn't lose it.

@@ -22,6 +22,8 @@ const schema = z.object({
   SPOTIFY_CLIENT_ID: secret,
   SPOTIFY_CLIENT_SECRET: secret,
   VERCEL_OIDC_TOKEN: secret,
+  /** "1" on Vercel, where the AI Gateway authenticates with the project's OIDC token at request time (not an env var). */
+  VERCEL: z.string().optional(),
   /** Neon Postgres (Vercel integration): saved songs and their research. */
   DATABASE_URL: secret,
   /** Neon Object Storage (S3-compatible, beta): sung MP3s. `neon env pull --service object-storage` writes these. */
@@ -37,7 +39,7 @@ export const env = schema.parse(process.env);
 export function providerStatus() {
   return {
     qloo: Boolean(env.QLOO_API_KEY),
-    aiGateway: Boolean(env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN),
+    aiGateway: Boolean(env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN || env.VERCEL === "1"),
     gemini: Boolean(env.GEMINI_API_KEY),
     spotify: Boolean(env.SPOTIFY_CLIENT_ID && env.SPOTIFY_CLIENT_SECRET),
     database: Boolean(env.DATABASE_URL),

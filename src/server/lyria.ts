@@ -24,7 +24,7 @@ const response = z.object({
  * Returns MP3 bytes, plus any text Lyria sends back. Every output carries a SynthID watermark.
  */
 export async function generateSong(prompt: string): Promise<{ audio: Buffer; text: string }> {
-  if (!env.GEMINI_API_KEY) throw new LyriaError("GEMINI_API_KEY is missing in .env.local", 0);
+  if (!env.GEMINI_API_KEY) throw new LyriaError("Singing isn't configured (GEMINI_API_KEY)", 0);
   const res = await fetch(URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },

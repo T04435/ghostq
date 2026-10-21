@@ -11,7 +11,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid brief" }, { status: 400 });
   const status = providerStatus();
   if (!status.qloo || !status.aiGateway) {
-    return Response.json({ error: `Not configured: ${[!status.qloo && "QLOO_API_KEY", !status.aiGateway && "AI Gateway key"].filter(Boolean).join(" and ")} missing in .env.local` }, { status: 503 });
+    console.error("GhostQ not configured", { qloo: status.qloo, aiGateway: status.aiGateway });
+    return Response.json({ error: "GhostQ can't write songs right now. Try again later." }, { status: 503 });
   }
 
   const encoder = new TextEncoder();

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   // The same brief and the same crowd GhostQ read from Qloo, so the only difference is the taste data.
   const parsed = z.object({ brief: briefSchema, crowd: z.custom<Crowd>((c) => typeof c === "object" && c !== null) }).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Invalid brief" }, { status: 400 });
-  if (!providerStatus().aiGateway) return Response.json({ error: "AI Gateway key missing in .env.local" }, { status: 503 });
+  if (!providerStatus().aiGateway) return Response.json({ error: "The plain AI comparison isn't available right now." }, { status: 503 });
   try {
     const { output } = await generateText({
       model: MODELS.plain,
