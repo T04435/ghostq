@@ -15,7 +15,7 @@ v1.0.0 must be live at https://ghostq.xyz, free and without login, before the su
 - [x] Domain `ghostq.xyz` and `www.ghostq.xyz` attached to the project.
 - [x] Real keys on Vercel in production, preview and development: Qloo and Spotify (the same as Busk Map's), Gemini.
 - [x] Neon Object Storage (beta): private bucket `ghostq-audio` on the main branch; `AWS_*` storage variables and `NEON_STORAGE_BUCKET` on Vercel in all environments.
-- [x] Neon branches: `main` for production and preview, `development` for local work and Vercel's development environment, so test songs never reach the live Library.
+- [x] Neon only through the Vercel integration (`ghostq-db`, one `main` branch, the integration's own variables in every environment). Never create databases or branches directly in Neon.
 - [x] Song store moved to Neon and checked live on 21 Oct (a full run, singing, the song page and the Library, with the MP3 read back byte for byte): songs, crowd and research in Postgres (table `songs`, created on first use), sung MP3s in the `ghostq-audio` bucket. Local development without `DATABASE_URL` still uses files under `.data/`.
 
 ## 2. Accounts and keys [you]
@@ -25,7 +25,7 @@ v1.0.0 must be live at https://ghostq.xyz, free and without login, before the su
 - [ ] Spotify: GhostQ shares Busk Map's Spotify app on purpose; nothing to do unless its limits bite.
 - [ ] Qloo: ask #api-help for a second key (Busk Map and GhostQ share 10,000 calls a month).
 - [ ] Neon: confirm the plan in the Vercel dashboard (the integration's default; not checked).
-- [ ] DNS: the registry still listed its default nameservers on 21 Oct, minutes after purchase. Run `vercel domains verify ghostq.xyz --scope cubanos-dev`; if it hasn't switched within a day, set the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` in the Vercel domain settings.
+- [x] DNS: ghostq.xyz on Vercel's nameservers and verified.
 
 ## 3. Code that must change before the first deploy [Claude]
 
@@ -35,9 +35,9 @@ v1.0.0 must be live at https://ghostq.xyz, free and without login, before the su
 
 ## 4. Release [both]
 
-- [ ] Connect the GitHub repo to the Vercel project (pushes to `main` then deploy). It isn't connected yet, so pushes don't deploy anything.
-- [ ] First production deploy, after you approve.
-- [ ] Smoke test on https://ghostq.xyz: write a song for a known artist; a run where Qloo lacks data asks and carries on; sing it; open its share link in a private window; find it in the Library; /how compares with plain AI.
+- [x] GitHub repo connected to Vercel: every push to `main` deploys production.
+- [x] Production live at https://ghostq.xyz (21 Oct). Fixed on the way: on Vercel the gateway token arrives per request, so the config check now treats Vercel as configured.
+- [x] Smoke test on https://ghostq.xyz (21 Oct: a Lorde run in 32 s, sung in 34 s, audio from storage, song in the Library; every page 200). Still to try by hand: write a song for a known artist; a run where Qloo lacks data asks and carries on; sing it; open its share link in a private window; find it in the Library; /how compares with plain AI.
 - [ ] End-to-end test and one QA pass at 390, 768 and 1440 px.
 - [ ] No Qloo response data in the repo (only synthetic test fixtures); keys only on the server.
 
