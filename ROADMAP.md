@@ -39,6 +39,15 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Receipts for these lines say "Spotify: the artist's catalogue", not Qloo.
 - Done when: an artist on Spotify but not in Qloo gets a run without the sound question, with the source shown.
 
+### F3. Qloo first for every data point
+
+- Rule: Qloo is the first source for any data point it can give. MusicBrainz, Spotify and OpenStreetMap only fill gaps (user, 22 Oct).
+- Today:
+  - Home, and the language that follows it, reads MusicBrainz first; Qloo's country tag (e.g. "Cuba" filed as a genre) is only the fallback.
+  - The voices (how many, which gender) come only from MusicBrainz.
+- Fix: probe Qloo's artist entity for hometown or origin, gender and members. Read those from Qloo first, and fall back to MusicBrainz per field only when Qloo has nothing. Receipts and the crowd card then name Qloo as the source.
+- Done when: for an artist Qloo knows, home and voices come from Qloo wherever Qloo has them, and MusicBrainz shows only as the named fallback.
+
 ## 1. Rate limits and spend caps (first: blocks going live)
 
 - Per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`, with a plain message when one is hit and when to try again.
