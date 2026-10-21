@@ -7,6 +7,7 @@ import { TOOL_LABELS, type RunEvent } from "@/lib/run-events";
 import { signalLine } from "@/lib/signals";
 import { writtenSongSchema, type SongSheet, type WrittenSong } from "@/lib/song-sheet";
 import { dropUnknownIds, validateSong, type Problem } from "@/lib/validate-sheet";
+import { deliveryFromTags } from "@/lib/voice";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { readCrowd } from "@/server/crowd";
 import { artistProfile } from "@/server/musicbrainz";
@@ -58,7 +59,7 @@ export async function runGhostQ(brief: Brief, send: Emit, abortSignal?: AbortSig
     return;
   }
   const id = newSongId();
-  const sheet: SongSheet = { ...(await write(state, emit, abortSignal)), voice: state.voiceMatch ?? { voice: null, source: "MusicBrainz didn't answer" }, id };
+  const sheet: SongSheet = { ...(await write(state, emit, abortSignal)), vocals: state.vocals ?? { voices: [], source: "MusicBrainz didn't answer", delivery: "sung", deliverySource: "not read" }, id };
   // Saved for the share link; a failed save keeps the song on the page, just without a link.
   await saveSong({ id, brief, sheet, research: log, createdAt: new Date().toISOString(), audio: null }).catch((e) => {
     console.error("save song failed", e instanceof Error ? e.message : e);
@@ -87,6 +88,7 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
       state.homeFromTags = genreTags.map((t) => t.name).find((n) => countryCodeFor(n)) ?? null;
       const genres = genreTags.filter((t) => !countryCodeFor(t.name)).slice(0, 6);
       state.genreTagIds = genres.map((g) => g.id);
+      state.soundTags = match.tags.filter((t) => /^urn:tag:(genre|subgenre|style)/.test(t.type)).map((t) => t.name);
       const own = `Qloo: ${match.name}'s own tags (voice)`;
       const signals = [
         ...genres.map((g) => state.signals.add("genre", g.name, own, null)),
@@ -112,6 +114,7 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
       // Qloo doesn't know the act: its sound in the user's words becomes Qloo genres (semantic tag search).
       const tags = (await genresFromWords(answers.sound, state.onCall)).slice(0, 6);
       state.genreTagIds = tags.map((t) => t.id);
+      state.soundTags = tags.map((t) => t.name);
       const signals = tags.map((t) => state.signals.add("genre", t.name, `Qloo tag search: your words "${answers.sound}"`, t.popularity));
       const listed = signals.map((g) => `${g.id} ${g.label}`).join(", ");
       emit({ type: "step-end", id: "find-artist", ok: tags.length > 0, summary: `Qloo doesn't know ${brief.artist}, so their sound comes from your words. Genres: ${listed || "none matched"}.`, signals, raw: tags });
@@ -124,7 +127,7 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
     emit({ type: "step-start", id: "read-crowd", tool: "read_crowd", label: TOOL_LABELS.read_crowd, input: { artist: artistName } });
     // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
     const [{ crowd: read, missing: crowdMissing }, profile] = await Promise.all([readCrowd(state.act, answers, state.onCall), artistProfile(state.act?.musicbrainzId ?? null)]);
-    state.voiceMatch = profile.voice;
+    state.vocals = { ...profile.voices, ...deliveryFromTags(state.soundTags, artistName) };
     const home: Home | null =
       profile.home ?? (state.homeFromTags ? { name: state.homeFromTags, country: state.homeFromTags, countryCode: countryCodeFor(state.homeFromTags), source: "qloo" } : null);
     const languageFrom = home?.countryCode ? "home" : "city";
@@ -246,7 +249,7 @@ function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems:
     .join("\n");
 }
 
-async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Promise<Omit<SongSheet, "voice">> {
+async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Promise<Omit<SongSheet, "vocals">> {
   emit({ type: "writing", signalCount: state.chosen?.signalIds.length ?? state.signals.all().length });
   const signals = state.signals.all();
   const ask = async (prompt: string) =>

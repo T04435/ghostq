@@ -6,9 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { VOICES, type Voice } from "@/lib/voice";
+import { draftFromMatch, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, type SongSheet } from "@/lib/song-sheet";
@@ -32,8 +31,9 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
   const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
   const [linkCopied, setLinkCopied] = useState(false);
-  // The lead vocal: matched to the artist when MusicBrainz knows it; otherwise the user must choose (no default).
-  const [voice, setVoice] = useState<Voice | null>(sheet.voice?.voice ?? null);
+  // The vocals: matched to the artist from MusicBrainz and Qloo; where they don't know, the user must choose (no default).
+  const [vocals, setVocals] = useState(() => draftFromMatch(sheet.vocals));
+  const line = lineFromDraft(vocals);
   useEffect(() => () => {
     if (song.url?.startsWith("blob:")) URL.revokeObjectURL(song.url);
   }, [song.url]);
@@ -46,10 +46,10 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
   }
 
   async function sing() {
-    if (!voice) return;
+    if (!line) return;
     setSong({ status: "singing" });
     try {
-      const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sheet, voice, songId: sheet.id }) });
+      const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sheet, vocals: line, songId: sheet.id }) });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string; retry?: boolean } | null;
         throw new Error(body?.error ?? `The server returned ${response.status}`);
@@ -98,35 +98,17 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
               {linkCopied ? "Link copied" : "Copy share link"}
             </Button>
           )}
-          {!readOnly && (
-          <>
-          <Select value={voice ?? undefined} onValueChange={(v) => setVoice(v as Voice)}>
-            <SelectTrigger size="sm" className="w-48" aria-label="Voice">
-              <SelectValue placeholder="Choose a voice" />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(VOICES) as Voice[]).map((v) => (
-                <SelectItem key={v} value={v}>
-                  {VOICES[v].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button size="sm" onClick={sing} disabled={song.status === "singing" || !voice}>
-            {song.status === "singing" ? <Loader2 className="animate-spin" aria-hidden /> : <Mic aria-hidden />}
-            {song.status === "singing" ? "Singing… (can take a few minutes)" : song.status === "done" ? "Sing again" : "Sing it"}
-          </Button>
-          </>
-          )}
         </div>
         {!readOnly && (
-        <p className="text-xs text-muted-foreground">
-          {sheet.voice?.voice
-            ? voice === sheet.voice.voice
-              ? `Voice matched to the artist from ${sheet.voice.source}.`
-              : `You changed the voice; the artist's is ${VOICES[sheet.voice.voice].label.toLowerCase()} (${sheet.voice.source}).`
-            : `${sheet.voice?.source ?? "The artist's voice is unknown"}, so choose a voice before singing.`}
-        </p>
+          <div className="grid gap-2 pt-2">
+            <VocalLinePicker match={sheet.vocals} draft={vocals} onChange={setVocals} />
+            <div>
+              <Button size="sm" onClick={sing} disabled={song.status === "singing" || !line}>
+                {song.status === "singing" ? <Loader2 className="animate-spin" aria-hidden /> : <Mic aria-hidden />}
+                {song.status === "singing" ? "Singing… (can take a few minutes)" : song.status === "done" ? "Sing again" : "Sing it"}
+              </Button>
+            </div>
+          </div>
         )}
         {song.status === "done" && song.url && (
           <div className="grid gap-1 pt-2">
@@ -144,7 +126,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
         {song.status === "error" && (
           <div role="alert" className="flex flex-wrap items-center gap-3 pt-2">
             <p className="text-sm text-destructive">{song.message}</p>
-            <Button size="sm" variant="outline" onClick={sing} disabled={!voice}>
+            <Button size="sm" variant="outline" onClick={sing} disabled={!line}>
               Try again
             </Button>
           </div>

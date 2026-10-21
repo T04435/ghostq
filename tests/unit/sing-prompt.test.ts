@@ -10,7 +10,7 @@ const sheet: SongSheet = {
   angle: "a",
   artist: "Fictional Band",
   crowd: { from: { place: "qloo", ages: "qloo" }, place: { name: "Melbourne", country: "Australia", countryCode: "AU", lat: -37.81, lon: 144.96 }, placeRank: { rank: 1, of: 10 }, ages: [{ age: "25_to_29", skew: 0.27 }], home: null, language: "English", languageFrom: "city" },
-  voice: { voice: "male", source: "test" },
+  vocals: { voices: ["male"], source: "test", delivery: "sung", deliverySource: "test" },
   language: "English",
   productionBrief: "Palm-muted eighths in the verses (G2, G4), a Mac DeMarco wobble on the lead, and a tram bell in the bridge like M1.",
   warnings: [],
@@ -22,7 +22,7 @@ const sheet: SongSheet = {
 };
 
 describe("buildSingPrompt", () => {
-  const prompt = buildSingPrompt(sheet, "male");
+  const prompt = buildSingPrompt(sheet, { kind: "vocals", voices: ["male"], delivery: "sung" });
 
   it("tags the sections and keeps the lyrics verbatim", () => {
     expect(prompt).toContain("[Verse 1]\nShoes in my hand\nTexta on my wrist");
@@ -35,11 +35,29 @@ describe("buildSingPrompt", () => {
     expect(prompt).toContain("Key: E major. Tempo: 174 BPM.");
   });
 
-  it("names the lead vocal, and drops the lyrics for an instrumental", () => {
-    expect(prompt).toContain("a male lead vocal");
-    expect(buildSingPrompt(sheet, "female")).toContain("a female lead vocal");
-    const instrumental = buildSingPrompt(sheet, "instrumental");
+  it("names one voice, and drops the lyrics for an instrumental", () => {
+    expect(prompt).toContain("performed by a male singer");
+    expect(buildSingPrompt(sheet, { kind: "vocals", voices: ["female"], delivery: "rap" })).toContain("performed by a female rapper");
+    const instrumental = buildSingPrompt(sheet, { kind: "instrumental" });
     expect(instrumental).toContain("No vocals");
     expect(instrumental).not.toContain("Shoes in my hand");
+  });
+
+  it("splits verses between voices and sings the chorus together", () => {
+    const two = buildSingPrompt(
+      { ...sheet, sections: [...sheet.sections, { name: "Verse 2", melody: "m", lines: [{ text: "Doors close", chords: "E", signalIds: [] }] }, { name: "Bridge", melody: "m", lines: [{ text: "Hum", chords: "A", signalIds: [] }] }] },
+      { kind: "vocals", voices: ["male", "male"], delivery: "rap" },
+    );
+    expect(two).toContain("two different vocalists trading verses: Voice A is a male rapper, deeper and slower; Voice B is a male rapper, higher and faster");
+    expect(two).toContain("[Verse 1 - Voice A]");
+    expect(two).toContain("[Chorus - Voices A and B together]");
+    expect(two).toContain("[Verse 2 - Voice B]");
+    expect(two).toContain("[Bridge - Voices A and B, alternating lines]");
+  });
+
+  it("knows section names in Spanish", () => {
+    const es = buildSingPrompt({ ...sheet, sections: [{ name: "Verso 1", melody: "m", lines: [{ text: "a", chords: "E", signalIds: [] }] }, { name: "Estribillo", melody: "m", lines: [{ text: "b", chords: "E", signalIds: [] }] }] }, { kind: "vocals", voices: ["male", "female"], delivery: "sung" });
+    expect(es).toContain("[Verso 1 - Voice A]");
+    expect(es).toContain("[Estribillo - Voices A and B together]");
   });
 });

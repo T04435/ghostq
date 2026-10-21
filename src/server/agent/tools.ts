@@ -2,7 +2,7 @@ import "server-only";
 import { tool } from "ai";
 import { z, ZodError } from "zod";
 import { describeCrowd, type Brief, type Crowd } from "@/lib/brief";
-import type { VoiceMatch } from "@/lib/voice";
+import type { VocalMatch } from "@/lib/voice";
 import { isMusicGenre, type QlooEntity } from "@/lib/qloo-parse";
 import { SignalRegistry, type Signal } from "@/lib/signals";
 import * as qloo from "@/server/qloo/api";
@@ -19,8 +19,10 @@ export class RunState {
   crowdInfo: Crowd | null = null;
   /** A country Qloo files among the artist's genre tags ("Cuba"): where they're from when MusicBrainz doesn't say. */
   homeFromTags: string | null = null;
-  /** The singing voice that matches the artist (MusicBrainz), read with the crowd. */
-  voiceMatch: VoiceMatch | null = null;
+  /** The vocals that match the artist (MusicBrainz and Qloo tags), read with the crowd. */
+  vocals: VocalMatch | null = null;
+  /** The names of the artist's genre and style tags (or the tags found from the user's words): rap or sung. */
+  soundTags: string[] = [];
   readonly artistNames = new Set<string>();
   chosen: { signalIds: string[]; angle: string } | null = null;
   qlooCalls = 0;

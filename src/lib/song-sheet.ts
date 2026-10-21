@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Crowd } from "./brief";
 import type { Signal } from "./signals";
-import type { VoiceMatch } from "./voice";
+import type { VocalMatch } from "./voice";
 
 export const lineSchema = z.object({
   text: z.string().describe("One sung line, in the brief's language"),
@@ -35,8 +35,8 @@ export type SongSheet = WrittenSong & {
   artist: string;
   /** The crowd it was written for, read from Qloo. */
   crowd: Crowd;
-  /** The lead vocal that matches the artist, for singing. */
-  voice: VoiceMatch;
+  /** The vocals that match the artist (voices from MusicBrainz, rap or sung from Qloo), for singing. */
+  vocals: VocalMatch;
   language: string;
   signals: Signal[];
   /** Problems the validator found and couldn't fix after the repair pass. */

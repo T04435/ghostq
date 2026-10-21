@@ -37,7 +37,7 @@ pnpm test
 0. **Artist:** pressing Enter searches Spotify; the pick pins the Qloo match by Spotify id. The crowd (city from Qloo's world heatmap, up to three fan age bands, language from the city) is read from Qloo, and can be changed.
 5. **Writer:** the song is generated against a schema. Code checks every line cites a real signal and no real artist is named, with one repair pass.
 
-6. **Singing (optional):** the sheet's key, tempo, feel, production brief and tagged lyrics go to Google Lyria 3.5, which returns a produced, sung MP3 with a SynthID watermark. Real artist names are stripped from the prompt.
+6. **Singing (optional):** the sheet's key, tempo, feel, production brief and tagged lyrics go to Google Lyria 3.5, which returns a produced, sung MP3 with a SynthID watermark. Real artist names are stripped from the prompt. The vocals start from the artist's data: one voice per lead vocalist (MusicBrainz: a person, a band's members marked "lead vocals", or every member when none is marked; up to three), each with its gender, and rap or sung from Qloo's genre tags. You can change any of it before singing; with two or three voices the verses take turns and the chorus is together.
 
 Qloo has no language filter, so the song's language comes from the brief.
 
