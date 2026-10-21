@@ -28,7 +28,7 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   return (
     <div className="grid gap-6">
       <p className="text-sm text-muted-foreground">
-        Written by GhostQ for {song.sheet.artist}&apos;s crowd{song.brief.story ? `, from the story seed "${song.brief.story}"` : ""}.{" "}
+        Written by GhostQ for {song.sheet.artist}&apos;s crowd{song.brief.story ? `, about "${song.brief.story}"` : ""}.{" "}
         <Link href="/" className="underline">
           Write your own
         </Link>

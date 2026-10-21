@@ -44,6 +44,8 @@ export const briefSchema = z.object({
   /** Set when the artist was picked from Spotify search: pins the Qloo match. */
   spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(),
   story: z.string().trim().max(280).optional(),
+  /** "Write another": songs already written for this brief (title and angle), so the next take is clearly different. */
+  avoid: z.array(z.string().trim().max(400)).max(10).optional(),
   /**
    * Answers to what the run asked for when Qloo had no data (never asked up front). The run stops with an "ask" event;
    * the page sends the same brief again with these filled in, and the run carries on (Qloo calls come from cache).
@@ -90,7 +92,7 @@ export function describeCrowd(c: Crowd): string {
 }
 
 export function describeBrief(b: Brief, crowd: Crowd): string {
-  return [`Artist: ${b.artist}.`, `Crowd (read from Qloo's data on the artist's fans): ${describeCrowd(crowd)}.`, `Language: ${crowd.language}.`, b.story ? `Story seed: "${b.story}".` : null]
+  return [`Artist: ${b.artist}.`, `Crowd (read from Qloo's data on the artist's fans): ${describeCrowd(crowd)}.`, `Language: ${crowd.language}.`, b.story ? `What it's about: "${b.story}".` : null]
     .filter(Boolean)
     .join(" ");
 }

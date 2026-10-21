@@ -150,7 +150,7 @@ async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal):
     prepareStep: ({ stepNumber }) => (stepNumber >= LIMITS.maxSteps - 1 ? { activeTools: ["ready_to_write"] } : {}),
   });
   const result = await agent.stream({
-    prompt: `${describeBrief(state.brief, state.crowdInfo!)}\nQloo match: ${state.act?.name ?? `none; their sound in the user's words: "${state.brief.answers?.sound ?? ""}"`}. Genre signals so far: ${state.signals.all().filter((x) => x.kind === "genre").map(signalLine).join("; ") || "none"}.\nResearch this crowd and choose the signals for the song.`,
+    prompt: `${describeBrief(state.brief, state.crowdInfo!)}\nQloo match: ${state.act?.name ?? `none; their sound in the user's words: "${state.brief.answers?.sound ?? ""}"`}. Genre signals so far: ${state.signals.all().filter((x) => x.kind === "genre").map(signalLine).join("; ") || "none"}.\nResearch this crowd and choose the signals for the song.${state.brief.avoid?.length ? `\nSongs already written for this brief (choose signals for a clearly different angle): ${state.brief.avoid.join(" | ")}` : ""}`,
     abortSignal: AbortSignal.any([AbortSignal.timeout(LIMITS.agentTimeoutMs), ...(abortSignal ? [abortSignal] : [])]),
   });
   // Notes stream as whole blocks: the reasoning summary and the sentence before each call.
@@ -201,6 +201,9 @@ function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems:
   return [
     describeBrief(state.brief, state.crowdInfo!),
     state.chosen ? `The research agent's angle: ${state.chosen.angle}` : "",
+    state.brief.avoid?.length
+      ? `Already written for this brief, so write something clearly different (a new title, hook, angle and images): ${state.brief.avoid.join(" | ")}`
+      : "",
     "",
     "Chosen Qloo signals (build the song on these):",
     ...chosen.map(signalLine),

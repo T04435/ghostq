@@ -13,7 +13,7 @@ type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void 
 
 const EMPTY: Brief = { artist: "", story: "" };
 
-/** The only inputs before a run: the artist and an optional story seed. GhostQ reads the crowd from Qloo during the run. */
+/** The only inputs before a run: the artist and an optional "what it's about". GhostQ reads the crowd from Qloo during the run. */
 export function BriefForm({ initial, busy, onSubmit }: Props) {
   const [brief, setBrief] = useState<Brief>({ ...EMPTY, ...initial });
   const [error, setError] = useState<string | null>(null);
@@ -128,8 +128,8 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="story">Story seed (optional)</Label>
-        <Textarea id="story" placeholder="e.g. Last tram home after a share-house party" value={brief.story ?? ""} maxLength={280} rows={2} onChange={(e) => setBrief((b) => ({ ...b, story: e.target.value }))} />
+        <Label htmlFor="story">What&apos;s it about? (optional)</Label>
+        <Textarea id="story" placeholder="e.g. a last tram home after a house party" value={brief.story ?? ""} maxLength={280} rows={2} onChange={(e) => setBrief((b) => ({ ...b, story: e.target.value }))} />
       </div>
 
       <div>
