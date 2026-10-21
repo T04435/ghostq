@@ -7,7 +7,7 @@ import { normalizeCrowd, type Brief } from "@/lib/brief";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
 import type { SongSummary } from "@/lib/song-summary";
-import type { Voice } from "@/lib/voice";
+import { normalizeVocals, toVocalLine, type VocalLine } from "@/lib/voice";
 import { env, providerStatus } from "@/server/env";
 import { getObject, putObject } from "./objects";
 
@@ -26,7 +26,8 @@ export type SavedSong = {
   /** The run's research as it streamed (notes and Qloo steps), replayed on the song page. */
   research: RunEvent[];
   createdAt: string;
-  audio: { voice: Voice; createdAt: string } | null;
+  /** The latest sung version: the vocals it was sung with (null for an old value that no longer reads). */
+  audio: { vocals: VocalLine | null; createdAt: string } | null;
   /** Hidden from the Library (moderation); the song's own link still works. */
   hidden?: boolean;
 };
@@ -34,7 +35,7 @@ export type SavedSong = {
 type Store = {
   save(song: SavedSong): Promise<void>;
   get(id: string): Promise<SavedSong | null>;
-  saveAudio(id: string, voice: Voice, audio: Buffer): Promise<void>;
+  saveAudio(id: string, vocals: VocalLine, audio: Buffer): Promise<void>;
   getAudio(id: string): Promise<Buffer | null>;
   list(limit: number): Promise<SavedSong[]>;
 };
@@ -74,7 +75,7 @@ function ensureSchema(): Promise<unknown> {
   return schema;
 }
 
-type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; audio_voice: Voice | null; audio_created_at: string | Date | null };
+type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; audio_voice: string | null; audio_created_at: string | Date | null };
 
 function fromRow(r: Row): SavedSong {
   const iso = (d: string | Date) => new Date(d).toISOString();
@@ -85,7 +86,7 @@ function fromRow(r: Row): SavedSong {
     sheet: r.sheet,
     research: r.research ?? [],
     hidden: r.hidden,
-    audio: r.audio_voice && r.audio_created_at ? { voice: r.audio_voice, createdAt: iso(r.audio_created_at) } : null,
+    audio: r.audio_voice && r.audio_created_at ? { vocals: toVocalLine(r.audio_voice), createdAt: iso(r.audio_created_at) } : null,
   };
 }
 
@@ -102,10 +103,11 @@ const neonStore: Store = {
     const rows = (await sql()`SELECT * FROM songs WHERE id = ${id}`) as Row[];
     return rows[0] ? fromRow(rows[0]) : null;
   },
-  async saveAudio(id, voice, audio) {
+  async saveAudio(id, vocals, audio) {
     await ensureSchema();
     await putObject(`songs/${id}.mp3`, audio, "audio/mpeg");
-    await sql()`UPDATE songs SET audio_voice = ${voice}, audio_created_at = now() WHERE id = ${id}`;
+    // audio_voice held a voice name ("male") before 22 Oct; now the vocal line as JSON. toVocalLine reads both.
+    await sql()`UPDATE songs SET audio_voice = ${JSON.stringify(vocals)}, audio_created_at = now() WHERE id = ${id}`;
   },
   async getAudio(id) {
     return getObject(`songs/${id}.mp3`);
@@ -138,11 +140,11 @@ const fileStore: Store = {
       return null;
     }
   },
-  async saveAudio(id, voice, audio) {
+  async saveAudio(id, vocals, audio) {
     const song = await fileStore.get(id);
     if (!song) throw new Error("No such song");
     await writeFile(file(id, "mp3"), audio);
-    await fileStore.save({ ...song, audio: { voice, createdAt: new Date().toISOString() } });
+    await fileStore.save({ ...song, audio: { vocals, createdAt: new Date().toISOString() } });
   },
   async getAudio(id) {
     try {
@@ -168,9 +170,15 @@ const fileStore: Store = {
 
 // ---- The store the app uses ---------------------------------------------------------------------------------------
 
-/** Songs saved before 22 Oct kept a city id and no home on their crowd: read them into today's shape. */
+/**
+ * Songs saved before 22 Oct kept a city id and no home on their crowd, and one lead voice ({voice}) instead of vocals:
+ * read them into today's shape.
+ */
 function normalize(song: SavedSong | null): SavedSong | null {
-  return song ? { ...song, sheet: { ...song.sheet, crowd: normalizeCrowd(song.sheet.crowd) } } : null;
+  if (!song) return null;
+  const { voice, ...sheet } = song.sheet as SavedSong["sheet"] & { voice?: unknown };
+  const audio = song.audio && "voice" in song.audio ? { vocals: toVocalLine(String(song.audio.voice)), createdAt: song.audio.createdAt } : song.audio;
+  return { ...song, audio, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice) } };
 }
 
 function store(): Store {
@@ -186,9 +194,9 @@ export async function getSong(id: string): Promise<SavedSong | null> {
 }
 
 /** Keeps the latest sung version of a song; singing again replaces it. */
-export async function saveAudio(id: string, voice: Voice, audio: Buffer): Promise<void> {
+export async function saveAudio(id: string, vocals: VocalLine, audio: Buffer): Promise<void> {
   if (!isSongId(id)) throw new Error("Invalid song id");
-  await store().saveAudio(id, voice, audio);
+  await store().saveAudio(id, vocals, audio);
 }
 
 export async function getAudio(id: string): Promise<Buffer | null> {

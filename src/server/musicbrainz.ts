@@ -1,6 +1,6 @@
 import "server-only";
 import type { Home } from "@/lib/place";
-import { voiceFromMusicBrainz, type VoiceMatch } from "@/lib/voice";
+import { MAX_VOICES, voicesFromMusicBrainz, type VocalMatch } from "@/lib/voice";
 
 /**
  * MusicBrainz web service (checked 21 Oct 2026): free for non-commercial use; about 1 request a second per IP; every
@@ -23,7 +23,7 @@ type MbArtist = {
   name?: string;
   type?: string | null;
   gender?: string | null;
-  relations?: { type?: string; direction?: string; ended?: boolean; artist?: { id: string; name?: string } }[];
+  relations?: { type?: string; direction?: string; ended?: boolean; attributes?: string[]; artist?: { id: string; name?: string } }[];
   /** Where the artist is from: the country (with ISO code), and the city or town they began in when known. */
   area?: { name?: string; "iso-3166-1-codes"?: string[] } | null;
   "begin-area"?: { name?: string } | null;
@@ -56,21 +56,30 @@ async function getArtist(mbid: string, withMembers: boolean): Promise<MbArtist> 
   return value;
 }
 
+type Voices = Pick<VocalMatch, "voices" | "source">;
+
 /**
- * What MusicBrainz knows about the artist: the voice that matches them (one call for a person, plus up to three current
- * members for a band) and where they're from. Never throws.
+ * What MusicBrainz knows about the artist: their voices (one call for a person, plus up to three members for a band)
+ * and where they're from. A band lists a member once per role (Arctic Monkeys: Alex Turner three times), so members
+ * are grouped by id. Never throws.
  */
-export async function artistProfile(mbid: string | null): Promise<{ voice: VoiceMatch; home: Home | null }> {
-  if (!mbid) return { voice: { voice: null, source: "Qloo has no MusicBrainz id for this artist" }, home: null };
+export async function artistProfile(mbid: string | null): Promise<{ voices: Voices; home: Home | null }> {
+  if (!mbid) return { voices: { voices: [], source: "Qloo has no MusicBrainz id for this artist" }, home: null };
   try {
     const artist = await getArtist(mbid, true);
     const home = homeOf(artist);
-    if (artist.type === "Person") return { voice: voiceFromMusicBrainz(artist), home };
-    const current = (artist.relations ?? []).filter((r) => r.type === "member of band" && r.direction === "backward" && !r.ended && r.artist).slice(0, 3);
+    if (artist.type === "Person") return { voices: voicesFromMusicBrainz(artist), home };
+    const current = new Map<string, boolean>();
+    for (const r of artist.relations ?? []) {
+      if (r.type !== "member of band" || r.direction !== "backward" || r.ended || !r.artist) continue;
+      current.set(r.artist.id, (current.get(r.artist.id) ?? false) || (r.attributes ?? []).includes("lead vocals"));
+    }
+    const leads = [...current].filter(([, lead]) => lead).map(([id]) => id);
+    const singers = leads.length ? leads : [...current.keys()];
     const members = [];
-    for (const r of current) members.push(await getArtist(r.artist!.id, false));
-    return { voice: voiceFromMusicBrainz(artist, members), home };
+    for (const id of singers.slice(0, MAX_VOICES)) members.push(await getArtist(id, false));
+    return { voices: voicesFromMusicBrainz(artist, members, leads.length > 0, singers.length), home };
   } catch {
-    return { voice: { voice: null, source: "MusicBrainz didn't answer" }, home: null };
+    return { voices: { voices: [], source: "MusicBrainz didn't answer" }, home: null };
   }
 }

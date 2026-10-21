@@ -1,36 +1,118 @@
-/** The lead vocal Lyria is asked for. It names a voice type; it never clones anyone. */
-export const VOICES = {
-  male: { label: "Male lead", prompt: "a male lead vocal" },
-  female: { label: "Female lead", prompt: "a female lead vocal" },
-  duet: { label: "Male and female duet", prompt: "a male and female duet" },
-  instrumental: { label: "Instrumental", prompt: "no vocals: instrumental only" },
-} as const;
-export type Voice = keyof typeof VOICES;
+import { z } from "zod";
 
-/** The voice that matches the artist, and where that came from. Null voice: unknown, so the user must choose. */
-export type VoiceMatch = { voice: Voice | null; source: string };
+/**
+ * The vocals Lyria is asked for: how many voices, each one's gender, and whether they rap or sing. It names voice
+ * types; it never clones anyone. Two voices trading verses works on Lyria 3.5 (probe of 22 Oct: two male rappers on a
+ * Los Aldeanos sheet came back as two distinct voices).
+ */
+export const GENDERS = ["male", "female"] as const;
+export type Gender = (typeof GENDERS)[number];
+
+export const DELIVERIES = { sung: "Sung", rap: "Rap", both: "Rap and sung" } as const;
+export type Delivery = keyof typeof DELIVERIES;
+
+export const MAX_VOICES = 3;
+
+export const vocalLineSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("instrumental") }),
+  z.object({
+    kind: z.literal("vocals"),
+    voices: z.array(z.enum(GENDERS)).min(1).max(MAX_VOICES),
+    delivery: z.enum(Object.keys(DELIVERIES) as [Delivery, ...Delivery[]]),
+  }),
+]);
+export type VocalLine = z.infer<typeof vocalLineSchema>;
+
+/**
+ * The vocals that match the artist, and where each part came from. A null gender, or no voices at all, is unknown: the
+ * user fills it in before singing (no default).
+ */
+export type VocalMatch = {
+  voices: (Gender | null)[];
+  source: string;
+  delivery: Delivery;
+  deliverySource: string;
+};
+
+export const VOICE_NAMES = ["A", "B", "C"] as const;
+
+const COUNT = ["", "One", "Two", "Three"];
+const NOUN: Record<Delivery, [string, string]> = { sung: ["singer", "singers"], rap: ["rapper", "rappers"], both: ["vocalist who raps and sings", "vocalists who rap and sing"] };
+
+/** "Two male rappers, trading verses"; "Three singers (two female, one male), trading verses"; "Instrumental, no vocals". */
+export function describeVocalLine(line: VocalLine): string {
+  if (line.kind === "instrumental") return "Instrumental, no vocals";
+  const n = line.voices.length;
+  if (n === 1) return `One ${line.voices[0]} ${NOUN[line.delivery][0]}`;
+  const noun = NOUN[line.delivery][1];
+  const genders = GENDERS.map((g) => [g, line.voices.filter((v) => v === g).length] as const).filter(([, c]) => c > 0);
+  if (genders.length === 1) return `${COUNT[n]} ${genders[0][0]} ${noun}, trading verses`;
+  const mix = genders.map(([g, c]) => `${COUNT[c].toLowerCase()} ${g}`).join(", ");
+  return `${COUNT[n]} ${noun} (${mix}), trading verses`;
+}
+
+// ---- From the artist's data ---------------------------------------------------------------------------------------
 
 type MbArtist = { type?: string | null; gender?: string | null; name?: string };
 
-function fromGender(gender: string | null | undefined): Voice | null {
+function fromGender(gender: string | null | undefined): Gender | null {
   if (gender === "Male") return "male";
   if (gender === "Female") return "female";
   return null;
 }
 
 /**
- * MusicBrainz records gender for people, not for groups (checked 21 Oct: Tame Impala is Person/Male; Teenage Joans is
- * a Group with no gender). For a group, its current members decide: all one gender gives that voice; a mix gives a duet.
+ * The voices, from MusicBrainz. A person is one voice with their gender. A group's voices are its current members
+ * marked "lead vocals" (Arctic Monkeys: Alex Turner), or every current member when none is marked (rap duos like Los
+ * Aldeanos or Calle 13 have no roles listed), at most three. MusicBrainz records gender for people, not groups.
  */
-export function voiceFromMusicBrainz(artist: MbArtist, members: MbArtist[] = []): VoiceMatch {
+export function voicesFromMusicBrainz(artist: MbArtist, members: MbArtist[] = [], leads = false, total = members.length): Pick<VocalMatch, "voices" | "source"> {
   const name = artist.name ?? "the artist";
   if (artist.type === "Person") {
-    const voice = fromGender(artist.gender);
-    return voice ? { voice, source: `${name}'s gender on MusicBrainz` } : { voice: null, source: `MusicBrainz has no gender for ${name}` };
+    const gender = fromGender(artist.gender);
+    return { voices: [gender], source: gender ? `${name}'s gender on MusicBrainz` : `MusicBrainz has no gender for ${name}` };
   }
-  const voices = members.map((m) => fromGender(m.gender));
-  if (!voices.length || voices.includes(null)) return { voice: null, source: `MusicBrainz doesn't list every member of ${name} with a gender` };
-  const kinds = new Set(voices);
-  const voice: Voice = kinds.size === 1 ? voices[0]! : "duet";
-  return { voice, source: `the members of ${name} on MusicBrainz` };
+  if (!members.length) return { voices: [], source: `MusicBrainz lists no current members of ${name}` };
+  const voices = members.slice(0, MAX_VOICES).map((m) => fromGender(m.gender));
+  const who = leads ? `the lead vocalist${members.length > 1 ? "s" : ""} of ${name}` : `the current members of ${name} (none is marked as lead vocals)`;
+  const more = total > MAX_VOICES ? `; the first ${MAX_VOICES} of ${total}` : "";
+  const missing = voices.includes(null) ? "; MusicBrainz has no gender for some of them" : "";
+  return { voices, source: `${who} on MusicBrainz${more}${missing}` };
+}
+
+const RAP = /\b(hip[\s-]*hop|rap|trap|grime|drill)\b/i;
+const SUNG = /\b(r&b|rnb|soul|reggaeton|pop|singer[\s-]*songwriter|rock|punk|indie|folk|country|ballad|bolero|salsa|jazz|blues|gospel)\b/i;
+
+/** Rap or sung, from the artist's Qloo genre and style tags. A tag that names rap counts as rap only ("Pop Rap"). */
+export function deliveryFromTags(tags: string[], artist: string): Pick<VocalMatch, "delivery" | "deliverySource"> {
+  const rap = tags.filter((t) => RAP.test(t));
+  const sung = tags.filter((t) => !RAP.test(t) && SUNG.test(t));
+  const list = (names: string[]) => [...new Set(names)].slice(0, 3).join(", ");
+  if (rap.length && sung.length) return { delivery: "both", deliverySource: `Qloo's tags for ${artist}: ${list(rap)} and ${list(sung)}` };
+  if (rap.length) return { delivery: "rap", deliverySource: `Qloo's tags for ${artist}: ${list(rap)}` };
+  return { delivery: "sung", deliverySource: tags.length ? `no rap in Qloo's tags for ${artist}` : `Qloo has no genres for ${artist}` };
+}
+
+// ---- Songs saved before 22 Oct ------------------------------------------------------------------------------------
+
+const LEGACY: Record<string, Gender[]> = { male: ["male"], female: ["female"], duet: ["male", "female"] };
+
+/** A sheet's vocals as stored. Before 22 Oct a sheet kept one lead voice ({voice: "male" | "female" | "duet" | null}). */
+export function normalizeVocals(raw: unknown): VocalMatch {
+  const v = (raw ?? {}) as Partial<VocalMatch> & { voice?: string | null };
+  if (Array.isArray(v.voices) && v.delivery) return v as VocalMatch;
+  return { voices: (v.voice && LEGACY[v.voice]) || [], source: v.source ?? "unknown", delivery: "sung", deliverySource: "this song was written before GhostQ read rap or sung" };
+}
+
+/** The vocals a saved song was sung with: JSON, or one of the old voice names. */
+export function toVocalLine(raw: string | null): VocalLine | null {
+  if (!raw) return null;
+  if (raw === "instrumental") return { kind: "instrumental" };
+  if (LEGACY[raw]) return { kind: "vocals", voices: LEGACY[raw], delivery: "sung" };
+  try {
+    const parsed = vocalLineSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
