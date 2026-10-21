@@ -46,15 +46,36 @@ function toEntity(e: z.infer<typeof entity>): QlooEntity {
   };
 }
 
-/** GET /search */
-/** The search result for this Spotify artist if Qloo links it, else an exact name match, else the top result. */
-export function pickArtist(results: QlooEntity[], name: string, spotifyId?: string): QlooEntity | undefined {
-  return (
-    (spotifyId ? results.find((r) => r.spotifyIds.includes(spotifyId)) : undefined) ??
-    results.find((r) => r.name.toLowerCase() === name.trim().toLowerCase()) ??
-    results[0]
-  );
+/** A name for comparing: lower case, no accents or punctuation, no leading "the". */
+function nameKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/^the /, "");
 }
+
+/**
+ * The search result for this artist: the one Qloo links to the Spotify pick, else one whose name matches (exactly, or
+ * one name containing the other, 5+ letters). Never just the top result: a made-up "Zorvex Halloway Ensemble" got
+ * "Disco Ensemble" that way (22 Oct). No match means Qloo doesn't know the artist, and the run asks.
+ */
+export function pickArtist(results: QlooEntity[], name: string, spotifyId?: string): QlooEntity | undefined {
+  const byId = spotifyId ? results.find((r) => r.spotifyIds.includes(spotifyId)) : undefined;
+  if (byId) return byId;
+  const want = nameKey(name);
+  const exact = results.find((r) => nameKey(r.name) === want);
+  if (exact) return exact;
+  return results.find((r) => {
+    const got = nameKey(r.name);
+    const [short, long] = got.length < want.length ? [got, want] : [want, got];
+    return short.length >= 5 && ` ${long} `.includes(` ${short} `);
+  });
+}
+
+/** GET /search */
 
 export function parseSearch(json: unknown): QlooEntity[] {
   const parsed = z.object({ results: z.array(entity).default([]) }).parse(json);
@@ -117,13 +138,15 @@ export function isMusicGenre(tagId: string): boolean {
 }
 
 /** GET /v2/insights?filter.type=urn:heatmap: geohash cells with affinity (probe 21 Oct). */
-export function parseHeatmap(json: unknown): { geohash: string; affinity: number }[] {
+export function parseHeatmap(json: unknown): { geohash: string; affinity: number; popularity: number }[] {
   const parsed = z
     .object({
       results: z.object({
-        heatmap: z.array(z.object({ location: z.object({ geohash: z.string() }), query: z.object({ affinity: z.number() }) })).default([]),
+        heatmap: z
+          .array(z.object({ location: z.object({ geohash: z.string() }), query: z.object({ affinity: z.number(), popularity: z.number().optional() }) }))
+          .default([]),
       }),
     })
     .parse(json);
-  return parsed.results.heatmap.map((c) => ({ geohash: c.location.geohash, affinity: c.query.affinity }));
+  return parsed.results.heatmap.map((c) => ({ geohash: c.location.geohash, affinity: c.query.affinity, popularity: c.query.popularity ?? 0 }));
 }

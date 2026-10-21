@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
-import type { Brief } from "@/lib/brief";
+import { normalizeCrowd, type Brief } from "@/lib/brief";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
 import type { SongSummary } from "@/lib/song-summary";
@@ -168,6 +168,11 @@ const fileStore: Store = {
 
 // ---- The store the app uses ---------------------------------------------------------------------------------------
 
+/** Songs saved before 22 Oct kept a city id and no home on their crowd: read them into today's shape. */
+function normalize(song: SavedSong | null): SavedSong | null {
+  return song ? { ...song, sheet: { ...song.sheet, crowd: normalizeCrowd(song.sheet.crowd) } } : null;
+}
+
 function store(): Store {
   return providerStatus().database ? neonStore : fileStore;
 }
@@ -177,7 +182,7 @@ export async function saveSong(song: SavedSong): Promise<void> {
 }
 
 export async function getSong(id: string): Promise<SavedSong | null> {
-  return isSongId(id) ? store().get(id) : null;
+  return isSongId(id) ? normalize(await store().get(id)) : null;
 }
 
 /** Keeps the latest sung version of a song; singing again replaces it. */
@@ -192,7 +197,7 @@ export async function getAudio(id: string): Promise<Buffer | null> {
 
 /** Every visible song, newest first. */
 export async function listSongs(limit = 200): Promise<SongSummary[]> {
-  const songs = await store().list(limit);
+  const songs = (await store().list(limit)).map((s) => normalize(s)!);
   return songs
     .filter((s) => s.sheet?.crowd)
     .map((s) => ({

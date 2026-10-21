@@ -1,19 +1,36 @@
 "use client";
 
-import { MessageCircleQuestion } from "lucide-react";
+import { Loader2, MessageCircleQuestion, Search } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AGE_BANDS, PLACES, type AgeBand, type AskField, type Brief, type PlaceId } from "@/lib/brief";
+import { AGE_BANDS, type AgeBand, type AskField, type Brief } from "@/lib/brief";
+import { describePlace, type Place } from "@/lib/place";
 
 type Answers = NonNullable<Brief["answers"]>;
 
 /** The run's question when Qloo has no data. Only the fields the run asked for are shown; answering carries the run on. */
 export function AskCard({ fields, message, busy, onAnswer }: { fields: AskField[]; message: string; busy: boolean; onAnswer: (answers: Answers) => void }) {
   const [sound, setSound] = useState("");
-  const [place, setPlace] = useState<PlaceId | "">("");
+  const [place, setPlace] = useState<Place | null>(null);
+  // City search runs on Enter (or the button), against Qloo's locality search.
+  const [cityQuery, setCityQuery] = useState("");
+  const [cities, setCities] = useState<{ status: "idle" | "searching" | "done" | "error"; results: Place[]; message?: string }>({ status: "idle", results: [] });
+
+  async function searchCities() {
+    const q = cityQuery.trim();
+    if (q.length < 2) return;
+    setCities({ status: "searching", results: [] });
+    try {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`);
+      const body = (await res.json()) as Place[] | { error: string };
+      if (!res.ok || !Array.isArray(body)) throw new Error("error" in body ? body.error : `City search returned ${res.status}`);
+      setCities({ status: "done", results: body });
+    } catch (e) {
+      setCities({ status: "error", results: [], message: e instanceof Error ? e.message : "City search failed" });
+    }
+  }
   const [ages, setAges] = useState<AgeBand[]>([]);
   const ready = (!fields.includes("sound") || sound.trim().length >= 2) && (!fields.includes("place") || place) && (!fields.includes("ages") || ages.length > 0);
 
@@ -46,18 +63,56 @@ export function AskCard({ fields, message, busy, onAnswer }: { fields: AskField[
       {fields.includes("place") && (
         <div className="grid gap-2">
           <Label htmlFor="ask-place">City of the crowd</Label>
-          <Select value={place || undefined} onValueChange={(v) => setPlace(v as PlaceId)}>
-            <SelectTrigger id="ask-place" className="w-full sm:w-72">
-              <SelectValue placeholder="Choose a city" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PLACES).map(([id, p]) => (
-                <SelectItem key={id} value={id}>
-                  {p.name}, {p.country}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {place ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="font-medium">{describePlace(place)}</span>
+              <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => setPlace(null)}>
+                Change
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="relative sm:w-96">
+                <Input
+                  id="ask-place"
+                  placeholder="Any city, then Enter"
+                  value={cityQuery}
+                  className="pr-9"
+                  onChange={(e) => setCityQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void searchCities();
+                    }
+                  }}
+                />
+                <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0" aria-label="Search cities" onClick={() => void searchCities()}>
+                  <Search aria-hidden />
+                </Button>
+              </div>
+              {cities.status === "searching" && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" aria-hidden /> Searching cities…
+                </p>
+              )}
+              {cities.status === "error" && <p className="text-sm text-destructive">{cities.message}</p>}
+              {cities.status === "done" && cities.results.length === 0 && <p className="text-sm text-muted-foreground">No city called &quot;{cityQuery}&quot;.</p>}
+              {cities.results.length > 0 && (
+                <div className="grid gap-1 rounded-md border p-1 sm:w-96" role="region" aria-label="Cities">
+                  {cities.results.map((c) => (
+                    <button
+                      key={`${c.name}-${c.lat}-${c.lon}`}
+                      type="button"
+                      onClick={() => setPlace(c)}
+                      className="rounded px-2 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+                    >
+                      {describePlace(c)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
       {fields.includes("ages") && (

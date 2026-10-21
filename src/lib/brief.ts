@@ -1,26 +1,7 @@
 import { z } from "zod";
+import { describePlace, placeSchema, toPlace, type Home, type Language, type Place } from "./place";
 
-/** Where the crowd is. Qloo takes a WKT point plus a radius (15 km in the probes). */
-export const PLACES = {
-  melbourne: { name: "Melbourne", country: "Australia", lon: 144.9631, lat: -37.8136, language: "English" },
-  adelaide: { name: "Adelaide", country: "Australia", lon: 138.6007, lat: -34.9285, language: "English" },
-  brisbane: { name: "Brisbane", country: "Australia", lon: 153.0251, lat: -27.4698, language: "English" },
-  sydney: { name: "Sydney", country: "Australia", lon: 151.2093, lat: -33.8688, language: "English" },
-  austin: { name: "Austin", country: "United States", lon: -97.7431, lat: 30.2672, language: "English" },
-  nashville: { name: "Nashville", country: "United States", lon: -86.7816, lat: 36.1627, language: "English" },
-  "new-york": { name: "New York", country: "United States", lon: -73.9857, lat: 40.7484, language: "English" },
-  "los-angeles": { name: "Los Angeles", country: "United States", lon: -118.2437, lat: 34.0522, language: "English" },
-  chicago: { name: "Chicago", country: "United States", lon: -87.6298, lat: 41.8781, language: "English" },
-  toronto: { name: "Toronto", country: "Canada", lon: -79.3832, lat: 43.6532, language: "English" },
-  london: { name: "London", country: "United Kingdom", lon: -0.1276, lat: 51.5072, language: "English" },
-  "mexico-city": { name: "Mexico City", country: "Mexico", lon: -99.1332, lat: 19.4326, language: "Spanish" },
-  "sao-paulo": { name: "São Paulo", country: "Brazil", lon: -46.6333, lat: -23.5505, language: "Portuguese" },
-  paris: { name: "Paris", country: "France", lon: 2.3522, lat: 48.8566, language: "French" },
-  madrid: { name: "Madrid", country: "Spain", lon: -3.7038, lat: 40.4168, language: "Spanish" },
-  "buenos-aires": { name: "Buenos Aires", country: "Argentina", lon: -58.3816, lat: -34.6037, language: "Spanish" },
-  berlin: { name: "Berlin", country: "Germany", lon: 13.405, lat: 52.52, language: "German" },
-} as const;
-export type PlaceId = keyof typeof PLACES;
+export { LANGUAGES, type Home, type Language, type Place } from "./place";
 
 /** Qloo's age bands (signal.demographics.age). */
 export const AGE_BANDS = {
@@ -33,12 +14,7 @@ export const AGE_BANDS = {
 } as const;
 export type AgeBand = keyof typeof AGE_BANDS;
 
-/** Qloo has no language filter (probe 10b): the writer writes in this language. */
-export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German"] as const;
-
-export type Language = (typeof LANGUAGES)[number];
-
-/** What the user gives before a run: the artist and, optionally, a story seed. Everything else comes from Qloo. */
+/** What the user gives before a run: the artist and, optionally, what it's about. Everything else comes from Qloo. */
 export const briefSchema = z.object({
   artist: z.string().trim().min(1, "Give an artist").max(80),
   /** Set when the artist was picked from Spotify search: pins the Qloo match. */
@@ -54,7 +30,8 @@ export const briefSchema = z.object({
     .object({
       /** The artist's sound in the user's words, when Qloo doesn't know the artist. */
       sound: z.string().trim().min(2).max(160).optional(),
-      place: z.enum(Object.keys(PLACES) as [PlaceId, ...PlaceId[]]).optional(),
+      /** A city picked from Qloo's locality search. */
+      place: placeSchema.optional(),
       ages: z.array(z.enum(Object.keys(AGE_BANDS) as [AgeBand, ...AgeBand[]])).min(1).max(3).optional(),
     })
     .optional(),
@@ -62,17 +39,38 @@ export const briefSchema = z.object({
 export type Brief = z.infer<typeof briefSchema>;
 export type AskField = "sound" | "place" | "ages";
 
-/** The crowd the run reads from Qloo's data on the artist's fans. Null place: Qloo had no location data, so taste is read worldwide. */
+/**
+ * Who the song is for, and as whom. The crowd (city, ages) sets the themes; the artist's home sets the voice and the
+ * language. Null place: Qloo had no location data and nobody answered, so taste is read worldwide.
+ */
 export type Crowd = {
   /** Where each value came from: Qloo's data on the fans, or the user's answer when Qloo had none. */
   from: { place: "qloo" | "you"; ages: "qloo" | "you" };
-  place: PlaceId | null;
-  /** The place's heatmap cell rank among Qloo's cells, e.g. 10 of 4,931. */
+  place: Place | null;
+  /** The fans' top area's rank among Qloo's world heatmap cells, e.g. 3 of 3,136. */
   placeRank: { rank: number; of: number } | null;
   /** Up to three age bands the fans skew towards, strongest first; empty when Qloo has no fan data. */
   ages: { age: AgeBand; skew: number | null }[];
+  /** Where the artist is from (MusicBrainz, else Qloo's country tags); null when neither knows. */
+  home: Home | null;
   language: Language;
+  /** The language follows the artist's home when known, else the crowd's city. */
+  languageFrom: "home" | "city";
 };
+
+/** A crowd as stored. Songs saved before 22 Oct kept a city id and no home: read them into today's shape. */
+export function normalizeCrowd(raw: unknown): Crowd {
+  const c = (raw ?? {}) as Partial<Crowd> & { place?: unknown };
+  return {
+    from: c.from ?? { place: "qloo", ages: "qloo" },
+    place: toPlace(c.place),
+    placeRank: c.placeRank ?? null,
+    ages: c.ages ?? [],
+    home: c.home ?? null,
+    language: c.language ?? "English",
+    languageFrom: c.languageFrom ?? "city",
+  };
+}
 
 export const EXAMPLE_BRIEFS: { label: string; brief: Brief }[] = [
   { label: "Teenage Joans · last tram home", brief: { artist: "Teenage Joans", spotifyId: "6i78AQeGl4IGuGePiz3woE", story: "Last tram home after a share-house party" } },
@@ -87,12 +85,21 @@ export function describeAges(ages: AgeBand[]): string {
 
 export function describeCrowd(c: Crowd): string {
   const ages = c.ages.length ? describeAges(c.ages.map((a) => a.age)) : "all ages";
-  const where = c.place ? `${PLACES[c.place].name}, ${PLACES[c.place].country}` : "worldwide";
-  return `${ages} in ${where}`;
+  return `${ages} in ${c.place ? describePlace(c.place) : "worldwide"}`;
+}
+
+export function describeHome(h: Home): string {
+  return describePlace(h);
 }
 
 export function describeBrief(b: Brief, crowd: Crowd): string {
-  return [`Artist: ${b.artist}.`, `Crowd (read from Qloo's data on the artist's fans): ${describeCrowd(crowd)}.`, `Language: ${crowd.language}.`, b.story ? `What it's about: "${b.story}".` : null]
+  return [
+    `Artist: ${b.artist}.`,
+    crowd.home ? `The artist is from ${describeHome(crowd.home)}: write in their voice, with the slang, places and images of home.` : null,
+    `Crowd (read from Qloo's data on the artist's fans): ${describeCrowd(crowd)}. Write about what this crowd cares about.`,
+    `Language: ${crowd.language}${crowd.languageFrom === "home" ? " (the artist's own)" : ""}.`,
+    b.story ? `What it's about: "${b.story}".` : null,
+  ]
     .filter(Boolean)
     .join(" ");
 }

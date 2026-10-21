@@ -80,11 +80,18 @@ describe("pickArtist", () => {
     ],
   };
 
-  it("prefers the Spotify id, then the exact name, then the top result", () => {
+  it("prefers the Spotify id, then the name", () => {
     const results = parseSearch(json);
     expect(pickArtist(results, "joans", "6i78AQeGl4IGuGePiz3woE")?.id).toBe("B");
     expect(pickArtist(results, "Joans")?.id).toBe("A");
-    expect(pickArtist(results, "nobody")?.id).toBe("A");
+    expect(pickArtist(results, "teenage joans")?.id).toBe("B");
+  });
+
+  it("never falls back to an unrelated top result", () => {
+    const results = parseSearch({ results: [{ entity_id: "D", name: "Disco Ensemble" }] });
+    expect(pickArtist(results, "Zorvex Halloway Ensemble")).toBeUndefined();
+    expect(pickArtist(parseSearch({ results: [{ entity_id: "L", name: "Los Aldeanos" }] }), "aldeanos")?.id).toBe("L");
+    expect(pickArtist(parseSearch({ results: [{ entity_id: "B", name: "Beyoncé" }] }), "Beyonce")?.id).toBe("B");
   });
 });
 

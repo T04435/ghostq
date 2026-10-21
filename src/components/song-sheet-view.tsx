@@ -22,6 +22,7 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
   book: "Book",
   audience: "Lifestyle",
   crowd: "Crowd",
+  home: "Home (voice)",
 };
 
 /** readOnly: a shared song page (no singing); audioUrl: a saved sung version to play. */
