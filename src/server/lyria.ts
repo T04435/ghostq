@@ -7,7 +7,8 @@ const URL = "https://generativelanguage.googleapis.com/v1beta/interactions";
 const TIMEOUT_MS = 240_000;
 
 export class LyriaError extends Error {
-  constructor(message: string, readonly status: number) {
+  /** "blocked": Google's content filter refused the prompt. It's inconsistent: the same song often passes on a retry (seen 21 Oct). */
+  constructor(message: string, readonly status: number, readonly kind: "blocked" | "other" = "other") {
     super(message);
     this.name = "LyriaError";
   }
@@ -33,11 +34,12 @@ export async function generateSong(prompt: string): Promise<{ audio: Buffer; tex
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new LyriaError(`Lyria returned ${res.status}${body ? `: ${body.slice(0, 300)}` : ""}`, res.status);
+    const blocked = /prohibited_content|prohibited use policy|sensitive words/i.test(body);
+    throw new LyriaError(`Lyria returned ${res.status}${body ? `: ${body.slice(0, 300)}` : ""}`, res.status, blocked ? "blocked" : "other");
   }
   const parsed = response.parse(await res.json());
   const parts = parsed.steps.filter((s) => s.type === "model_output").flatMap((s) => s.content ?? []);
   const audio = parts.find((p) => p.type === "audio" && p.data)?.data;
-  if (!audio) throw new LyriaError("Lyria sent no audio (the safety filter may have blocked the prompt)", 502);
+  if (!audio) throw new LyriaError("Lyria sent no audio (the safety filter may have blocked the prompt)", 502, "blocked");
   return { audio: Buffer.from(audio, "base64"), text: parts.filter((p) => p.type === "text").map((p) => p.text ?? "").join("\n") };
 }

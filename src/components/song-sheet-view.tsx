@@ -50,7 +50,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
     try {
       const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sheet, voice, songId: sheet.id }) });
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        const body = (await response.json().catch(() => null)) as { error?: string; retry?: boolean } | null;
         throw new Error(body?.error ?? `The server returned ${response.status}`);
       }
       setSong({ status: "done", url: URL.createObjectURL(await response.blob()) });
@@ -141,9 +141,12 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           </div>
         )}
         {song.status === "error" && (
-          <p role="alert" className="pt-2 text-sm text-destructive">
-            {song.message}
-          </p>
+          <div role="alert" className="flex flex-wrap items-center gap-3 pt-2">
+            <p className="text-sm text-destructive">{song.message}</p>
+            <Button size="sm" variant="outline" onClick={sing} disabled={!voice}>
+              Try again
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent className="grid gap-8">

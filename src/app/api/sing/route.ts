@@ -32,6 +32,15 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof LyriaError ? error.message : "Singing failed";
     console.error("sing failed", message);
-    return Response.json({ error: message }, { status: error instanceof LyriaError && error.status >= 400 ? error.status : 502 });
+    if (error instanceof LyriaError && error.kind === "blocked") {
+      return Response.json(
+        {
+          error: "Google's music model (Lyria) blocked this attempt under its content policy (prohibited content). It doesn't say which words, and it's inconsistent: the same song often goes through on another try.",
+          retry: true,
+        },
+        { status: 422 },
+      );
+    }
+    return Response.json({ error: message, retry: true }, { status: error instanceof LyriaError && error.status >= 400 ? error.status : 502 });
   }
 }
