@@ -10,24 +10,26 @@ v1.0.0 must be live at https://ghostq.xyz, free and without login, before the su
 - [x] v1.0.0 committed and tagged.
 - [x] Public GitHub repo: https://github.com/T04435/ghostq (MIT licence detected, run instructions in the README).
 - [x] Vercel project `ghostq` in the cubanos-dev team, linked to this folder; `vercel.json` pins the Next.js framework.
-- [x] Environment variables on Vercel, placeholders (`SET_ME`) in production, preview and development: `QLOO_API_KEY`, `AI_GATEWAY_API_KEY`, `GEMINI_API_KEY`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`. `QLOO_API_BASE_URL` set to the real host. The app treats `SET_ME` as missing.
+- [x] Environment variables on Vercel in production, preview and development: `QLOO_API_KEY`, `GEMINI_API_KEY`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `QLOO_API_BASE_URL`. No `AI_GATEWAY_API_KEY`: the AI SDK would send any placeholder as the key and skip the project's OIDC token (found 21 Oct), so the gateway authenticates with OIDC, as Busk Map does.
 - [x] Neon database `ghostq-db` provisioned through the Vercel integration and connected; `DATABASE_URL` and the Postgres variables differ per environment.
 - [x] Domain `ghostq.xyz` and `www.ghostq.xyz` attached to the project.
+- [x] Real keys on Vercel in production, preview and development: Qloo and Spotify (the same as Busk Map's), Gemini.
+- [x] Neon Object Storage (beta): private bucket `ghostq-audio` on the main branch; `AWS_*` storage variables and `NEON_STORAGE_BUCKET` on Vercel in all environments.
+- [x] Neon branches: `main` for production and preview, `development` for local work and Vercel's development environment, so test songs never reach the live Library.
+- [x] Song store moved to Neon and checked live on 21 Oct (a full run, singing, the song page and the Library, with the MP3 read back byte for byte): songs, crowd and research in Postgres (table `songs`, created on first use), sung MP3s in the `ghostq-audio` bucket. Local development without `DATABASE_URL` still uses files under `.data/`.
 
 ## 2. Accounts and keys [you]
 
-- [ ] Replace the placeholders on Vercel with real values (production, preview, development): Qloo key, Gemini key, Spotify client id and secret.
-- [ ] `AI_GATEWAY_API_KEY`: on Vercel the gateway can use the project's OIDC token instead; set a key only if that fails. Check the team has AI Gateway credit.
+- [ ] Check the cubanos-dev team has AI Gateway credit (GhostQ's runs are now billed to the ghostq project).
 - [ ] Gemini: paid tier with prepay credit and auto-reload on, so singing doesn't stop during judging.
-- [ ] Spotify: a Spotify app for GhostQ (the local setup still borrows Busk Map's).
+- [ ] Spotify: GhostQ shares Busk Map's Spotify app on purpose; nothing to do unless its limits bite.
 - [ ] Qloo: ask #api-help for a second key (Busk Map and GhostQ share 10,000 calls a month).
 - [ ] Neon: confirm the plan in the Vercel dashboard (the integration's default; not checked).
 - [ ] DNS: the registry still listed its default nameservers on 21 Oct, minutes after purchase. Run `vercel domains verify ghostq.xyz --scope cubanos-dev`; if it hasn't switched within a day, set the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` in the Vercel domain settings.
 
 ## 3. Code that must change before the first deploy [Claude]
 
-- [ ] Song store: v1 saves songs as files under `.data/`, which is read-only on Vercel. Move sheets and research to Neon and the sung MP3s to Vercel Blob (add a Blob store to the project), behind the same functions in `src/server/store/songs.ts`. Until then, share links and the Library don't work on the live site.
-- [ ] Rate limits and spend caps: per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`; a daily cap on singing (US$0.08 a song); Vercel BotID on the write and sing routes; a clear message when a limit is hit.
+- [ ] Rate limits and spend caps (ROADMAP item 1): per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`; a daily cap on singing (US$0.08 a song); Vercel BotID on the write and sing routes; a clear message when a limit is hit.
 - [ ] Function duration: `/api/write` and `/api/sing` declare up to 300 s (a run takes about 30–45 s, singing about 50 s). Check the team's plan allows it.
 - [ ] MusicBrainz: its service is free for non-commercial use; note the User-Agent contact and check terms before any commercial launch.
 

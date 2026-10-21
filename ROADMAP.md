@@ -4,7 +4,7 @@ Target: everything below is done by **Thu 29 Oct 2026**, the day before the Qloo
 
 | Day | Work |
 |---|---|
-| Thu 22 | Report (Library guard). Start Improve chords and lyrics. |
+| Thu 22 | Rate limits and spend caps. Report (Library guard). |
 | Fri 23 | Improve chords and lyrics. |
 | Sat 24 | CollabQ: two crowds and their overlap. |
 | Sun 25 | CollabQ: duet voice, a verse per crowd, "A feat. B" in the Library. |
@@ -12,6 +12,14 @@ Target: everything below is done by **Thu 29 Oct 2026**, the day before the Qloo
 | Tue 27 | Brand port into the app. |
 | Wed 28 | Languages pass, fix list, seed the Library with real runs. |
 | Thu 29 | Feature-complete. Release candidate: full build, tests, one QA pass. |
+
+## 1. Rate limits and spend caps (first: blocks going live)
+
+- Per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`, with a plain message when one is hit and when to try again.
+- A daily cap on singing (Lyria, US$0.08 a song) and on fresh runs (Qloo's 10,000 calls a month are shared with Busk Map).
+- Vercel BotID on the write and sing routes.
+- Counters in Neon, so they hold across serverless instances.
+- Done when: going past each limit shows the message, the caps stop new paid calls, and normal use is unaffected.
 
 ## CollabQ: Artist A feat. Artist B
 

@@ -22,6 +22,14 @@ const schema = z.object({
   SPOTIFY_CLIENT_ID: secret,
   SPOTIFY_CLIENT_SECRET: secret,
   VERCEL_OIDC_TOKEN: secret,
+  /** Neon Postgres (Vercel integration): saved songs and their research. */
+  DATABASE_URL: secret,
+  /** Neon Object Storage (S3-compatible, beta): sung MP3s. `neon env pull --service object-storage` writes these. */
+  AWS_ACCESS_KEY_ID: secret,
+  AWS_SECRET_ACCESS_KEY: secret,
+  AWS_ENDPOINT_URL_S3: secret,
+  AWS_REGION: secret,
+  NEON_STORAGE_BUCKET: secret,
 });
 
 export const env = schema.parse(process.env);
@@ -32,5 +40,7 @@ export function providerStatus() {
     aiGateway: Boolean(env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN),
     gemini: Boolean(env.GEMINI_API_KEY),
     spotify: Boolean(env.SPOTIFY_CLIENT_ID && env.SPOTIFY_CLIENT_SECRET),
+    database: Boolean(env.DATABASE_URL),
+    objectStorage: Boolean(env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY && env.AWS_ENDPOINT_URL_S3 && env.NEON_STORAGE_BUCKET),
   };
 }
