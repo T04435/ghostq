@@ -34,6 +34,7 @@ describe("deliveryFromTags", () => {
     expect(deliveryFromTags(["Reggaeton", "Latin Hip Hop"], "X").delivery).toBe("both");
     expect(deliveryFromTags(["Pop Rap"], "X").delivery).toBe("rap");
     expect(deliveryFromTags([], "X")).toEqual({ delivery: "sung", deliverySource: "Qloo has no genres for X" });
+    expect(deliveryFromTags(["Ambient"], "X")).toEqual({ delivery: "sung", deliverySource: "Qloo's tags for X (no rap)" });
   });
 });
 
@@ -50,6 +51,9 @@ describe("songs saved before 22 Oct", () => {
   it("reads the old single voice", () => {
     expect(normalizeVocals({ voice: "duet", source: "s" }).voices).toEqual(["male", "female"]);
     expect(normalizeVocals({ voice: null, source: "s" }).voices).toEqual([]);
+    const lorde = normalizeVocals({ voice: "female", source: "s" }, { artist: "Lorde", signals: [{ kind: "genre", label: "Indie Pop" }, { kind: "theme", label: "Youth" }] });
+    expect(lorde).toMatchObject({ voices: ["female"], delivery: "sung", deliverySource: "Qloo's tags for Lorde: Indie Pop" });
+    expect(normalizeVocals({ voice: "male", source: "s" }, { artist: "X", signals: [{ kind: "genre", label: "Rap" }] }).delivery).toBe("rap");
     expect(toVocalLine("male")).toEqual({ kind: "vocals", voices: ["male"], delivery: "sung" });
     expect(toVocalLine("instrumental")).toEqual({ kind: "instrumental" });
     expect(toVocalLine(JSON.stringify({ kind: "vocals", voices: ["male", "male"], delivery: "rap" }))?.kind).toBe("vocals");

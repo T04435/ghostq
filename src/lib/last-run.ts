@@ -18,7 +18,7 @@ export function loadLastRun(): LastRun | null {
     const run = JSON.parse(raw) as LastRun;
     if (!run.sheet) return run;
     const { voice, ...sheet } = run.sheet as SongSheet & { voice?: unknown };
-    return { ...run, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice) } };
+    return { ...run, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice, sheet) } };
   } catch {
     return null;
   }
