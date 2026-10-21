@@ -13,6 +13,25 @@ Target: everything below is done by **Thu 29 Oct 2026**, the day before the Qloo
 | Wed 28 | Languages pass, fix list, seed the Library with real runs. |
 | Thu 29 | Feature-complete. Release candidate: full build, tests, one QA pass. |
 
+## Fixes
+
+Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" input and the agent asking when data is missing.
+
+### F1. Cities from an API, not a hard-coded list
+
+- Today: `PLACES` in `src/lib/brief.ts` holds 17 cities. The fans' strongest area from Qloo's heatmap is matched only against those 17, and the "pick the city" question offers only those 17.
+- Fix: name the fans' strongest area from the heatmap cell itself (look up the city at that cell's centre), and make the city question a search box backed by an API, so any city can be picked. Each city carries its coordinates for Qloo's location signal and its language.
+- Options to check before building: Qloo's own locality search (it has locality entities), or a geocoding API. Prefer Qloo where it can do it.
+- Done when: an artist whose fans cluster outside the 17 cities gets that real city, and the question finds any city by name.
+
+### F2. Artist not in Qloo: read their songs from Spotify
+
+- Today: when Qloo doesn't know the artist, the run asks the user to describe the sound in words.
+- Fix: first look the artist up on Spotify (the brief already carries their Spotify id when picked from search) and read their songs: albums and tracks, titles and release years. Turn that into the artist's sound (genres, era, mood) and use it as the run's genre signals; ask the user only if Spotify has nothing either.
+- To check before building: Spotify removed some endpoints for newer apps (top tracks, popularity, related artists, audio features, per the 20 Oct research); album and track lists are expected to remain. GhostQ uses Busk Map's Spotify app.
+- Receipts for these lines say "Spotify: the artist's catalogue", not Qloo.
+- Done when: an artist on Spotify but not in Qloo gets a run without the sound question, with the source shown.
+
 ## 1. Rate limits and spend caps (first: blocks going live)
 
 - Per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`, with a plain message when one is hit and when to try again.
