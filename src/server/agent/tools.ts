@@ -2,6 +2,7 @@ import "server-only";
 import { tool } from "ai";
 import { z, ZodError } from "zod";
 import { describeCrowd, type Brief, type Crowd } from "@/lib/brief";
+import type { VoiceMatch } from "@/lib/voice";
 import { isMusicGenre, type QlooEntity } from "@/lib/qloo-parse";
 import { SignalRegistry, type Signal } from "@/lib/signals";
 import * as qloo from "@/server/qloo/api";
@@ -16,6 +17,10 @@ export class RunState {
   genreTagIds: string[] = [];
   /** Read from Qloo before the agent starts (server/crowd.ts). */
   crowdInfo: Crowd | null = null;
+  /** A country Qloo files among the artist's genre tags ("Cuba"): where they're from when MusicBrainz doesn't say. */
+  homeFromTags: string | null = null;
+  /** The singing voice that matches the artist (MusicBrainz), read with the crowd. */
+  voiceMatch: VoiceMatch | null = null;
   readonly artistNames = new Set<string>();
   chosen: { signalIds: string[]; angle: string } | null = null;
   qlooCalls = 0;

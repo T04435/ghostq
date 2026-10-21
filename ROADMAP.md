@@ -17,12 +17,19 @@ Target: everything below is done by **Thu 29 Oct 2026**, the day before the Qloo
 
 Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" input and the agent asking when data is missing.
 
-### F1. Cities from an API, not a hard-coded list
+### F1. Cities from an API, not a hard-coded list (done 22 Oct)
+
+- Built: the fans' top area is the most popular of Qloo's top 30 heatmap cells, zoomed in and named by OpenStreetMap (Nominatim, one lookup per run, cached, credited, switch `GEOCODER_OFF=1`); the city question searches Qloo's localities. With it: the artist's home (MusicBrainz, else Qloo's country tags) sets the voice and language, and the artist's own Qloo themes, styles and influences are voice signals. An artist search no longer falls back to an unrelated top result.
+
+<details><summary>Original note</summary>
+
 
 - Today: `PLACES` in `src/lib/brief.ts` holds 17 cities. The fans' strongest area from Qloo's heatmap is matched only against those 17, and the "pick the city" question offers only those 17.
 - Fix: name the fans' strongest area from the heatmap cell itself (look up the city at that cell's centre), and make the city question a search box backed by an API, so any city can be picked. Each city carries its coordinates for Qloo's location signal and its language.
 - Options to check before building: Qloo's own locality search (it has locality entities), or a geocoding API. Prefer Qloo where it can do it.
 - Done when: an artist whose fans cluster outside the 17 cities gets that real city, and the question finds any city by name.
+
+</details>
 
 ### F2. Artist not in Qloo: read their songs from Spotify
 

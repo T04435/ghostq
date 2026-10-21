@@ -9,7 +9,7 @@ const sheet: SongSheet = {
   feel: "Breathless pop-punk (G4) that slumps into a singalong.",
   angle: "a",
   artist: "Fictional Band",
-  crowd: { from: { place: "qloo", ages: "qloo" }, place: "melbourne", placeRank: { rank: 1, of: 10 }, ages: [{ age: "25_to_29", skew: 0.27 }], language: "English" },
+  crowd: { from: { place: "qloo", ages: "qloo" }, place: { name: "Melbourne", country: "Australia", countryCode: "AU", lat: -37.81, lon: 144.96 }, placeRank: { rank: 1, of: 10 }, ages: [{ age: "25_to_29", skew: 0.27 }], home: null, language: "English", languageFrom: "city" },
   voice: { voice: "male", source: "test" },
   language: "English",
   productionBrief: "Palm-muted eighths in the verses (G2, G4), a Mac DeMarco wobble on the lead, and a tram bell in the bridge like M1.",

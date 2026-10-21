@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { describeCrowd, PLACES } from "@/lib/brief";
+import { describeCrowd } from "@/lib/brief";
 import type { SongSummary } from "@/lib/song-summary";
 
 const ALL = "all";
@@ -25,7 +25,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
   const options = useMemo(
     () => ({
       artists: [...new Set(songs.map((s) => s.artist))].sort(),
-      cities: [...new Set(songs.map((s) => s.crowd.place).filter((p): p is NonNullable<typeof p> => Boolean(p)))].sort(),
+      cities: [...new Set(songs.map((s) => s.crowd.place?.name).filter((p): p is string => Boolean(p)))].sort(),
       languages: [...new Set(songs.map((s) => s.language))].sort(),
     }),
     [songs],
@@ -36,7 +36,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
     return songs.filter(
       (s) =>
         (artist === ALL || s.artist === artist) &&
-        (city === ALL || s.crowd.place === city) &&
+        (city === ALL || s.crowd.place?.name === city) &&
         (language === ALL || s.language === language) &&
         (!q || [s.title, s.artist, s.story ?? ""].some((t) => t.toLowerCase().includes(q))),
     );
@@ -76,7 +76,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
             <Input id="lib-search" placeholder="Title, artist or story" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <Filter id="lib-artist" label="Artist" value={artist} onChange={setArtist} options={options.artists.map((a) => [a, a])} />
-          <Filter id="lib-city" label="City" value={city} onChange={setCity} options={options.cities.map((c) => [c, PLACES[c].name])} />
+          <Filter id="lib-city" label="City" value={city} onChange={setCity} options={options.cities.map((c) => [c, c])} />
           <Filter id="lib-language" label="Language" value={language} onChange={setLanguage} options={options.languages.map((l) => [l, l])} />
           <p className="self-end text-sm text-muted-foreground">
             {shown.length} of {songs.length} songs

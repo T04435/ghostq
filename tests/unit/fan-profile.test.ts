@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { describeAges } from "@/lib/brief";
-import { bestPlace, topAgeBands } from "@/lib/fan-profile";
+import { hotspots, rankCells, topAgeBands } from "@/lib/fan-profile";
 
 describe("topAgeBands", () => {
   it("keeps up to three bands over the threshold, strongest first", () => {
@@ -23,22 +23,36 @@ describe("topAgeBands", () => {
   });
 });
 
-describe("bestPlace", () => {
-  it("picks the listed city in the strongest cell", () => {
-    // Geohash 3 cells from the 21 Oct probe for Teenage Joans: r1f Adelaide, r7h Brisbane, r1r Melbourne, gcp London.
+describe("hotspots", () => {
+  it("takes the most popular of the top cells by affinity, keeping each cell's rank", () => {
+    // Los Aldeanos, 22 Oct: #1 by affinity was over the Pacific with little activity; Bogotá was #3 and the most popular.
     const cells = [
-      { geohash: "r1f", affinity: 1 },
-      { geohash: "r7h", affinity: 0.992 },
-      { geohash: "r1r", affinity: 0.989 },
-      { geohash: "gcp", affinity: 0.745 },
-      { geohash: "zzz", affinity: 0.5 },
+      { geohash: "99z", affinity: 1, popularity: 0.247 },
+      { geohash: "d20", affinity: 0.9999, popularity: 0.958 },
+      { geohash: "d2g", affinity: 0.999, popularity: 0.999 },
+      { geohash: "dhj", affinity: 0.944, popularity: 0.99 },
     ];
-    expect(bestPlace(cells)).toEqual({ place: "adelaide", affinity: 1, rank: 1, of: 5 });
-    expect(bestPlace(cells.slice(1))).toEqual({ place: "brisbane", affinity: 0.99, rank: 1, of: 4 });
+    const picked = hotspots(cells, 3);
+    expect(picked.map((c) => [c.geohash, c.rank])).toEqual([
+      ["d2g", 3],
+      ["d20", 2],
+      ["99z", 1],
+    ]);
   });
+});
 
-  it("is null with no cells", () => {
-    expect(bestPlace([])).toBeNull();
+describe("rankCells", () => {
+  it("orders cells strongest first with their rank and the total", () => {
+    const ranked = rankCells([
+      { geohash: "69y", affinity: 0.96 },
+      { geohash: "d2g", affinity: 0.999 },
+      { geohash: "dhj", affinity: 0.944 },
+    ]);
+    expect(ranked.map((c) => [c.geohash, c.rank, c.of])).toEqual([
+      ["d2g", 1, 3],
+      ["69y", 2, 3],
+      ["dhj", 3, 3],
+    ]);
   });
 });
 

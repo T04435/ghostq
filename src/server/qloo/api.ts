@@ -1,16 +1,18 @@
 import "server-only";
-import { PLACES, type AgeBand, type PlaceId } from "@/lib/brief";
+import type { AgeBand } from "@/lib/brief";
+import { geohashPolygon } from "@/lib/geohash";
+import { countryCodeFor, type Place } from "@/lib/place";
 import { parseDemographics, parseEntities, parseHeatmap, parseSearch, parseTags, type QlooEntity } from "@/lib/qloo-parse";
 import { qlooGet, type CallLog, type QlooParams } from "./client";
 
 /** A Qloo crowd signal. No place: taste worldwide; no ages: all ages. */
-export type CrowdSignal = { place: PlaceId | null; ages: AgeBand[] };
+export type CrowdSignal = { place: Place | null; ages: AgeBand[] };
 export type OnCall = (log: CallLog) => void;
 
 const RADIUS_M = 15_000;
 
 function crowdParams({ place, ages }: CrowdSignal): QlooParams {
-  const p = place ? PLACES[place] : null;
+  const p = place;
   return {
     "signal.location": p ? `POINT(${p.lon} ${p.lat})` : undefined,
     "signal.location.radius": p ? RADIUS_M : undefined,
@@ -95,4 +97,25 @@ export async function fanHeatmap(entityId: string, onCall?: OnCall) {
       onCall,
     ),
   );
+}
+
+/** The fans' heatmap inside one world cell (about 150 km square): small cells (precision ~6) that find the hotspot. 270 KB, ~3.5 s (22 Oct). */
+export async function zoomedHeatmap(entityId: string, worldCell: string, onCall?: OnCall) {
+  return parseHeatmap(
+    await qlooGet("/v2/insights", { "filter.type": "urn:heatmap", "signal.interests.entities": entityId, "filter.location": geohashPolygon(worldCell) }, onCall),
+  );
+}
+
+/** Cities by name, from Qloo's locality search (43 KB, under 2 s for "Havana", 22 Oct). Biggest first. */
+export async function searchLocalities(query: string, onCall?: OnCall): Promise<(Place & { population: number | null })[]> {
+  const json = (await qlooGet("/search", { query, types: "urn:entity:locality", take: 8 }, onCall)) as {
+    results?: { name?: string; disambiguation?: string; location?: { lat?: number; lon?: number }; properties?: { population?: number } }[];
+  };
+  return (json.results ?? [])
+    .filter((r) => r.name && typeof r.location?.lat === "number" && typeof r.location?.lon === "number")
+    .map((r) => {
+      const country = (r.disambiguation ?? "").split(",").at(-1)?.trim() ?? "";
+      return { name: r.name!, country, countryCode: countryCodeFor(country), lat: r.location!.lat!, lon: r.location!.lon!, population: r.properties?.population ?? null };
+    })
+    .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
 }
