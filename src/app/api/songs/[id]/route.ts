@@ -1,7 +1,7 @@
-import { getSong } from "@/server/store/songs";
+import { getSong, publicSong } from "@/server/store/songs";
 
-/** GET a saved song (sheet, brief, whether it has audio). */
+/** GET a saved song: what its page shows (sheet, artist and story, research summaries, audio). Never Qloo's raw data. */
 export async function GET(_request: Request, { params }: RouteContext<"/api/songs/[id]">) {
   const song = await getSong((await params).id);
-  return song ? Response.json(song) : Response.json({ error: "No such song" }, { status: 404 });
+  return song ? Response.json(publicSong(song)) : Response.json({ error: "No such song" }, { status: 404 });
 }

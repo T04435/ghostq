@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, Download, Link2, Loader2, Mic, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
+import { draftLabel } from "@/lib/draft-label";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, type SongSheet } from "@/lib/song-sheet";
 
@@ -29,7 +31,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
   const [selected, setSelected] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
-  const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
+  const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string; retry?: boolean; budget?: boolean }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
   const [linkCopied, setLinkCopied] = useState(false);
   // The vocals: matched to the artist from MusicBrainz and Qloo; where they don't know, the user must choose (no default).
   const [vocals, setVocals] = useState(() => draftFromSheet(sheet));
@@ -47,16 +49,18 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
 
   async function sing() {
     if (!line) return;
+    if (!sheet.id) return setSong({ status: "error", message: "This song wasn't saved, so it can't be sung. Write it again.", retry: false });
     setSong({ status: "singing" });
     try {
-      const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sheet, vocals: line, songId: sheet.id }) });
+      // The server sings the saved sheet; only the song's id and the vocals go up.
+      const response = await fetch("/api/sing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ songId: sheet.id, vocals: line }) });
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string; retry?: boolean } | null;
-        throw new Error(body?.error ?? `The server returned ${response.status}`);
+        const body = (await response.json().catch(() => null)) as { error?: string; retry?: boolean; budget?: boolean } | null;
+        return setSong({ status: "error", message: body?.error ?? `The server returned ${response.status}`, retry: body?.retry ?? !body?.budget, budget: body?.budget });
       }
       setSong({ status: "done", url: URL.createObjectURL(await response.blob()) });
     } catch (e) {
-      setSong({ status: "error", message: e instanceof Error ? e.message : "Singing failed" });
+      setSong({ status: "error", message: e instanceof Error ? e.message : "Singing failed", retry: true });
     }
   }
   const byId = new Map(sheet.signals.map((s) => [s.id, s]));
@@ -79,6 +83,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
   return (
     <Card>
       <CardHeader>
+        <p className="text-xs font-medium text-muted-foreground">{draftLabel(sheet.artist)}</p>
         <CardTitle className="text-2xl">{sheet.title}</CardTitle>
         <CardDescription>
           For {sheet.artist}&apos;s crowd: {describeCrowd(sheet.crowd)}. {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
@@ -126,9 +131,16 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
         {song.status === "error" && (
           <div role="alert" className="flex flex-wrap items-center gap-3 pt-2">
             <p className="text-sm text-destructive">{song.message}</p>
-            <Button size="sm" variant="outline" onClick={sing} disabled={!line}>
-              Try again
-            </Button>
+            {song.budget && (
+              <Link href="/library" className="text-sm underline">
+                Listen to the songs in the Library
+              </Link>
+            )}
+            {song.retry && (
+              <Button size="sm" variant="outline" onClick={sing} disabled={!line}>
+                Try again
+              </Button>
+            )}
           </div>
         )}
       </CardHeader>

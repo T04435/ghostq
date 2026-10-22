@@ -1,43 +1,45 @@
 import { z } from "zod";
+import { singProblem } from "@/lib/sing-check";
 import { buildSingPrompt } from "@/lib/sing-prompt";
-import { writtenSongSchema, type SongSheet } from "@/lib/song-sheet";
-import { providerStatus } from "@/server/env";
-import { generateSong, LyriaError } from "@/server/lyria";
-import { isSongId, saveAudio } from "@/server/store/songs";
 import { vocalLineSchema } from "@/lib/voice";
+import { providerStatus } from "@/server/env";
+import { perVisitor, refusalResponse, takeLyria } from "@/server/limits";
+import { generateSong, LyriaError } from "@/server/lyria";
+import { getSong, isSongId, recordSingBlock, saveAudio, SING_BLOCKS_TO_HIDE } from "@/server/store/songs";
 
 export const maxDuration = 300;
 
-const sheetSchema = writtenSongSchema.extend({
-  artist: z.string(),
-  id: z.string().optional(),
-  crowd: z.unknown(),
-  vocals: z.unknown(),
-  language: z.string(),
-  signals: z.array(z.object({ id: z.string(), kind: z.string(), label: z.string(), source: z.string(), value: z.number().nullable() })),
-  warnings: z.array(z.string()),
-});
-
-/** POST a song sheet → an MP3 of it, sung and produced by Lyria. Costs about US$0.08 per call. */
+/**
+ * POST {songId, vocals} → an MP3 of that saved song, sung and produced by Lyria (about US$0.08 a call). The sheet is
+ * always the saved one, read here: a client can't send its own lyrics, so the artist check can't be bypassed.
+ */
 export async function POST(request: Request) {
   // The vocals are required: Lyria picking its own voice put a female voice on a male artist's song (user, 21 Oct).
-  const body = z.object({ sheet: sheetSchema, vocals: vocalLineSchema, songId: z.string().refine(isSongId).optional() }).safeParse(await request.json().catch(() => null));
+  const body = z.object({ songId: z.string().refine(isSongId), vocals: vocalLineSchema }).safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "Choose the vocals before singing" }, { status: 400 });
   if (!providerStatus().gemini) return Response.json({ error: "Singing isn't available right now." }, { status: 503 });
+  const { songId, vocals } = body.data;
+  const song = await getSong(songId);
+  if (!song) return Response.json({ error: "This song wasn't saved, so it can't be sung. Write it again." }, { status: 404 });
+  const problem = singProblem(song.sheet, vocals);
+  if (problem) return Response.json({ error: problem }, { status: 422 });
+  const refused = (await perVisitor("sing", request)) ?? (await takeLyria());
+  if (refused) return refusalResponse(refused);
   try {
-    const { audio } = await generateSong(buildSingPrompt(body.data.sheet as SongSheet, body.data.vocals));
+    const { audio } = await generateSong(buildSingPrompt(song.sheet, vocals));
     // Kept with the saved song so the share link plays it and a reload doesn't lose it.
-    if (body.data.songId) await saveAudio(body.data.songId, body.data.vocals, audio).catch((e) => console.error("save audio failed", e instanceof Error ? e.message : e));
+    await saveAudio(songId, vocals, audio).catch((e) => console.error("save audio failed", e instanceof Error ? e.message : e));
     return new Response(new Uint8Array(audio), { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof LyriaError ? error.message : "Singing failed";
     console.error("sing failed", message);
     if (error instanceof LyriaError && error.kind === "blocked") {
+      const { blocks, hidden } = await recordSingBlock(songId).catch(() => ({ blocks: 0, hidden: false }));
+      const base = "Google's music model (Lyria) blocked this attempt under its content policy (prohibited content). It doesn't say which words, and it's inconsistent: the same song often goes through on another try.";
       return Response.json(
-        {
-          error: "Google's music model (Lyria) blocked this attempt under its content policy (prohibited content). It doesn't say which words, and it's inconsistent: the same song often goes through on another try.",
-          retry: true,
-        },
+        hidden
+          ? { error: `${base} Lyria has now refused this song ${blocks} times, so it's been taken out of the Library; its link still works.`, retry: false }
+          : { error: `${base} (Refusal ${blocks} of ${SING_BLOCKS_TO_HIDE}: at ${SING_BLOCKS_TO_HIDE} the song leaves the Library.)`, retry: true },
         { status: 422 },
       );
     }

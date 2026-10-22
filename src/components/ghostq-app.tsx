@@ -1,13 +1,12 @@
 "use client";
 
 import { PenLine, RotateCcw, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BriefForm } from "@/components/brief-form";
 import { applyStepEvent, RunSteps, type StepItem } from "@/components/run-steps";
 import { SongSheetView } from "@/components/song-sheet-view";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { AskCard } from "@/components/ask-card";
 import { CrowdCard } from "@/components/crowd-card";
 import type { Brief, Crowd } from "@/lib/brief";
@@ -20,9 +19,9 @@ export function GhostQApp() {
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<StepItem[]>([]);
   const [sheet, setSheet] = useState<SongSheet | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // `budget`: a daily budget or rate limit was hit, so the message points to the Library, whose songs always play.
+  const [error, setError] = useState<{ message: string; budget?: boolean } | null>(null);
   const [done, setDone] = useState<Extract<RunEvent, { type: "done" }> | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
   const [crowd, setCrowd] = useState<{ artist: string; crowd: Crowd } | null>(null);
   // The run stopped to ask (Qloo had no data); answering sends the same brief again with the answers.
   const [ask, setAsk] = useState<{ brief: Brief; event: Extract<RunEvent, { type: "ask" }> } | null>(null);
@@ -58,7 +57,7 @@ export function GhostQApp() {
       setSheet(event.sheet);
       written.current = [...written.current, `"${event.sheet.title}": ${event.sheet.angle}`].slice(-10);
     }
-    if (event.type === "error") setError(event.message);
+    if (event.type === "error") setError({ message: event.message, budget: event.budget });
     if (event.type === "done") setDone(event);
   }
 
@@ -108,8 +107,9 @@ export function GhostQApp() {
     try {
       const response = await fetch("/api/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(brief), signal: controller.signal });
       if (!response.ok || !response.body) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? `The server returned ${response.status}`);
+        const body = (await response.json().catch(() => null)) as { error?: string; budget?: boolean } | null;
+        setError({ message: body?.error ?? `The server returned ${response.status}`, budget: body?.budget });
+        return;
       }
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
       let buffer = "";
@@ -129,7 +129,7 @@ export function GhostQApp() {
       }
       saveLastRun({ brief, sheet: finalSheet, at: new Date().toISOString() });
     } catch (e) {
-      if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Something went wrong.");
+      if (!controller.signal.aborted) setError({ message: e instanceof Error ? e.message : "Something went wrong." });
     } finally {
       if (abort.current === controller) setBusy(false);
     }
@@ -154,16 +154,10 @@ export function GhostQApp() {
 
       {(items.length > 0 || busy) && (
         <section className="grid gap-4" aria-label="Live run">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Reading the crowd</h2>
-            <div className="flex items-center gap-2">
-              <Switch id="raw" checked={showRaw} onCheckedChange={setShowRaw} />
-              <Label htmlFor="raw">Show raw data</Label>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold">Reading the crowd</h2>
           {items.length === 0 && <p className="text-sm text-muted-foreground">Finding the artist on Qloo…</p>}
           {crowd && <CrowdCard artist={crowd.artist} crowd={crowd.crowd} />}
-          <RunSteps items={items} showRaw={showRaw} />
+          <RunSteps items={items} />
           {ask && (
             <AskCard
               fields={ask.event.fields}
@@ -182,7 +176,15 @@ export function GhostQApp() {
 
       {error && (
         <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">
-          {error}
+          {error.message}
+          {error.budget && (
+            <>
+              {" "}
+              <Link href="/library" className="font-medium underline">
+                Listen to the songs in the Library
+              </Link>
+            </>
+          )}
         </p>
       )}
 

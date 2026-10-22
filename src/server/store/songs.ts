@@ -4,7 +4,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
 import type { Brief } from "@/lib/brief";
-import type { RunEvent } from "@/lib/run-events";
+import { publicEvent, type RunEvent } from "@/lib/run-events";
 import { normalizeSheet, type SongSheet } from "@/lib/song-sheet";
 import type { SongSummary } from "@/lib/song-summary";
 import { toVocalLine, type VocalLine } from "@/lib/voice";
@@ -18,6 +18,8 @@ import { getObject, putObject } from "./objects";
  * - Without DATABASE_URL: files under .data/ (git-ignored, because receipts carry Qloo-derived data).
  */
 const ID = /^[a-z0-9-]{6,48}$/;
+/** The only moderation (the user, 22 Oct): a song Lyria refuses this many times leaves the Library. */
+export const SING_BLOCKS_TO_HIDE = 3;
 
 export type SavedSong = {
   id: string;
@@ -30,6 +32,8 @@ export type SavedSong = {
   audio: { vocals: VocalLine | null; createdAt: string } | null;
   /** Hidden from the Library (moderation); the song's own link still works. */
   hidden?: boolean;
+  /** How many times Lyria refused to sing it (content filter). Three takes it out of the Library. */
+  singBlocks?: number;
 };
 
 type Store = {
@@ -38,6 +42,8 @@ type Store = {
   saveAudio(id: string, vocals: VocalLine, audio: Buffer): Promise<void>;
   getAudio(id: string): Promise<Buffer | null>;
   list(limit: number): Promise<SavedSong[]>;
+  /** One more Lyria refusal; the third hides the song from the Library. */
+  recordSingBlock(id: string): Promise<{ blocks: number; hidden: boolean }>;
 };
 
 export function isSongId(id: string): boolean {
@@ -68,14 +74,16 @@ function ensureSchema(): Promise<unknown> {
       hidden boolean NOT NULL DEFAULT false,
       audio_voice text,
       audio_created_at timestamptz
-    )`.catch((e) => {
+    )`
+    .then(() => sql()`ALTER TABLE songs ADD COLUMN IF NOT EXISTS sing_blocks integer NOT NULL DEFAULT 0`)
+    .catch((e) => {
     schema = null;
     throw e;
   });
   return schema;
 }
 
-type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; audio_voice: string | null; audio_created_at: string | Date | null };
+type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; sing_blocks?: number; audio_voice: string | null; audio_created_at: string | Date | null };
 
 function fromRow(r: Row): SavedSong {
   const iso = (d: string | Date) => new Date(d).toISOString();
@@ -86,6 +94,7 @@ function fromRow(r: Row): SavedSong {
     sheet: r.sheet,
     research: r.research ?? [],
     hidden: r.hidden,
+    singBlocks: r.sing_blocks ?? 0,
     audio: r.audio_voice && r.audio_created_at ? { vocals: toVocalLine(r.audio_voice), createdAt: iso(r.audio_created_at) } : null,
   };
 }
@@ -116,6 +125,13 @@ const neonStore: Store = {
     await ensureSchema();
     const rows = (await sql()`SELECT * FROM songs WHERE NOT hidden ORDER BY created_at DESC LIMIT ${limit}`) as Row[];
     return rows.map(fromRow);
+  },
+  async recordSingBlock(id) {
+    await ensureSchema();
+    const rows = (await sql()`
+      UPDATE songs SET sing_blocks = sing_blocks + 1, hidden = hidden OR sing_blocks + 1 >= ${SING_BLOCKS_TO_HIDE}
+      WHERE id = ${id} RETURNING sing_blocks, hidden`) as { sing_blocks: number; hidden: boolean }[];
+    return { blocks: rows[0]?.sing_blocks ?? 0, hidden: rows[0]?.hidden ?? false };
   },
 };
 
@@ -166,6 +182,14 @@ const fileStore: Store = {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
   },
+  async recordSingBlock(id) {
+    const song = await fileStore.get(id);
+    if (!song) return { blocks: 0, hidden: false };
+    const blocks = (song.singBlocks ?? 0) + 1;
+    const hidden = Boolean(song.hidden) || blocks >= SING_BLOCKS_TO_HIDE;
+    await fileStore.save({ ...song, singBlocks: blocks, hidden });
+    return { blocks, hidden };
+  },
 };
 
 // ---- The store the app uses ---------------------------------------------------------------------------------------
@@ -215,4 +239,23 @@ export async function listSongs(limit = 200): Promise<SongSummary[]> {
       audioVersion: s.audio?.createdAt ?? null,
       createdAt: s.createdAt,
     }));
+}
+
+/** Counts one Lyria refusal for a saved song; the third takes it out of the Library (its link still works). */
+export async function recordSingBlock(id: string): Promise<{ blocks: number; hidden: boolean }> {
+  return isSongId(id) ? store().recordSingBlock(id) : { blocks: 0, hidden: false };
+}
+
+/** A saved song as a browser may see it: what the page shows, without Qloo's raw responses or moderation fields. */
+export type PublicSong = Pick<SavedSong, "id" | "createdAt" | "sheet" | "research" | "audio"> & { brief: Pick<Brief, "artist" | "story"> };
+
+export function publicSong(song: SavedSong): PublicSong {
+  return {
+    id: song.id,
+    createdAt: song.createdAt,
+    brief: { artist: song.brief.artist, story: song.brief.story },
+    sheet: song.sheet,
+    research: song.research.map(publicEvent),
+    audio: song.audio,
+  };
 }
