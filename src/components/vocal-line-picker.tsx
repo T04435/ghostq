@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { namesForIds } from "@/lib/signal-text";
-import type { SongSheet } from "@/lib/song-sheet";
+import { songArtist, type SongSheet } from "@/lib/song-sheet";
 import { describeVoices, GENDERS, MAX_DIRECTION, MAX_VOICES, VOICE_NAMES, type Gender, type VocalLine } from "@/lib/voice";
 
 /** The vocals being edited: a voice whose gender isn't known yet is null, and singing waits until every voice has one. */
@@ -94,7 +94,7 @@ export function VocalLinePicker({ sheet, draft, onChange }: { sheet: SongSheet; 
       <p className="text-xs text-muted-foreground">
         {missing
           ? `${sheet.vocals.source}, so choose every voice before singing.`
-          : `The genre and vocal direction come from Qloo's tags for ${sheet.artist}; the voices are from ${sheet.vocals.source}.${changed ? " You changed them." : ""}`}
+          : `The genre and vocal direction come from Qloo's tags for ${songArtist(sheet)}; the voices are from ${sheet.vocals.source}.${changed ? " You changed them." : ""}`}
       </p>
     </div>
   );

@@ -14,6 +14,14 @@ export const AGE_BANDS = {
 } as const;
 export type AgeBand = keyof typeof AGE_BANDS;
 
+const answersSchema = z.object({
+  /** The artist's sound in the user's words, when Qloo doesn't know the artist. */
+  sound: z.string().trim().min(2).max(160).optional(),
+  /** A city picked from Qloo's locality search. */
+  place: placeSchema.optional(),
+  ages: z.array(z.enum(Object.keys(AGE_BANDS) as [AgeBand, ...AgeBand[]])).min(1).max(3).optional(),
+});
+
 /** What the user gives before a run: the artist and, optionally, what it's about. Everything else comes from Qloo. */
 export const briefSchema = z.object({
   artist: z.string().trim().min(1, "Give an artist").max(80),
@@ -26,13 +34,16 @@ export const briefSchema = z.object({
    * Answers to what the run asked for when Qloo had no data (never asked up front). The run stops with an "ask" event;
    * the page sends the same brief again with these filled in, and the run carries on (Qloo calls come from cache).
    */
-  answers: z
+  answers: answersSchema.optional(),
+  /**
+   * CollabQ: "A feat. B". The featured artist, picked the same way, with its own answers when Qloo lacks data on it.
+   * Verse 1 is A's crowd, verse 2 B's, the chorus what both crowds share.
+   */
+  feat: z
     .object({
-      /** The artist's sound in the user's words, when Qloo doesn't know the artist. */
-      sound: z.string().trim().min(2).max(160).optional(),
-      /** A city picked from Qloo's locality search. */
-      place: placeSchema.optional(),
-      ages: z.array(z.enum(Object.keys(AGE_BANDS) as [AgeBand, ...AgeBand[]])).min(1).max(3).optional(),
+      artist: z.string().trim().min(1).max(80),
+      spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(),
+      answers: answersSchema.optional(),
     })
     .optional(),
 });

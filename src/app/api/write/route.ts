@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "GhostQ can't write songs right now. Try again later." }, { status: 503 });
   }
 
-  const refused = (await perVisitor("write", request)) ?? (await checkQloo());
+  const refused = (await perVisitor("write", request)) ?? (await checkQloo(parsed.data.feat ? 2 : 1));
   if (refused) return refusalResponse(refused);
 
   const encoder = new TextEncoder();

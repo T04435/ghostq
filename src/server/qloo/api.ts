@@ -2,7 +2,7 @@ import "server-only";
 import type { AgeBand } from "@/lib/brief";
 import { geohashPolygon } from "@/lib/geohash";
 import { countryCodeFor, type Place } from "@/lib/place";
-import { parseDemographics, parseEntities, parseHeatmap, parseSearch, parseTags, type QlooEntity } from "@/lib/qloo-parse";
+import { parseCompare, parseDemographics, parseEntities, parseHeatmap, parseSearch, parseTags, type QlooEntity } from "@/lib/qloo-parse";
 import { qlooGet, type CallLog, type QlooParams } from "./client";
 
 /** A Qloo crowd signal. No place: taste worldwide; no ages: all ages. */
@@ -118,4 +118,11 @@ export async function searchLocalities(query: string, onCall?: OnCall): Promise<
       return { name: r.name!, country, countryCode: countryCodeFor(country), lat: r.location!.lat!, lon: r.location!.lon!, population: r.properties?.population ?? null };
     })
     .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+}
+
+/** CollabQ: what two artists' crowds share, and what only one has. One artist a side keeps it small (14–48 KB). */
+export async function compareArtists(aEntityId: string, bEntityId: string, onCall?: OnCall) {
+  return parseCompare(
+    await qlooGet("/v2/analysis/compare", { "a.signal.interests.entities": aEntityId, "b.signal.interests.entities": bEntityId, "filter.type": "urn:tag" }, onCall),
+  );
 }

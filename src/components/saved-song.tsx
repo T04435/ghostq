@@ -16,6 +16,7 @@ export function SavedSong({ sheet, research, audioUrl }: { sheet: SongSheet; res
     <div className="grid gap-8">
       <SongSheetView sheet={sheet} readOnly audioUrl={audioUrl} />
       <CrowdCard artist={sheet.artist} crowd={sheet.crowd} />
+      {sheet.featuring && <CrowdCard artist={sheet.featuring.artist} crowd={sheet.featuring.crowd} featured />}
       <Collapsible className="rounded-lg border p-4">
         <CollapsibleTrigger className="group/research flex w-full cursor-pointer items-center gap-2 rounded-md text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <ChevronRight className="size-4 transition-transform group-aria-expanded/research:rotate-90" aria-hidden />

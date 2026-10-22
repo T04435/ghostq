@@ -232,6 +232,7 @@ export async function listSongs(limit = 200): Promise<SongSummary[]> {
       id: s.id,
       title: s.sheet.title,
       artist: s.sheet.artist,
+      featuring: s.sheet.featuring?.artist ?? null,
       crowd: s.sheet.crowd,
       language: s.sheet.language,
       story: s.brief.story ?? null,

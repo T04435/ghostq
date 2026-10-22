@@ -1,57 +1,46 @@
 "use client";
 
-import { CircleAlert, Search } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import { useState } from "react";
+import { ArtistSearch } from "@/components/artist-search";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
-import { Spinner } from "@/components/ui/spinner";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EXAMPLE_BRIEFS, type Brief } from "@/lib/brief";
-import type { SpotifyArtist } from "@/lib/spotify-artist";
 
 type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void };
 
 const EMPTY: Brief = { artist: "", story: "" };
 
-/** The only inputs before a run: the artist and an optional "what it's about". GhostQ reads the crowd from Qloo during the run. */
+/**
+ * The only inputs before a run: the artist, an optional "feat." artist (CollabQ) and an optional "what it's about".
+ * GhostQ reads each crowd from Qloo during the run.
+ */
 export function BriefForm({ initial, busy, onSubmit }: Props) {
   const [brief, setBrief] = useState<Brief>({ ...EMPTY, ...initial });
+  const [feat, setFeat] = useState<{ artist: string; spotifyId?: string }>({ artist: initial?.feat?.artist ?? "", spotifyId: initial?.feat?.spotifyId });
   const [error, setError] = useState<string | null>(null);
-  // Spotify search runs only on Enter (or the search button), to save calls; null = no results shown.
-  const [matches, setMatches] = useState<{ query: string; status: "searching" | "done" | "error"; artists: SpotifyArtist[]; message?: string } | null>(null);
-
-  async function searchSpotify() {
-    const query = brief.artist.trim();
-    if (!query) return;
-    setMatches({ query, status: "searching", artists: [] });
-    try {
-      const response = await fetch(`/api/spotify?q=${encodeURIComponent(query)}`);
-      const body = (await response.json()) as SpotifyArtist[] | { error: string };
-      if (!response.ok || !Array.isArray(body)) throw new Error("error" in body ? body.error : `Spotify search returned ${response.status}`);
-      setMatches({ query, status: "done", artists: body });
-    } catch (e) {
-      setMatches({ query, status: "error", artists: [], message: e instanceof Error ? e.message : "Spotify search failed" });
-    }
-  }
-
-  function pick(artist: SpotifyArtist) {
-    setBrief((b) => ({ ...b, artist: artist.name, spotifyId: artist.id }));
-    setMatches(null);
-    setError(null);
-  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!brief.artist.trim()) {
+    const artist = brief.artist.trim();
+    const featArtist = feat.artist.trim();
+    if (!artist) {
       setError("Give an artist.");
       return;
     }
+    if (featArtist && featArtist.toLowerCase() === artist.toLowerCase()) {
+      setError("Pick a different artist for the feat., or leave it empty.");
+      return;
+    }
     setError(null);
-    setMatches(null);
-    onSubmit({ artist: brief.artist.trim(), spotifyId: brief.spotifyId, story: brief.story?.trim() || undefined });
+    onSubmit({
+      artist,
+      spotifyId: brief.spotifyId,
+      story: brief.story?.trim() || undefined,
+      ...(featArtist ? { feat: { artist: featArtist, spotifyId: feat.spotifyId } } : {}),
+    });
   }
 
   return (
@@ -67,7 +56,7 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
             disabled={busy}
             onClick={() => {
               setBrief({ ...EMPTY, ...example.brief });
-              setMatches(null);
+              setFeat({ artist: example.brief.feat?.artist ?? "", spotifyId: example.brief.feat?.spotifyId });
             }}
           >
             {example.label}
@@ -77,65 +66,32 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
 
       <div className="grid gap-2">
         <Label htmlFor="artist">Artist</Label>
-        <div className="relative">
-          <Input
-            id="artist"
-            placeholder="e.g. Teenage Joans, then Enter"
-            value={brief.artist}
-            maxLength={80}
-            aria-describedby="artist-hint"
-            className="pr-9"
-            onChange={(e) => setBrief((b) => ({ ...b, artist: e.target.value, spotifyId: undefined }))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void searchSpotify();
-              }
-            }}
-          />
-          <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0" aria-label="Search Spotify" onClick={() => void searchSpotify()}>
-            <Search aria-hidden />
-          </Button>
-        </div>
-        <p id="artist-hint" className="text-xs text-muted-foreground">
-          {brief.spotifyId ? "Picked on Spotify. GhostQ reads this artist's crowd from Qloo when you write." : "Press Enter to find the artist on Spotify. GhostQ then reads their crowd from Qloo."}
-        </p>
-        {matches && (
-          <div className="grid gap-1 rounded-md border p-2" role="region" aria-label="Spotify results">
-            {matches.status === "searching" && (
-              <p className="flex items-center gap-2 p-1 text-sm text-muted-foreground">
-                <Spinner /> Searching Spotify…
-              </p>
-            )}
-            {matches.status === "error" && <p className="p-1 text-sm text-destructive">{matches.message}</p>}
-            {matches.status === "done" && matches.artists.length === 0 && <p className="p-1 text-sm text-muted-foreground">No artist called &quot;{matches.query}&quot; on Spotify.</p>}
-            {matches.artists.map((a) => (
-              <Item key={a.id} asChild size="sm" className="cursor-pointer text-left hover:bg-accent focus-visible:bg-accent">
-                <button type="button" onClick={() => pick(a)}>
-                  <ItemMedia variant="image">
-                    {a.image ? (
-                      // Spotify's CDN image; next/image would need a remote pattern for one 40 px avatar.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={a.image} alt="" width={40} height={40} className="size-10 rounded object-cover" />
-                    ) : (
-                      <span className="size-10 rounded bg-muted" aria-hidden />
-                    )}
-                  </ItemMedia>
-                  <ItemContent>
-                    <ItemTitle>{a.name}</ItemTitle>
-                  </ItemContent>
-                </button>
-              </Item>
-            ))}
-          </div>
-        )}
-        {error && (
-<Alert variant="destructive">
-            <CircleAlert aria-hidden />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        <ArtistSearch
+          id="artist"
+          placeholder="e.g. Teenage Joans, then Enter"
+          value={{ artist: brief.artist, spotifyId: brief.spotifyId }}
+          hint={brief.spotifyId ? "Picked on Spotify. GhostQ reads this artist's crowd from Qloo when you write." : "Press Enter to find the artist on Spotify. GhostQ then reads their crowd from Qloo."}
+          onChange={(v) => setBrief((b) => ({ ...b, artist: v.artist, spotifyId: v.spotifyId }))}
+        />
       </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="feat">feat. (optional, CollabQ)</Label>
+        <ArtistSearch
+          id="feat"
+          placeholder="A second artist, then Enter"
+          value={feat}
+          hint="Verse 1 for the first artist's crowd, verse 2 for this one's, and the chorus on what both crowds share (Qloo's compare)."
+          onChange={setFeat}
+        />
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <CircleAlert aria-hidden />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-2">
         <Label htmlFor="story">What&apos;s it about? (optional)</Label>

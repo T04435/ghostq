@@ -6,13 +6,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SavedSong } from "@/components/saved-song";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
+import { songArtist } from "@/lib/song-sheet";
 import { getSong, publicSong } from "@/server/store/songs";
 
 export async function generateMetadata({ params }: PageProps<"/song/[id]">): Promise<Metadata> {
   const song = await getSong((await params).id);
   if (!song) return { title: "GhostQ" };
-  const title = `${song.sheet.title} · GhostQ`;
-  const description = `${draftLabel(song.sheet.artist)}. Written for ${song.sheet.artist}'s crowd: ${describeCrowd(song.sheet.crowd)}.`;
+  const title = `${song.sheet.title} (${songArtist(song.sheet)}) · GhostQ`;
+  const { sheet } = song;
+  const crowds = sheet.featuring ? `${sheet.artist}'s and ${sheet.featuring.artist}'s crowds` : `${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}`;
+  const description = `${draftLabel(sheet.artist, sheet.featuring?.artist)}. Written for ${crowds}.`;
   return { title, description, openGraph: { title, description, type: "music.song", siteName: "GhostQ" }, twitter: { card: "summary", title, description } };
 }
 
@@ -34,7 +37,7 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   return (
     <div className="grid gap-6">
       <p className="text-sm text-muted-foreground">
-        Written by GhostQ for {song.sheet.artist}&apos;s crowd{song.brief.story ? `, about "${song.brief.story}"` : ""}.{" "}
+        Written by GhostQ for {song.sheet.featuring ? `${song.sheet.artist}'s and ${song.sheet.featuring.artist}'s crowds` : `${song.sheet.artist}'s crowd`}{song.brief.story ? `, about "${song.brief.story}"` : ""}.{" "}
         <Link href="/" className="underline">
           Write your own
         </Link>

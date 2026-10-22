@@ -179,11 +179,12 @@ export async function takeLyria(): Promise<Refusal | null> {
 }
 
 /** Whether today's Qloo budget (the judging one on judging days) has room for a run. Calls are added after the run. */
-export async function checkQloo(): Promise<Refusal | null> {
+/** `runs`: how many runs' worth of Qloo calls must be left (a CollabQ reads two crowds, so it reserves two). */
+export async function checkQloo(runs = 1): Promise<Refusal | null> {
   const b = bucket("qloo", DAY);
   const used = await counter().get(b.name);
   const max = (await limitsOff()) ? limits().qlooPerDayJudging : limits().qlooPerDay;
-  return used + limits().qlooPerRun <= max ? null : refusal("GhostQ has used today's Qloo research budget. New songs come back tomorrow (UTC).", b.expires);
+  return used + limits().qlooPerRun * runs <= max ? null : refusal("GhostQ has used today's Qloo research budget. New songs come back tomorrow (UTC).", b.expires);
 }
 
 export async function addQlooCalls(calls: number): Promise<void> {

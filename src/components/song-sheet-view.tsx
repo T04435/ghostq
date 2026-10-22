@@ -17,10 +17,15 @@ import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/voc
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { Signal } from "@/lib/signals";
-import { sheetToMarkdown, type SongSheet } from "@/lib/song-sheet";
+import { sheetToMarkdown, songArtist, type SongSheet } from "@/lib/song-sheet";
 
 // AI Elements' Audio Player, browser-only (its media-chrome elements can't hydrate from server HTML).
 const SongAudio = dynamic(() => import("@/components/song-audio"), { ssr: false, loading: () => <Skeleton className="h-10 w-full" /> });
+
+/** CollabQ: whose crowd a signal came from. */
+function sideLabel(sheet: SongSheet, side: NonNullable<Signal["side"]>): string {
+  return side === "shared" ? "Shared" : side === "A" ? sheet.artist : (sheet.featuring?.artist ?? "B");
+}
 
 const KIND_LABEL: Record<Signal["kind"], string> = {
   theme: "Theme",
@@ -91,10 +96,11 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
   return (
     <Card>
       <CardHeader>
-        <p className="text-xs font-medium text-muted-foreground">{draftLabel(sheet.artist)}</p>
+        <p className="text-xs font-medium text-muted-foreground">{draftLabel(sheet.artist, sheet.featuring?.artist)}</p>
+        {sheet.featuring && <p className="text-sm font-medium">{songArtist(sheet)}</p>}
         <CardTitle className="text-2xl">{sheet.title}</CardTitle>
         <CardDescription>
-          For {sheet.artist}&apos;s crowd: {describeCrowd(sheet.crowd)}. {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
+          {sheet.featuring ? `Verse 1 for ${sheet.artist}'s crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${sheet.featuring.artist}'s (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.` : `For ${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}.`} {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
         </CardDescription>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <Button variant="outline" size="sm" onClick={copy}>
@@ -244,6 +250,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
                 <span>
                   {KIND_LABEL[s.kind]}: <strong>{s.label}</strong>
                 </span>
+                {s.side && <Badge variant={s.side === "shared" ? "default" : "secondary"}>{sideLabel(sheet, s.side)}</Badge>}
                 <span className="text-muted-foreground">
                   {s.source}
                   {s.value !== null ? ` · ${s.value}` : ""}

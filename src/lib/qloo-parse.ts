@@ -114,6 +114,46 @@ export function parseTags(json: unknown): QlooTag[] {
     .filter((t) => t.id);
 }
 
+/** A compared tag: its kind (theme, style, genre…), and how strongly both crowds share it, or one crowd's count. */
+export type ComparedTag = { id: string; name: string; kind: "theme" | "style" | "genre" | "other"; score: number | null };
+export type Comparison = { shared: ComparedTag[]; onlyA: ComparedTag[]; onlyB: ComparedTag[] };
+
+const comparedTag = z.object({
+  tag_id: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string(),
+  subtype: z.string().optional(),
+  query: z.object({ score: z.number().optional(), count: z.union([z.string(), z.number()]).optional() }).partial().optional(),
+});
+
+function tagKind(subtype = ""): ComparedTag["kind"] {
+  if (subtype.startsWith("urn:tag:theme")) return "theme";
+  if (subtype.startsWith("urn:tag:style")) return "style";
+  if (subtype.startsWith("urn:tag:genre")) return "genre";
+  return "other";
+}
+
+/**
+ * GET /v2/analysis/compare with one artist a side, filter.type=urn:tag (probed 23 Oct, Lorde vs Troye Sivan: 200,
+ * 48 KB). `tags` is what both crowds share, each with a similarity score; `a` and `b` are what only one side has,
+ * each with a count (a string).
+ */
+export function parseCompare(json: unknown): Comparison {
+  const list = z.array(comparedTag).default([]);
+  const parsed = z.object({ results: z.object({ tags: list, a: list, b: list }) }).parse(json);
+  const map = (t: z.infer<typeof comparedTag>, score: "score" | "count"): ComparedTag => ({
+    id: t.tag_id ?? t.id ?? "",
+    name: t.name.trim(),
+    kind: tagKind(t.subtype),
+    score: score === "score" ? (t.query?.score ?? null) : t.query?.count !== undefined ? Number(t.query.count) : null,
+  });
+  return {
+    shared: parsed.results.tags.map((t) => map(t, "score")).filter((t) => t.id),
+    onlyA: parsed.results.a.map((t) => map(t, "count")).filter((t) => t.id),
+    onlyB: parsed.results.b.map((t) => map(t, "count")).filter((t) => t.id),
+  };
+}
+
 export type Demographics = { age: Record<string, number>; gender: Record<string, number> };
 
 /** GET /v2/insights?filter.type=urn:demographics. Small acts come back empty (probe 3b). */
