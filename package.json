@@ -11,7 +11,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "prepare": "simple-git-hooks || true",
     "commitlint": "commitlint",
-    "release-notes": "git-cliff --unreleased --tag \"${NEXT_TAG:?set NEXT_TAG, e.g. NEXT_TAG=v1.1.0}\""
+    "release-notes": "git-cliff --unreleased --tag \"${NEXT_TAG:?set NEXT_TAG, e.g. NEXT_TAG=v1.1.0}\"",
+    "check:version-tag": "node scripts/check-version-tag.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.147",
