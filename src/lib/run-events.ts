@@ -5,7 +5,8 @@ import type { SongSheet } from "./song-sheet";
 /** One line of the NDJSON stream from POST /api/write. */
 export type RunEvent =
   | { type: "note"; text: string }
-  | { type: "step-start"; id: string; tool: string; label: string; input: unknown }
+  /** `who`/`artist`: in a CollabQ, whose crowd the step is for (the page groups both artists' calls into one step). */
+  | { type: "step-start"; id: string; tool: string; label: string; input: unknown; who?: "A" | "B"; artist?: string }
   /** `raw` is Qloo's response: kept in the store with the song, never sent to a browser (see publicEvent). */
   | { type: "step-end"; id: string; ok: boolean; summary: string; signals: Signal[]; raw?: unknown }
   /** `who`: CollabQ's artist A (the default) or B (the "feat." artist). */

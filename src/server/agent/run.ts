@@ -101,13 +101,20 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
   }
 }
 
+/** CollabQ: tags a step with the artist it's for. Nothing for a solo run. */
+function whose(state: RunState, key: "A" | "B", name?: string): { who?: "A" | "B"; artist?: string } {
+  if (!state.collab) return {};
+  const x = state.artist(key);
+  return { who: key, artist: name ?? x.act?.name ?? x.name };
+}
+
 async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boolean> {
   const answers = x.answers;
   const missing: AskField[] = [];
   const side = state.side(x.key);
   const sfx = x.key === "B" ? "-B" : "";
   const findLabel = state.collab ? `Find ${x.name} on Qloo` : TOOL_LABELS.find_artist;
-  emit({ type: "step-start", id: `find-artist${sfx}`, tool: "find_artist", label: findLabel, input: { name: x.name, spotifyId: x.spotifyId ?? null } });
+  emit({ type: "step-start", id: `find-artist${sfx}`, tool: "find_artist", label: findLabel, input: { name: x.name, spotifyId: x.spotifyId ?? null }, ...whose(state, x.key, x.name) });
   const match = pickArtist(await searchArtist(x.name, state.onCall), x.name, x.spotifyId);
   if (match) {
     x.act = match;
@@ -151,7 +158,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   }
 
   const artistName = x.act?.name ?? x.name;
-  emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName } });
+  emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
   const [{ crowd: read, missing: crowdMissing }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall), artistProfile(x.act?.musicbrainzId ?? null)]);
   x.vocals = profile.voices;
@@ -266,7 +273,7 @@ async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal):
       case "tool-call":
         if (part.invalid) break;
         for (const key of [...buffers.keys()]) flush(key);
-        emit({ type: "step-start", id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, input: part.input });
+        emit({ type: "step-start", id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, input: part.input, ...whose(state, (part.input as { artist?: "A" | "B" } | null)?.artist ?? "A") });
         break;
       case "tool-result": {
         const out = part.output as ToolOutput;
