@@ -2,6 +2,7 @@
 
 import { CircleAlert, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BriefForm } from "@/components/brief-form";
 import { applyStepEvent, RunSteps, type StepItem } from "@/components/run-steps";
@@ -10,7 +11,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AskCard } from "@/components/ask-card";
 import { CrowdCard } from "@/components/crowd-card";
-import type { Brief, Crowd } from "@/lib/brief";
+import { RemixCompare } from "@/components/remix-compare";
+import { RemixForm } from "@/components/remix-form";
+import { describeAges, type Brief, type Crowd, type Remix } from "@/lib/brief";
+import { describePlace } from "@/lib/place";
 import { loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
@@ -21,7 +25,13 @@ function withAnswers(brief: Brief, who: "A" | "B" | undefined, answers: NonNulla
   return { ...brief, answers: { ...brief.answers, ...answers } };
 }
 
-export function GhostQApp() {
+/** `remixOf`: RemixQ mode, on /remix/<id>: the form asks for the new crowd, and the result shows next to the original. */
+/** "18–24 in Mexico City": the remix's new crowd, as picked (what's left out stays Qloo's). */
+function describeRemix(r: Remix): string {
+  return [r.ages ? describeAges(r.ages) : null, r.place ? `in ${describePlace(r.place)}` : null].filter(Boolean).join(" ");
+}
+
+export function GhostQApp({ remixOf }: { remixOf?: SongSheet } = {}) {
   const [initial, setInitial] = useState<Brief | undefined>();
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<StepItem[]>([]);
@@ -40,8 +50,10 @@ export function GhostQApp() {
   // Songs already written for the current brief, so "Write another" asks for a clearly different one.
   const written = useRef<string[]>([]);
   const abort = useRef<AbortController | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
+    if (remixOf) return () => abort.current?.abort();
     const last = loadLastRun();
     if (last) {
       // Restoring from this device's storage after hydration.
@@ -55,7 +67,7 @@ export function GhostQApp() {
       }
     }
     return () => abort.current?.abort();
-  }, []);
+  }, [remixOf]);
 
   function apply(event: RunEvent, n: number) {
     setItems((xs) => applyStepEvent(xs, event, n));
@@ -82,6 +94,13 @@ export function GhostQApp() {
     });
   }
 
+  /** RemixQ: the brief is the original's artist plus the new crowd; the server reads the rest from the saved song. */
+  function remix(r: Omit<Remix, "of">) {
+    if (!remixOf?.id) return;
+    written.current = [];
+    void run({ artist: remixOf.artist, remix: { of: remixOf.id, ...r } });
+  }
+
   function writeAnother() {
     if (!current.current) return;
     void run({ ...current.current, avoid: written.current });
@@ -89,6 +108,10 @@ export function GhostQApp() {
 
   function newArtist() {
     abort.current?.abort();
+    if (remixOf) {
+      router.push("/");
+      return;
+    }
     current.current = null;
     written.current = [];
     setInitial({ artist: "", story: "" });
@@ -151,10 +174,13 @@ export function GhostQApp() {
 
   return (
     <div className="grid gap-10">
-      {folded && current.current ? (
+      {remixOf && !(folded && current.current) ? (
+        <RemixForm original={remixOf} busy={busy} onSubmit={remix} />
+      ) : folded && current.current ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-4 py-3 text-sm">
           <span className="min-w-0">
-            Writing for <strong>{current.current.artist}</strong>
+            {current.current.remix ? "Remixing" : "Writing for"} <strong>{current.current.remix ? remixOf?.title : current.current.artist}</strong>
+            {current.current.remix ? <span className="text-muted-foreground"> · for {describeRemix(current.current.remix)}</span> : null}
             {current.current.feat ? (
               <>
                 {" "}
@@ -214,19 +240,27 @@ export function GhostQApp() {
         </Alert>
       )}
 
+      {sheet && remixOf && sheet.remixOf && <RemixCompare original={remixOf} remix={sheet} />}
+
       {sheet && <SongSheetView sheet={sheet} />}
 
       {sheet && !busy && (
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" size="lg" onClick={writeAnother}>
             <Sparkles aria-hidden />
-            Write another
+            {remixOf ? "Remix again" : "Write another"}
           </Button>
           <Button type="button" size="lg" variant="outline" onClick={newArtist}>
             <RotateCcw aria-hidden />
             New artist
           </Button>
-          <span className="text-sm text-muted-foreground">Write another keeps {sheet.featuring ? `both crowds` : `${sheet.artist}'s crowd`} and writes a different song.</span>
+          {remixOf && (
+            <Button type="button" size="lg" variant="outline" onClick={() => setFolded(false)}>
+              <PenLine aria-hidden />
+              Another crowd
+            </Button>
+          )}
+          <span className="text-sm text-muted-foreground">{remixOf ? "Remix again writes another take for the same crowd." : `Write another keeps ${sheet.featuring ? "both crowds" : `${sheet.artist}'s crowd`} and writes a different song.`}</span>
         </div>
       )}
     </div>

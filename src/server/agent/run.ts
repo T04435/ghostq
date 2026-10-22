@@ -12,7 +12,7 @@ import type { VocalMatch } from "@/lib/voice";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { readCrowd } from "@/server/crowd";
 import { artistProfile } from "@/server/musicbrainz";
-import { newSongId, saveSong } from "@/server/store/songs";
+import { getSong, newSongId, saveSong } from "@/server/store/songs";
 import { compareArtists, genresFromWords, searchArtist } from "@/server/qloo/api";
 import { QlooError } from "@/server/qloo/client";
 import { ArtistRun, createTools, RunState, type ToolOutput } from "./tools";
@@ -47,13 +47,32 @@ const WRITER_RULES = `Rules for the song:
 type Emit = (event: RunEvent) => void;
 
 /** One run. `onQlooCalls` gets the number of live (uncached) Qloo calls it made, however it ended: the daily budget. */
-export async function runGhostQ(brief: Brief, send: Emit, abortSignal?: AbortSignal, onQlooCalls?: (calls: number) => Promise<void>): Promise<void> {
+export async function runGhostQ(given: Brief, send: Emit, abortSignal?: AbortSignal, onQlooCalls?: (calls: number) => Promise<void>): Promise<void> {
+  const remix = given.remix ? await remixBrief(given) : null;
+  if (remix && "error" in remix) {
+    send({ type: "error", message: remix.error });
+    return;
+  }
+  const brief = remix?.brief ?? given;
   const state = new RunState(brief);
+  state.original = remix?.original ?? null;
   try {
     await run(state, brief, send, abortSignal);
   } finally {
     await onQlooCalls?.(state.qlooCalls).catch((e) => console.error("qloo budget count failed", e instanceof Error ? e.message : e));
   }
+}
+
+/**
+ * RemixQ: the brief comes from the saved song (its artist, Spotify pick, story and answers), plus the new crowd. The
+ * client sends only the song's id, so a remix can't be pointed at an artist or story the song wasn't written for.
+ */
+async function remixBrief(given: Brief): Promise<{ brief: Brief; original: SongSheet } | { error: string }> {
+  const saved = await getSong(given.remix!.of);
+  if (!saved) return { error: "That song isn't saved any more, so it can't be remixed." };
+  if (saved.sheet.featuring) return { error: "CollabQ songs can't be remixed yet. Remix a solo song." };
+  const { artist, spotifyId, story, answers } = saved.brief;
+  return { brief: { artist, spotifyId, story, answers, remix: given.remix }, original: { ...saved.sheet, id: saved.id } };
 }
 
 async function run(state: RunState, brief: Brief, send: Emit, abortSignal?: AbortSignal): Promise<void> {
@@ -160,7 +179,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const artistName = x.act?.name ?? x.name;
   emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
-  const [{ crowd: read, missing: crowdMissing }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall), artistProfile(x.act?.musicbrainzId ?? null)]);
+  const [{ crowd: read, missing: crowdMissing }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
   x.vocals = profile.voices;
   const home: Home | null = profile.home ?? (x.homeFromTags ? { name: x.homeFromTags, country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags), source: "qloo" } : null);
   const languageFrom = home?.countryCode ? "home" : "city";
@@ -180,7 +199,8 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? `Qloo insights: ${artistName}'s fans (demographics)` : "Your answer", a.skew, side)),
   ];
   const yours = [crowd.from.place === "you" && "the city", crowd.from.ages === "you" && "the ages"].filter(Boolean).join(" and ");
-  emit({ type: "step-end", id: `read-crowd${sfx}`, ok: true, summary: `Writing as ${artistName}${home ? ` (from ${describeHome(home)})` : ""} for ${describeCrowd(crowd)}, in ${crowd.language}.${yours ? ` Qloo had no data on ${yours}, so those are your answers.` : ""}`, signals: crowdSignals, raw: crowd });
+  const picked = [crowd.from.place === "remix" && "the city", crowd.from.ages === "remix" && "the ages"].filter(Boolean).join(" and ");
+  emit({ type: "step-end", id: `read-crowd${sfx}`, ok: true, summary: `Writing as ${artistName}${home ? ` (from ${describeHome(home)})` : ""} for ${describeCrowd(crowd)}, in ${crowd.language}.${yours ? ` Qloo had no data on ${yours}, so those are your answers.` : ""}${picked ? ` Remix: ${picked} picked by you; the rest is Qloo's.` : ""}`, signals: crowdSignals, raw: crowd });
   emit({ type: "crowd", artist: artistName, crowd, ...(state.collab ? { who: x.key } : {}) });
   return true;
 }
@@ -221,6 +241,13 @@ function askMessage(artist: string, fields: AskField[]): string {
   return `${lead} To carry on, ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}.`;
 }
 
+/** RemixQ's addition to the agent's prompt: the song exists; research what the NEW crowd calls for. */
+function remixResearch(state: RunState): string {
+  const o = state.original;
+  if (!o) return "";
+  return `\nThis is a RemixQ: "${o.title}" was written for ${describeCrowd(o.crowd)}; now rewrite it for the crowd above. Research what THIS crowd cares about (crowd_tags kind "theme" first, then imagery), so the writer can change the lines it calls for. The artist's own sound stays.`;
+}
+
 /** CollabQ's addition to the agent's prompt: both artists, and the artist input on the tools. */
 function collabBrief(state: RunState): string {
   if (!state.collab) return "";
@@ -246,7 +273,7 @@ async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal):
     prepareStep: ({ stepNumber }) => (stepNumber >= maxSteps - 1 ? { activeTools: ["ready_to_write"] } : {}),
   });
   const result = await agent.stream({
-    prompt: `${describeBrief(state.brief, state.crowdInfo!)}\nQloo match: ${state.act?.name ?? `none; their sound in the user's words: "${state.brief.answers?.sound ?? ""}"`}. Genre signals so far: ${state.signals.all().filter((x) => x.kind === "genre").map(signalLine).join("; ") || "none"}.${collabBrief(state)}\nResearch ${state.collab ? "both crowds" : "this crowd"} and choose the signals for the song.${state.brief.avoid?.length ? `\nSongs already written for this brief (choose signals for a clearly different angle): ${state.brief.avoid.join(" | ")}` : ""}`,
+    prompt: `${describeBrief(state.brief, state.crowdInfo!)}\nQloo match: ${state.act?.name ?? `none; their sound in the user's words: "${state.brief.answers?.sound ?? ""}"`}. Genre signals so far: ${state.signals.all().filter((x) => x.kind === "genre").map(signalLine).join("; ") || "none"}.${collabBrief(state)}${remixResearch(state)}\nResearch ${state.collab ? "both crowds" : "this crowd"} and choose the signals for the song.${state.brief.avoid?.length ? `\nSongs already written for this brief (choose signals for a clearly different angle): ${state.brief.avoid.join(" | ")}` : ""}`,
     abortSignal: AbortSignal.any([AbortSignal.timeout(LIMITS.agentTimeoutMs), ...(abortSignal ? [abortSignal] : [])]),
   });
   // Notes stream as whole blocks: the reasoning summary and the sentence before each call.
@@ -338,6 +365,20 @@ function collabRules(state: RunState): string {
 - The genre blends both artists' own genre and style signals.`;
 }
 
+/** RemixQ's rules for the writer: the original song, and what to keep (structure, hook) and change (what the new crowd calls for). */
+function remixRules(state: RunState): string {
+  const o = state.original;
+  if (!o) return "";
+  const song = o.sections.map((s) => [`[${s.name}]`, ...s.lines.map((l) => `${l.text}    (${l.chords})`)].join("\n")).join("\n\n");
+  return `This is a RemixQ of "${o.title}", first written for ${describeCrowd(o.crowd)}. Rewrite it for the crowd above.
+- Keep: the title "${o.title}", the key, the tempo, the same sections in the same order with the same number of lines, and the chorus's hook line (its first line). The artist's voice and home stay too.
+- Change for the new crowd: rewrite the verses, pre-chorus and bridge around the new crowd's signals (its themes, its city, its age, its films, books and lifestyles). A changed line gets new images and a new point, not synonyms. Places and details that belong to the ORIGINAL crowd's city move to the new crowd's world; places from the artist's own home may stay.
+- At least two thirds of the verse and bridge lines change. The chorus keeps its hook line; its other lines change where the new crowd calls for it.
+- Every line, kept or changed, cites ids from the signal list below (the original's ids don't carry over). Changed lines cite the new crowd's signals.
+The original song:
+${song}`;
+}
+
 function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems: Problem[] }): string {
   const all = state.signals.all();
   const chosenIds = new Set(state.chosen?.signalIds ?? all.map((s) => s.id));
@@ -348,11 +389,14 @@ function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems:
     state.collab ? `Featuring: ${describeBrief({ artist: state.artist("B").name }, state.artist("B").crowdInfo!)}` : "",
     state.chosen ? `The research agent's angle: ${state.chosen.angle}` : "",
     state.brief.avoid?.length
-      ? `Already written for this brief, so write something clearly different (a new title, hook, angle and images): ${state.brief.avoid.join(" | ")}`
+      ? state.original
+        ? `Remixes already written for this crowd, so take a different angle and images (same title and hook): ${state.brief.avoid.join(" | ")}`
+        : `Already written for this brief, so write something clearly different (a new title, hook, angle and images): ${state.brief.avoid.join(" | ")}`
       : "",
     "",
     voicesLine(state),
     collabRules(state),
+    remixRules(state),
     "",
     "Chosen Qloo signals (build the song on these):",
     ...chosen.map(signalLine),
@@ -395,6 +439,7 @@ async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Pr
     artist: state.act?.name ?? state.brief.artist,
     crowd: state.crowdInfo!,
     ...(state.collab ? { featuring: { artist: state.artist("B").act?.name ?? state.artist("B").name, crowd: state.artist("B").crowdInfo! } } : {}),
+    ...(state.original ? { title: state.original.title, remixOf: { id: state.original.id!, title: state.original.title, crowd: state.original.crowd } } : {}),
     language: songLanguage(state),
     // What the page and the singer need: every cited signal, the chosen ones, and all the artist's genre and style
     // tags (the singing prompt's genre comes from them; before 23 Oct only line receipts were kept, so it was lost).

@@ -39,6 +39,8 @@ export const briefSchema = z.object({
    * CollabQ: "A feat. B". The featured artist, picked the same way, with its own answers when Qloo lacks data on it.
    * Verse 1 is A's crowd, verse 2 B's, the chorus what both crowds share.
    */
+  /** RemixQ: rewrite a saved song for another crowd (see remixSchema). */
+  remix: z.lazy(() => remixSchema).optional(),
   feat: z
     .object({
       artist: z.string().trim().min(1).max(80),
@@ -48,7 +50,23 @@ export const briefSchema = z.object({
     .optional(),
 });
 export type Brief = z.infer<typeof briefSchema>;
+
+/**
+ * RemixQ: the same song for another crowd. The server reads the original song (artist, story, sheet) from the store,
+ * so the client sends only its id and the new crowd: a city, ages, or both. What isn't given stays Qloo's.
+ */
+export const remixSchema = z
+  .object({
+    of: z.string().regex(/^[a-z0-9-]{6,48}$/),
+    place: placeSchema.optional(),
+    ages: z.array(z.enum(Object.keys(AGE_BANDS) as [AgeBand, ...AgeBand[]])).min(1).max(3).optional(),
+  })
+  .refine((r) => r.place || r.ages, "Pick a city or ages for the remix");
+export type Remix = z.infer<typeof remixSchema>;
 export type AskField = "sound" | "place" | "ages";
+
+/** Qloo's data on the fans, the user's answer when Qloo had none, or the crowd picked for a RemixQ. */
+export type CrowdSource = "qloo" | "you" | "remix";
 
 /**
  * Who the song is for, and as whom. The crowd (city, ages) sets the themes; the artist's home sets the voice and the
@@ -56,7 +74,7 @@ export type AskField = "sound" | "place" | "ages";
  */
 export type Crowd = {
   /** Where each value came from: Qloo's data on the fans, or the user's answer when Qloo had none. */
-  from: { place: "qloo" | "you"; ages: "qloo" | "you" };
+  from: { place: CrowdSource; ages: CrowdSource };
   place: Place | null;
   /** The fans' top area's rank among Qloo's world heatmap cells, e.g. 3 of 3,136. */
   placeRank: { rank: number; of: number } | null;

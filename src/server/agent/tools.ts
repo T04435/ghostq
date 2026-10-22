@@ -2,6 +2,7 @@ import "server-only";
 import { tool } from "ai";
 import { z, ZodError } from "zod";
 import { describeCrowd, type Brief, type Crowd } from "@/lib/brief";
+import type { SongSheet } from "@/lib/song-sheet";
 import type { VocalMatch } from "@/lib/voice";
 import { isMusicGenre, type QlooEntity } from "@/lib/qloo-parse";
 import { SignalRegistry, type Side, type Signal } from "@/lib/signals";
@@ -40,6 +41,8 @@ export class RunState {
   readonly artists: ArtistRun[];
   readonly artistNames = new Set<string>();
   chosen: { signalIds: string[]; angle: string } | null = null;
+  /** RemixQ: the saved song being rewritten for another crowd (read from the store, never from the client). */
+  original: SongSheet | null = null;
   qlooCalls = 0;
   qlooCached = 0;
 

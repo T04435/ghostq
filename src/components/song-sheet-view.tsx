@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleAlert, Copy, Download, Link2, Mic, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, Link2, Mic, Shuffle, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -99,6 +99,15 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
         <p className="text-xs font-medium text-muted-foreground">{draftLabel(sheet.artist, sheet.featuring?.artist)}</p>
         {sheet.featuring && <p className="text-sm font-medium">{songArtist(sheet)}</p>}
         <CardTitle className="text-2xl">{sheet.title}</CardTitle>
+        {sheet.remixOf && (
+          <p className="text-sm text-muted-foreground">
+            RemixQ of{" "}
+            <Link href={`/song/${sheet.remixOf.id}`} className="underline">
+              the original
+            </Link>
+            , written for {describeCrowd(sheet.remixOf.crowd)}.
+          </p>
+        )}
         <CardDescription>
           {sheet.featuring ? `Verse 1 for ${sheet.artist}'s crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${sheet.featuring.artist}'s (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.` : `For ${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}.`} {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
         </CardDescription>
@@ -115,6 +124,14 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
             <Button variant="outline" size="sm" onClick={copyLink}>
               {linkCopied ? <Check aria-hidden /> : <Link2 aria-hidden />}
               {linkCopied ? "Link copied" : "Copy share link"}
+            </Button>
+          )}
+          {sheet.id && !sheet.featuring && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/remix/${sheet.id}`}>
+                <Shuffle aria-hidden />
+                Remix for another crowd
+              </Link>
             </Button>
           )}
         </div>

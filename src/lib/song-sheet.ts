@@ -47,6 +47,8 @@ export type SongSheet = WrittenSong & {
   crowd: Crowd;
   /** CollabQ: the featured artist (B) and their crowd. Verse 1 is for A's crowd, verse 2 for B's, the chorus for both. */
   featuring?: { artist: string; crowd: Crowd };
+  /** RemixQ: the song this one remixes for another crowd. */
+  remixOf?: { id: string; title: string; crowd: Crowd };
   /** The voices that match the artist (how many, which gender), for singing. From data, never the model. */
   vocals: VocalMatch;
   language: string;
@@ -80,6 +82,7 @@ export function normalizeSheet(raw: SongSheet): SongSheet {
     ...sheet,
     crowd: normalizeCrowd(sheet.crowd),
     ...(sheet.featuring ? { featuring: { ...sheet.featuring, crowd: normalizeCrowd(sheet.featuring.crowd) } } : {}),
+    ...(sheet.remixOf ? { remixOf: { ...sheet.remixOf, crowd: normalizeCrowd(sheet.remixOf.crowd) } } : {}),
     vocals: { voices: vocals.voices, source: vocals.source },
     genre: sheet.genre ?? tags.map((s) => s.label.trim()).join(", "),
     vocalDirection: sheet.vocalDirection ?? legacyDirection(vocals.delivery, tags.map((s) => s.label)),
