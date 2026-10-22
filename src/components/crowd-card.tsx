@@ -3,16 +3,17 @@ import { AGE_BANDS, describeHome, normalizeCrowd, type Crowd } from "@/lib/brief
 import { describePlace } from "@/lib/place";
 
 /** As whom (the artist's home sets the voice) and for whom (the crowd sets the themes). Read-only: it isn't an input. */
-export function CrowdCard({ artist, crowd: raw }: { artist: string; crowd: Crowd }) {
+export function CrowdCard({ artist, crowd: raw, featured }: { artist: string; crowd: Crowd; featured?: boolean }) {
   const crowd = normalizeCrowd(raw);
   const fromQloo = crowd.from.place === "qloo" && crowd.from.ages === "qloo";
   return (
     <div className="grid gap-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-medium">
-          Writing as {artist}
+          {featured ? "Featuring" : "Writing as"} {artist}
           {crowd.home ? ` (from ${describeHome(crowd.home)})` : ""} for their fans{crowd.place ? ` around ${crowd.place.name}` : ""}
         </h3>
+        {featured && <Badge>feat. · verse 2</Badge>}
         <Badge variant="secondary">{fromQloo ? "From Qloo" : "Qloo and your answers"}</Badge>
       </div>
       <dl className="grid gap-3 text-sm sm:grid-cols-4">

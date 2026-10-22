@@ -8,9 +8,10 @@ export type RunEvent =
   | { type: "step-start"; id: string; tool: string; label: string; input: unknown }
   /** `raw` is Qloo's response: kept in the store with the song, never sent to a browser (see publicEvent). */
   | { type: "step-end"; id: string; ok: boolean; summary: string; signals: Signal[]; raw?: unknown }
-  | { type: "crowd"; artist: string; crowd: Crowd }
+  /** `who`: CollabQ's artist A (the default) or B (the "feat." artist). */
+  | { type: "crowd"; artist: string; crowd: Crowd; who?: "A" | "B" }
   /** The run stopped: Qloo has no data for these. The page asks, then sends the brief again with the answers. */
-  | { type: "ask"; fields: AskField[]; artist: string; message: string }
+  | { type: "ask"; fields: AskField[]; artist: string; message: string; who?: "A" | "B" }
   | { type: "writing"; signalCount: number }
   | { type: "sheet"; sheet: SongSheet }
   /** `budget`: a daily budget or a rate limit was hit; the page points to the Library, whose songs always play. */
@@ -31,6 +32,7 @@ export function publicEvent(event: RunEvent): RunEvent {
 export const TOOL_LABELS: Record<string, string> = {
   find_artist: "Find the artist on Qloo",
   read_crowd: "Read the artist's crowd",
+  compare_crowds: "What their crowds share",
   sound_from_words: "Turn words into genres",
   sound_alikes: "Who you sound like",
   artists_in_genres: "Artists in your genres, ranked for this crowd",

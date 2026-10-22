@@ -45,6 +45,8 @@ export type SongSheet = WrittenSong & {
   artist: string;
   /** The crowd it was written for, read from Qloo. */
   crowd: Crowd;
+  /** CollabQ: the featured artist (B) and their crowd. Verse 1 is for A's crowd, verse 2 for B's, the chorus for both. */
+  featuring?: { artist: string; crowd: Crowd };
   /** The voices that match the artist (how many, which gender), for singing. From data, never the model. */
   vocals: VocalMatch;
   language: string;
@@ -54,14 +56,14 @@ export type SongSheet = WrittenSong & {
 };
 
 export function sheetToMarkdown(sheet: SongSheet): string {
-  const out = [`# ${sheet.title}`, "", `${sheet.key} · ${sheet.tempo} BPM · ${sheet.language}`, "", sheet.feel, ""];
+  const out = [`# ${sheet.title}`, "", songArtist(sheet), "", `${sheet.key} · ${sheet.tempo} BPM · ${sheet.language}`, "", sheet.feel, ""];
   for (const section of sheet.sections) {
     out.push(`## ${section.name}`, `_Melody: ${section.melody}_`, "");
     for (const line of section.lines) out.push(`    ${line.chords}`, `${line.text}  [${line.signalIds.join(", ")}]`);
     out.push("");
   }
   out.push("## Genre", sheet.genre, "", "## Vocal direction", sheet.vocalDirection, "", "## Production brief", sheet.productionBrief, "", "## Why it fits", sheet.angle, "", "## Qloo signals");
-  for (const s of sheet.signals) out.push(`- ${s.id}: ${s.label} (${s.kind}, ${s.source}${s.value !== null ? `, ${s.value}` : ""})`);
+  for (const s of sheet.signals) out.push(`- ${s.id}: ${s.label} (${s.kind}, ${s.source}${s.side ? `, ${s.side === "shared" ? "shared" : s.side === "A" ? sheet.artist : (sheet.featuring?.artist ?? "B")}` : ""}${s.value !== null ? `, ${s.value}` : ""})`);
   return out.join("\n");
 }
 
@@ -77,8 +79,14 @@ export function normalizeSheet(raw: SongSheet): SongSheet {
   return {
     ...sheet,
     crowd: normalizeCrowd(sheet.crowd),
+    ...(sheet.featuring ? { featuring: { ...sheet.featuring, crowd: normalizeCrowd(sheet.featuring.crowd) } } : {}),
     vocals: { voices: vocals.voices, source: vocals.source },
     genre: sheet.genre ?? tags.map((s) => s.label.trim()).join(", "),
     vocalDirection: sheet.vocalDirection ?? legacyDirection(vocals.delivery, tags.map((s) => s.label)),
   };
+}
+
+/** The song's artist line: "Lorde", or "Lorde feat. Troye Sivan" for CollabQ. */
+export function songArtist(sheet: Pick<SongSheet, "artist" | "featuring">): string {
+  return sheet.featuring ? `${sheet.artist} feat. ${sheet.featuring.artist}` : sheet.artist;
 }

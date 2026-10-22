@@ -27,7 +27,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
 
   const options = useMemo(
     () => ({
-      artists: [...new Set(songs.map((s) => s.artist))].sort(),
+      artists: [...new Set(songs.flatMap((s) => (s.featuring ? [s.artist, s.featuring] : [s.artist])))].sort(),
       cities: [...new Set(songs.map((s) => s.crowd.place?.name).filter((p): p is string => Boolean(p)))].sort(),
       languages: [...new Set(songs.map((s) => s.language))].sort(),
     }),
@@ -38,10 +38,10 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
     const q = query.trim().toLowerCase();
     return songs.filter(
       (s) =>
-        (artist === ALL || s.artist === artist) &&
+        (artist === ALL || s.artist === artist || s.featuring === artist) &&
         (city === ALL || s.crowd.place?.name === city) &&
         (language === ALL || s.language === language) &&
-        (!q || [s.title, s.artist, s.story ?? ""].some((t) => t.toLowerCase().includes(q))),
+        (!q || [s.title, s.artist, s.featuring ?? "", s.story ?? ""].some((t) => t.toLowerCase().includes(q))),
     );
   }, [songs, query, artist, city, language]);
 
@@ -119,9 +119,9 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
                 </Link>
               </ItemTitle>
               <ItemDescription className="truncate">
-                {s.artist} · {describeCrowd(s.crowd)} · {s.language}
+                {s.featuring ? `${s.artist} feat. ${s.featuring}` : s.artist} · {describeCrowd(s.crowd)} · {s.language}
               </ItemDescription>
-              <p className="truncate text-xs text-muted-foreground">{draftLabel(s.artist)}</p>
+              <p className="truncate text-xs text-muted-foreground">{draftLabel(s.artist, s.featuring ?? undefined)}</p>
             </ItemContent>
             {!s.sung && (
               <ItemActions>

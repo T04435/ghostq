@@ -9,7 +9,11 @@ export type Signal = {
   source: string;
   /** Affinity, score or skew from Qloo, 0–1 or signed; null when Qloo gives none. */
   value: number | null;
+  /** CollabQ: which artist's crowd it came from, or "shared" when both crowds have it. Solo songs have none. */
+  side?: Side;
 };
+
+export type Side = "A" | "B" | "shared";
 
 const PREFIX: Record<SignalKind, string> = {
   theme: "T",
@@ -29,13 +33,18 @@ export class SignalRegistry {
   private readonly byKey = new Map<string, string>();
   private readonly counts = new Map<SignalKind, number>();
 
-  add(kind: SignalKind, label: string, source: string, value: number | null): Signal {
+  add(kind: SignalKind, label: string, source: string, value: number | null, side?: Side): Signal {
     const key = `${kind}:${label.toLowerCase()}`;
     const existing = this.byKey.get(key);
-    if (existing) return this.byId.get(existing)!;
+    if (existing) {
+      // Found for both artists' crowds: it's what they share.
+      const s = this.byId.get(existing)!;
+      if (side && s.side && s.side !== side) s.side = "shared";
+      return s;
+    }
     const n = (this.counts.get(kind) ?? 0) + 1;
     this.counts.set(kind, n);
-    const signal: Signal = { id: `${PREFIX[kind]}${n}`, kind, label, source, value: value === null ? null : Math.round(value * 100) / 100 };
+    const signal: Signal = { id: `${PREFIX[kind]}${n}`, kind, label, source, value: value === null ? null : Math.round(value * 100) / 100, ...(side ? { side } : {}) };
     this.byId.set(signal.id, signal);
     this.byKey.set(key, signal.id);
     return signal;
@@ -52,5 +61,6 @@ export class SignalRegistry {
 
 /** One line for the writer's prompt. */
 export function signalLine(s: Signal): string {
-  return `${s.id} [${s.kind}] ${s.label}${s.value !== null ? ` (${s.value})` : ""}, from ${s.source}`;
+  const side = s.side ? ` {${s.side === "shared" ? "shared" : `artist ${s.side}`}}` : "";
+  return `${s.id} [${s.kind}]${side} ${s.label}${s.value !== null ? ` (${s.value})` : ""}, from ${s.source}`;
 }

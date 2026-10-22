@@ -11,7 +11,7 @@ const IMITATION = /\b(sound(?:s|ing)? like|in the (?:style|voice|manner|vein) of
  * sending its own): GhostQ never names or imitates a real artist. Null when the song may be sung.
  */
 export function singProblem(sheet: SongSheet, vocals: VocalLine): string | null {
-  const names = [sheet.artist, ...sheet.signals.filter((s) => s.kind === "artist").map((s) => s.label)].map((n) => n.trim()).filter((n) => n.length >= 3);
+  const names = [sheet.artist, ...(sheet.featuring ? [sheet.featuring.artist] : []), ...sheet.signals.filter((s) => s.kind === "artist").map((s) => s.label)].map((n) => n.trim()).filter((n) => n.length >= 3);
   const lyrics = words(sheet.sections.flatMap((s) => s.lines.map((l) => l.text)).join(" "));
   if (names.some((n) => lyrics.includes(words(n)))) return "This song names a real artist in its lyrics, so GhostQ won't sing it.";
   const asked = [vocals.genre, vocals.kind === "vocals" ? vocals.direction : ""].join(" ");
