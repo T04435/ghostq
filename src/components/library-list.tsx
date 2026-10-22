@@ -1,11 +1,13 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
+import { Music, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { describeCrowd } from "@/lib/brief";
@@ -58,9 +60,20 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
 
   if (!songs.length) {
     return (
-      <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-        No songs yet. Every song written with GhostQ appears here, with the research behind it. <Link href="/" className="underline">Write the first one</Link>
-      </p>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Music aria-hidden />
+          </EmptyMedia>
+          <EmptyTitle>No songs yet</EmptyTitle>
+          <EmptyDescription>Every song written with GhostQ appears here, with the research behind it.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild>
+            <Link href="/">Write the first one</Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
     );
   }
 
@@ -84,9 +97,10 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
           </p>
         </div>
       )}
-      <ul className="grid gap-2">
+      <ItemGroup className="gap-2">
         {shown.map((s) => (
-          <li key={s.id} className="flex items-center gap-3 rounded-lg border p-3">
+          <Item key={s.id} variant="outline">
+            <ItemMedia>
             <Button
               type="button"
               variant={playing === s.id ? "default" : "outline"}
@@ -97,20 +111,34 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
             >
               {playing === s.id ? <Pause aria-hidden /> : <Play aria-hidden />}
             </Button>
-            <div className="grid min-w-0 flex-1 gap-0.5">
-              <Link href={`/song/${s.id}`} className="truncate font-medium hover:underline">
-                {s.title}
-              </Link>
-              <p className="truncate text-sm text-muted-foreground">
+            </ItemMedia>
+            <ItemContent className="min-w-0">
+              <ItemTitle className="max-w-full">
+                <Link href={`/song/${s.id}`} className="truncate hover:underline">
+                  {s.title}
+                </Link>
+              </ItemTitle>
+              <ItemDescription className="truncate">
                 {s.artist} · {describeCrowd(s.crowd)} · {s.language}
-              </p>
+              </ItemDescription>
               <p className="truncate text-xs text-muted-foreground">{draftLabel(s.artist)}</p>
-            </div>
-            {!s.sung && <Badge variant="secondary">Not sung yet</Badge>}
-          </li>
+            </ItemContent>
+            {!s.sung && (
+              <ItemActions>
+                <Badge variant="secondary">Not sung yet</Badge>
+              </ItemActions>
+            )}
+          </Item>
         ))}
-      </ul>
-      {shown.length === 0 && <p className="text-sm text-muted-foreground">No songs match. Clear a filter or the search.</p>}
+      </ItemGroup>
+      {shown.length === 0 && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No songs match</EmptyTitle>
+            <EmptyDescription>Clear a filter or the search.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
     </div>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { PenLine, RotateCcw, Sparkles } from "lucide-react";
+import { CircleAlert, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BriefForm } from "@/components/brief-form";
 import { applyStepEvent, RunSteps, type StepItem } from "@/components/run-steps";
 import { SongSheetView } from "@/components/song-sheet-view";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AskCard } from "@/components/ask-card";
 import { CrowdCard } from "@/components/crowd-card";
@@ -175,17 +176,22 @@ export function GhostQApp() {
       )}
 
       {error && (
-        <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">
-          {error.message}
-          {error.budget && (
-            <>
-              {" "}
-              <Link href="/library" className="font-medium underline">
-                Listen to the songs in the Library
-              </Link>
-            </>
-          )}
-        </p>
+        <Alert variant="destructive">
+          <CircleAlert aria-hidden />
+          <AlertDescription>
+            <p>
+              {error.message}
+              {error.budget && (
+                <>
+                  {" "}
+                  <Link href="/library" className="font-medium underline">
+                    Listen to the songs in the Library
+                  </Link>
+                </>
+              )}
+            </p>
+          </AlertDescription>
+        </Alert>
       )}
 
       {sheet && <SongSheetView sheet={sheet} />}

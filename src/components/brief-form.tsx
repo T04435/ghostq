@@ -1,8 +1,11 @@
 "use client";
 
-import { Loader2, Search } from "lucide-react";
+import { CircleAlert, Search } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,29 +104,36 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
           <div className="grid gap-1 rounded-md border p-2" role="region" aria-label="Spotify results">
             {matches.status === "searching" && (
               <p className="flex items-center gap-2 p-1 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Searching Spotify…
+                <Spinner /> Searching Spotify…
               </p>
             )}
             {matches.status === "error" && <p className="p-1 text-sm text-destructive">{matches.message}</p>}
             {matches.status === "done" && matches.artists.length === 0 && <p className="p-1 text-sm text-muted-foreground">No artist called &quot;{matches.query}&quot; on Spotify.</p>}
             {matches.artists.map((a) => (
-              <button key={a.id} type="button" onClick={() => pick(a)} className="flex items-center gap-3 rounded p-1 text-left hover:bg-accent focus-visible:bg-accent focus-visible:outline-none">
-                {a.image ? (
-                  // Spotify's CDN image; next/image would need a remote pattern for one 40 px avatar.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={a.image} alt="" width={40} height={40} className="size-10 rounded object-cover" />
-                ) : (
-                  <span className="size-10 rounded bg-muted" aria-hidden />
-                )}
-                <span className="text-sm font-medium">{a.name}</span>
-              </button>
+              <Item key={a.id} asChild size="sm" className="cursor-pointer text-left hover:bg-accent focus-visible:bg-accent">
+                <button type="button" onClick={() => pick(a)}>
+                  <ItemMedia variant="image">
+                    {a.image ? (
+                      // Spotify's CDN image; next/image would need a remote pattern for one 40 px avatar.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.image} alt="" width={40} height={40} className="size-10 rounded object-cover" />
+                    ) : (
+                      <span className="size-10 rounded bg-muted" aria-hidden />
+                    )}
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{a.name}</ItemTitle>
+                  </ItemContent>
+                </button>
+              </Item>
             ))}
           </div>
         )}
         {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
+<Alert variant="destructive">
+            <CircleAlert aria-hidden />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
       </div>
 

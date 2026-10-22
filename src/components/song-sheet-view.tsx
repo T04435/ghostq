@@ -1,18 +1,26 @@
 "use client";
 
-import { Check, Copy, Download, Link2, Loader2, Mic, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, Link2, Mic, TriangleAlert } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { InlineCitation, InlineCitationCard, InlineCitationCardBody, InlineCitationSource, InlineCitationText } from "@/components/ai-elements/inline-citation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { HoverCardTrigger } from "@/components/ui/hover-card";
 import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, type SongSheet } from "@/lib/song-sheet";
+
+// AI Elements' Audio Player, browser-only (its media-chrome elements can't hydrate from server HTML).
+const SongAudio = dynamic(() => import("@/components/song-audio"), { ssr: false, loading: () => <Skeleton className="h-10 w-full" /> });
 
 const KIND_LABEL: Record<Signal["kind"], string> = {
   theme: "Theme",
@@ -109,17 +117,15 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
             <VocalLinePicker sheet={sheet} draft={vocals} onChange={setVocals} />
             <div>
               <Button size="sm" onClick={sing} disabled={song.status === "singing" || !line}>
-                {song.status === "singing" ? <Loader2 className="animate-spin" aria-hidden /> : <Mic aria-hidden />}
-                {song.status === "singing" ? "Singing… (can take a few minutes)" : song.status === "done" ? "Sing again" : "Sing it"}
+                {song.status === "singing" ? <Spinner /> : <Mic aria-hidden />}
+                {song.status === "singing" ? <span className="shimmer">Singing… (can take a few minutes)</span> : song.status === "done" ? "Sing again" : "Sing it"}
               </Button>
             </div>
           </div>
         )}
         {song.status === "done" && song.url && (
           <div className="grid gap-1 pt-2">
-            <audio controls src={song.url} className="w-full">
-              <track kind="captions" />
-            </audio>
+            <SongAudio src={song.url} />
             <p className="text-xs text-muted-foreground">
               Sung and produced by Google Lyria from this sheet. AI-generated, with an inaudible SynthID watermark.{" "}
               <a href={song.url} download={`${sheet.title.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() || "song"}.mp3`} className="underline">
@@ -129,34 +135,37 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           </div>
         )}
         {song.status === "error" && (
-          <div role="alert" className="flex flex-wrap items-center gap-3 pt-2">
-            <p className="text-sm text-destructive">{song.message}</p>
-            {song.budget && (
-              <Link href="/library" className="text-sm underline">
-                Listen to the songs in the Library
-              </Link>
-            )}
-            {song.retry && (
-              <Button size="sm" variant="outline" onClick={sing} disabled={!line}>
-                Try again
-              </Button>
-            )}
-          </div>
+          <Alert variant="destructive" className="mt-2">
+            <CircleAlert aria-hidden />
+            <AlertDescription className="flex flex-wrap items-center gap-3">
+              <span>{song.message}</span>
+              {song.budget && (
+                <Link href="/library" className="font-medium underline">
+                  Listen to the songs in the Library
+                </Link>
+              )}
+              {song.retry && (
+                <Button size="sm" variant="outline" onClick={sing} disabled={!line}>
+                  Try again
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
       </CardHeader>
       <CardContent className="grid gap-8">
         {sheet.warnings.length > 0 && (
-          <div role="status" className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <div>
-              <p className="font-medium">The receipt check still found problems after one repair:</p>
+          <Alert role="status">
+            <TriangleAlert aria-hidden />
+            <AlertTitle>The receipt check still found problems after one repair:</AlertTitle>
+            <AlertDescription>
               <ul className="list-disc pl-5">
                 {sheet.warnings.map((w) => (
                   <li key={w}>{w}</li>
                 ))}
               </ul>
-            </div>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
 
         {sheet.sections.map((section, si) => (
@@ -169,14 +178,15 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
               {section.lines.map((line, li) => (
                 <div key={li} className="grid gap-0.5">
                   <p className="font-mono text-xs text-muted-foreground">{line.chords}</p>
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <p className="text-base">{line.text}</p>
+                  {/* Every line's receipts as AI Elements' Inline Citation: hover or focus a badge for its Qloo signal. */}
+                  <InlineCitation className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <InlineCitationText className="text-base">{line.text}</InlineCitationText>
                     <span className="flex flex-wrap gap-1">
                       {line.signalIds.map((id) => {
                         const s = byId.get(id);
                         return (
-                          <Tooltip key={id}>
-                            <TooltipTrigger asChild>
+                          <InlineCitationCard key={id}>
+                            <HoverCardTrigger asChild>
                               <button
                                 type="button"
                                 onClick={() => setSelected(selected === id ? null : id)}
@@ -187,17 +197,20 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
                                   {id}
                                 </Badge>
                               </button>
-                            </TooltipTrigger>
+                            </HoverCardTrigger>
                             {s && (
-                              <TooltipContent>
-                                {KIND_LABEL[s.kind]}: {s.label}
-                              </TooltipContent>
+                              <InlineCitationCardBody className="w-72 p-3">
+                                <InlineCitationSource
+                                  title={`${KIND_LABEL[s.kind]}: ${s.label.trim()}`}
+                                  description={`${s.source}${s.value !== null ? ` · ${s.value}` : ""}`}
+                                />
+                              </InlineCitationCardBody>
                             )}
-                          </Tooltip>
+                          </InlineCitationCard>
                         );
                       })}
                     </span>
-                  </div>
+                  </InlineCitation>
                 </div>
               ))}
             </div>
