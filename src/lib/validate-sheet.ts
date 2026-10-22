@@ -1,3 +1,4 @@
+import { idsIn } from "./signal-text";
 import type { Signal } from "./signals";
 import type { WrittenSong } from "./song-sheet";
 
@@ -37,6 +38,20 @@ export function validateSong(song: WrittenSong, signals: Signal[], artistNames: 
       }
     });
   });
+  // The genre and the vocal direction go to the singer: real receipts, at least one, and no artist (by name or id).
+  const kindOf = new Map(signals.map((s) => [s.id, s.kind]));
+  for (const [where, text] of [["Genre", song.genre], ["Vocal direction", song.vocalDirection]] as const) {
+    const cites = idsIn(text);
+    if (!text.trim()) problems.push({ where, issue: "is empty" });
+    else if (!cites.length) problems.push({ where, issue: "cites no signal" });
+    const unknown = cites.filter((id) => !ids.has(id));
+    if (unknown.length) problems.push({ where, issue: `cites unknown signal ${unknown.join(", ")}` });
+    const artists = cites.filter((id) => kindOf.get(id) === "artist");
+    if (artists.length) problems.push({ where, issue: `cites an artist (${artists.join(", ")}); use genre and style signals` });
+    for (const name of names) {
+      if (words(text).includes(words(name))) problems.push({ where, issue: `names a real artist (${name})` });
+    }
+  }
   return problems;
 }
 

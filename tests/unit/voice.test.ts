@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deliveryFromTags, describeVocalLine, normalizeVocals, toVocalLine, voicesFromMusicBrainz } from "@/lib/voice";
+import { describeVoices, legacyDirection, normalizeVocals, toVocalLine, voicesFromMusicBrainz } from "@/lib/voice";
 
 describe("voicesFromMusicBrainz", () => {
   it("is one voice with a person's gender", () => {
@@ -27,36 +27,30 @@ describe("voicesFromMusicBrainz", () => {
   });
 });
 
-describe("deliveryFromTags", () => {
-  it("reads rap, sung or both from Qloo's tags", () => {
-    expect(deliveryFromTags(["Hip - Hop", "Cuba", "Rap", "Latin Hip Hop"], "Los Aldeanos").delivery).toBe("rap");
-    expect(deliveryFromTags(["Indie Rock", "Pop Punk"], "X").delivery).toBe("sung");
-    expect(deliveryFromTags(["Reggaeton", "Latin Hip Hop"], "X").delivery).toBe("both");
-    expect(deliveryFromTags(["Pop Rap"], "X").delivery).toBe("rap");
-    expect(deliveryFromTags([], "X")).toEqual({ delivery: "sung", deliverySource: "Qloo has no genres for X" });
-    expect(deliveryFromTags(["Ambient"], "X")).toEqual({ delivery: "sung", deliverySource: "Qloo's tags for X (no rap)" });
+describe("describeVoices", () => {
+  it("says the voices in words", () => {
+    expect(describeVoices({ kind: "vocals", voices: ["female"], genre: "", direction: "" })).toBe("One female voice");
+    expect(describeVoices({ kind: "vocals", voices: ["female", "male"], genre: "", direction: "" })).toBe("Two voices: female and male");
+    expect(describeVoices({ kind: "instrumental", genre: "" })).toBe("Instrumental, no vocals");
   });
 });
 
-describe("describeVocalLine", () => {
-  it("says the line in words", () => {
-    expect(describeVocalLine({ kind: "vocals", voices: ["male", "male"], delivery: "rap" })).toBe("Two male rappers, trading verses");
-    expect(describeVocalLine({ kind: "vocals", voices: ["female"], delivery: "sung" })).toBe("One female singer");
-    expect(describeVocalLine({ kind: "vocals", voices: ["female", "male", "female"], delivery: "sung" })).toBe("Three singers (one male, two female), trading verses");
-    expect(describeVocalLine({ kind: "instrumental" })).toBe("Instrumental, no vocals");
-  });
-});
-
-describe("songs saved before 22 Oct", () => {
-  it("reads the old single voice", () => {
+describe("songs saved before 23 Oct", () => {
+  it("reads the old single voice and the old rap-or-sung", () => {
     expect(normalizeVocals({ voice: "duet", source: "s" }).voices).toEqual(["male", "female"]);
     expect(normalizeVocals({ voice: null, source: "s" }).voices).toEqual([]);
-    const lorde = normalizeVocals({ voice: "female", source: "s" }, { artist: "Lorde", signals: [{ kind: "genre", label: "Indie Pop" }, { kind: "theme", label: "Youth" }] });
-    expect(lorde).toMatchObject({ voices: ["female"], delivery: "sung", deliverySource: "Qloo's tags for Lorde: Indie Pop" });
-    expect(normalizeVocals({ voice: "male", source: "s" }, { artist: "X", signals: [{ kind: "genre", label: "Rap" }] }).delivery).toBe("rap");
-    expect(toVocalLine("male")).toEqual({ kind: "vocals", voices: ["male"], delivery: "sung" });
-    expect(toVocalLine("instrumental")).toEqual({ kind: "instrumental" });
-    expect(toVocalLine(JSON.stringify({ kind: "vocals", voices: ["male", "male"], delivery: "rap" }))?.kind).toBe("vocals");
+    expect(normalizeVocals({ voices: ["male"], source: "s", delivery: "rap" }).delivery).toBe("rap");
+    expect(legacyDirection("rap", [])).toBe("Rapped");
+    expect(legacyDirection("both", [])).toBe("Rapped verses and a sung chorus");
+    expect(legacyDirection(undefined, ["Indie Pop"])).toBe("Sung");
+    expect(legacyDirection(undefined, ["Latin Hip Hop"])).toBe("Rapped");
+  });
+
+  it("reads every stored form of the sung vocals", () => {
+    expect(toVocalLine("male")).toEqual({ kind: "vocals", voices: ["male"], genre: "", direction: "Sung" });
+    expect(toVocalLine("instrumental")).toEqual({ kind: "instrumental", genre: "" });
+    expect(toVocalLine(JSON.stringify({ kind: "vocals", voices: ["male", "male"], delivery: "rap" }))).toEqual({ kind: "vocals", voices: ["male", "male"], genre: "", direction: "Rapped" });
+    expect(toVocalLine(JSON.stringify({ kind: "vocals", voices: ["female"], genre: "Dream pop", direction: "Breathy" }))?.kind).toBe("vocals");
     expect(toVocalLine("nonsense")).toBeNull();
   });
 });

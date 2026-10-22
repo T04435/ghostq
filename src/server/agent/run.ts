@@ -7,7 +7,7 @@ import { TOOL_LABELS, type RunEvent } from "@/lib/run-events";
 import { signalLine } from "@/lib/signals";
 import { writtenSongSchema, type SongSheet, type WrittenSong } from "@/lib/song-sheet";
 import { dropUnknownIds, validateSong, type Problem } from "@/lib/validate-sheet";
-import { deliveryFromTags } from "@/lib/voice";
+import { idsIn } from "@/lib/signal-text";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { readCrowd } from "@/server/crowd";
 import { artistProfile } from "@/server/musicbrainz";
@@ -39,7 +39,9 @@ const WRITER_RULES = `Rules for the song:
 - Every line cites 1–3 signal ids from the list that shaped it (a theme it's about, an image drawn from a film or book's mood, a style). Use only ids from the list.
 - Build the song mostly on the chosen signals. Each theme you use should be audible in the words.
 - Structure: verses, a chorus that repeats, and a bridge. Concrete images, not abstractions. Singable lines.
-- Chords fit the key. Melody notes are practical directions a musician can use.`;
+- Chords fit the key. Melody notes are practical directions a musician can use.
+- Genre: a few words naming the music's genre, built from the artist's own genre and style signals and citing their ids. Be specific (a style, not just "pop"). A singer gets exactly this, so it decides what the song sounds like.
+- Vocal direction: 1–2 sentences on how the voices given above perform this song: sung, rapped, spoken, whispered, harmonies, call and answer, who takes which part. Make it fit the genre and cite signal ids. Use exactly the voices given: never add, drop or change one. Never name an artist or cite an artist id here.`;
 
 type Emit = (event: RunEvent) => void;
 
@@ -59,7 +61,7 @@ export async function runGhostQ(brief: Brief, send: Emit, abortSignal?: AbortSig
     return;
   }
   const id = newSongId();
-  const sheet: SongSheet = { ...(await write(state, emit, abortSignal)), vocals: state.vocals ?? { voices: [], source: "MusicBrainz didn't answer", delivery: "sung", deliverySource: "not read" }, id };
+  const sheet: SongSheet = { ...(await write(state, emit, abortSignal)), vocals: state.vocals ?? { voices: [], source: "MusicBrainz didn't answer" }, id };
   // Saved for the share link; a failed save keeps the song on the page, just without a link.
   await saveSong({ id, brief, sheet, research: log, createdAt: new Date().toISOString(), audio: null }).catch((e) => {
     console.error("save song failed", e instanceof Error ? e.message : e);
@@ -88,7 +90,6 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
       state.homeFromTags = genreTags.map((t) => t.name).find((n) => countryCodeFor(n)) ?? null;
       const genres = genreTags.filter((t) => !countryCodeFor(t.name)).slice(0, 6);
       state.genreTagIds = genres.map((g) => g.id);
-      state.soundTags = match.tags.filter((t) => /^urn:tag:(genre|subgenre|style)/.test(t.type)).map((t) => t.name);
       const own = `Qloo: ${match.name}'s own tags (voice)`;
       const signals = [
         ...genres.map((g) => state.signals.add("genre", g.name, own, null)),
@@ -114,7 +115,6 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
       // Qloo doesn't know the act: its sound in the user's words becomes Qloo genres (semantic tag search).
       const tags = (await genresFromWords(answers.sound, state.onCall)).slice(0, 6);
       state.genreTagIds = tags.map((t) => t.id);
-      state.soundTags = tags.map((t) => t.name);
       const signals = tags.map((t) => state.signals.add("genre", t.name, `Qloo tag search: your words "${answers.sound}"`, t.popularity));
       const listed = signals.map((g) => `${g.id} ${g.label}`).join(", ");
       emit({ type: "step-end", id: "find-artist", ok: tags.length > 0, summary: `Qloo doesn't know ${brief.artist}, so their sound comes from your words. Genres: ${listed || "none matched"}.`, signals, raw: tags });
@@ -127,7 +127,7 @@ async function readArtistAndCrowd(state: RunState, emit: Emit): Promise<boolean>
     emit({ type: "step-start", id: "read-crowd", tool: "read_crowd", label: TOOL_LABELS.read_crowd, input: { artist: artistName } });
     // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
     const [{ crowd: read, missing: crowdMissing }, profile] = await Promise.all([readCrowd(state.act, answers, state.onCall), artistProfile(state.act?.musicbrainzId ?? null)]);
-    state.vocals = { ...profile.voices, ...deliveryFromTags(state.soundTags, artistName) };
+    state.vocals = profile.voices;
     const home: Home | null =
       profile.home ?? (state.homeFromTags ? { name: state.homeFromTags, country: state.homeFromTags, countryCode: countryCodeFor(state.homeFromTags), source: "qloo" } : null);
     const languageFrom = home?.countryCode ? "home" : "city";
@@ -223,6 +223,15 @@ async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal):
   }
 }
 
+/** The voices are data (MusicBrainz now; Qloo first once it has them), never the model's choice. */
+function voicesLine(state: RunState): string {
+  const voices = state.vocals?.voices ?? [];
+  if (!voices.length || voices.includes(null)) return "Voices for the recording: not known yet (the user picks them), so write a vocal direction that works for one or more voices.";
+  if (voices.length === 1) return `Voices for the recording (fixed, from data): one ${voices[0]} voice.`;
+  const named = voices.map((g, i) => `Voice ${"ABC"[i]} ${g}`).join(", ");
+  return `Voices for the recording (fixed, from data): ${voices.length} voices, ${named}. Give every section its "voices": who performs it, by letter.`;
+}
+
 function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems: Problem[] }): string {
   const all = state.signals.all();
   const chosenIds = new Set(state.chosen?.signalIds ?? all.map((s) => s.id));
@@ -234,6 +243,8 @@ function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems:
     state.brief.avoid?.length
       ? `Already written for this brief, so write something clearly different (a new title, hook, angle and images): ${state.brief.avoid.join(" | ")}`
       : "",
+    "",
+    voicesLine(state),
     "",
     "Chosen Qloo signals (build the song on these):",
     ...chosen.map(signalLine),
@@ -270,14 +281,15 @@ async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Pr
   }
   song = dropUnknownIds(song, signals);
   problems = validateSong(song, signals, [...state.artistNames]);
-  const cited = new Set(song.sections.flatMap((s) => s.lines.flatMap((l) => l.signalIds)));
+  const cited = new Set([...song.sections.flatMap((s) => s.lines.flatMap((l) => l.signalIds)), ...idsIn([song.genre, song.vocalDirection, song.productionBrief, song.feel, song.angle].join(" "))]);
   return {
     ...song,
     artist: state.act?.name ?? state.brief.artist,
     crowd: state.crowdInfo!,
     language: state.crowdInfo!.language,
-    // Only what the page needs: the cited signals plus the chosen ones.
-    signals: signals.filter((s) => cited.has(s.id) || state.chosen?.signalIds.includes(s.id)),
+    // What the page and the singer need: every cited signal, the chosen ones, and all the artist's genre and style
+    // tags (the singing prompt's genre comes from them; before 23 Oct only line receipts were kept, so it was lost).
+    signals: signals.filter((s) => cited.has(s.id) || state.chosen?.signalIds.includes(s.id) || s.kind === "genre" || s.kind === "style"),
     warnings: problems.map((p) => `${p.where}: ${p.issue}`),
   };
 }

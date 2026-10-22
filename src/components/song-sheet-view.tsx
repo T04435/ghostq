@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { draftFromMatch, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
+import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, type SongSheet } from "@/lib/song-sheet";
@@ -32,7 +32,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
   const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
   const [linkCopied, setLinkCopied] = useState(false);
   // The vocals: matched to the artist from MusicBrainz and Qloo; where they don't know, the user must choose (no default).
-  const [vocals, setVocals] = useState(() => draftFromMatch(sheet.vocals));
+  const [vocals, setVocals] = useState(() => draftFromSheet(sheet));
   const line = lineFromDraft(vocals);
   useEffect(() => () => {
     if (song.url?.startsWith("blob:")) URL.revokeObjectURL(song.url);
@@ -101,7 +101,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
         </div>
         {!readOnly && (
           <div className="grid gap-2 pt-2">
-            <VocalLinePicker match={sheet.vocals} draft={vocals} onChange={setVocals} />
+            <VocalLinePicker sheet={sheet} draft={vocals} onChange={setVocals} />
             <div>
               <Button size="sm" onClick={sing} disabled={song.status === "singing" || !line}>
                 {song.status === "singing" ? <Loader2 className="animate-spin" aria-hidden /> : <Mic aria-hidden />}
@@ -193,6 +193,14 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
         ))}
 
         <Separator />
+        <section className="grid gap-2">
+          <h3 className="font-semibold">Genre</h3>
+          <p className="text-sm">{sheet.genre}</p>
+        </section>
+        <section className="grid gap-2">
+          <h3 className="font-semibold">Vocal direction</h3>
+          <p className="text-sm">{sheet.vocalDirection}</p>
+        </section>
         <section className="grid gap-2">
           <h3 className="font-semibold">Production brief</h3>
           <p className="text-sm">{sheet.productionBrief}</p>

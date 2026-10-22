@@ -19,10 +19,8 @@ export class RunState {
   crowdInfo: Crowd | null = null;
   /** A country Qloo files among the artist's genre tags ("Cuba"): where they're from when MusicBrainz doesn't say. */
   homeFromTags: string | null = null;
-  /** The vocals that match the artist (MusicBrainz and Qloo tags), read with the crowd. */
+  /** The voices that match the artist (MusicBrainz), read with the crowd; the writer gets them as fixed input. */
   vocals: VocalMatch | null = null;
-  /** The names of the artist's genre and style tags (or the tags found from the user's words): rap or sung. */
-  soundTags: string[] = [];
   readonly artistNames = new Set<string>();
   chosen: { signalIds: string[]; angle: string } | null = null;
   qlooCalls = 0;

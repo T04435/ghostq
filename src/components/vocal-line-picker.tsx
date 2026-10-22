@@ -1,56 +1,55 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DELIVERIES, describeVocalLine, GENDERS, MAX_VOICES, VOICE_NAMES, type Delivery, type Gender, type VocalLine, type VocalMatch } from "@/lib/voice";
+import { Textarea } from "@/components/ui/textarea";
+import { namesForIds } from "@/lib/signal-text";
+import type { SongSheet } from "@/lib/song-sheet";
+import { describeVoices, GENDERS, MAX_DIRECTION, MAX_VOICES, VOICE_NAMES, type Gender, type VocalLine } from "@/lib/voice";
 
 /** The vocals being edited: a voice whose gender isn't known yet is null, and singing waits until every voice has one. */
-export type VocalDraft = { instrumental: boolean; voices: (Gender | null)[]; delivery: Delivery };
+export type VocalDraft = { instrumental: boolean; voices: (Gender | null)[]; genre: string; direction: string };
 
-export function draftFromMatch(match: VocalMatch): VocalDraft {
-  return { instrumental: false, voices: match.voices.length ? match.voices.slice(0, MAX_VOICES) : [null], delivery: match.delivery };
+/** Starts from the sheet: the voices from data, the genre and vocal direction as the writer wrote them (ids as names). */
+export function draftFromSheet(sheet: SongSheet): VocalDraft {
+  const voices = sheet.vocals.voices;
+  return {
+    instrumental: false,
+    voices: voices.length ? voices.slice(0, MAX_VOICES) : [null],
+    genre: namesForIds(sheet.genre, sheet.signals),
+    direction: namesForIds(sheet.vocalDirection, sheet.signals),
+  };
 }
 
 export function lineFromDraft(draft: VocalDraft): VocalLine | null {
-  if (draft.instrumental) return { kind: "instrumental" };
+  if (draft.instrumental) return { kind: "instrumental", genre: draft.genre };
   const voices = draft.voices.filter((v): v is Gender => v !== null);
-  return voices.length === draft.voices.length ? { kind: "vocals", voices, delivery: draft.delivery } : null;
+  return voices.length === draft.voices.length ? { kind: "vocals", voices, genre: draft.genre, direction: draft.direction } : null;
 }
 
-const same = (a: VocalDraft, b: VocalDraft) => a.instrumental === b.instrumental && a.delivery === b.delivery && a.voices.join() === b.voices.join();
-
 /**
- * The vocals Lyria sings with, as one editable line: how many voices, each one's gender, and rap or sung. It starts
- * from the artist's data (MusicBrainz for the voices, Qloo's tags for rap or sung); where that data has a gap, the
- * user fills it in.
+ * What Lyria sings with: how many voices and each one's gender (from the artist's data; where it has a gap, the user
+ * fills it in), and the genre and vocal direction the writer wrote from the artist's Qloo tags, which the user can
+ * change before singing.
  */
-export function VocalLinePicker({ match, draft, onChange }: { match: VocalMatch; draft: VocalDraft; onChange: (draft: VocalDraft) => void }) {
+export function VocalLinePicker({ sheet, draft, onChange }: { sheet: SongSheet; draft: VocalDraft; onChange: (draft: VocalDraft) => void }) {
   const line = lineFromDraft(draft);
-  const matched = draftFromMatch(match);
+  const start = draftFromSheet(sheet);
   const count = draft.instrumental ? "instrumental" : String(draft.voices.length);
 
   function setCount(value: string) {
     if (value === "instrumental") return onChange({ ...draft, instrumental: true });
     const n = Number(value);
-    const voices = Array.from({ length: n }, (_, i) => draft.voices[i] ?? matched.voices[i] ?? null);
-    onChange({ ...draft, instrumental: false, voices });
+    onChange({ ...draft, instrumental: false, voices: Array.from({ length: n }, (_, i) => draft.voices[i] ?? start.voices[i] ?? null) });
   }
 
-  function setGender(i: number, gender: Gender) {
-    onChange({ ...draft, voices: draft.voices.map((v, j) => (j === i ? gender : v)) });
-  }
-
-  const gaps = !draft.instrumental && !line;
-  const note = same(draft, matched)
-    ? gaps
-      ? `${match.source}, so choose the missing voice${draft.voices.filter((v) => !v).length > 1 ? "s" : ""} before singing.`
-      : `Matched to the artist: voices from ${match.source}; ${DELIVERIES[match.delivery].toLowerCase()} from ${match.deliverySource}.`
-    : gaps
-      ? "Choose every voice before singing."
-      : `You changed the vocals. The artist's data: voices from ${match.source}; ${DELIVERIES[match.delivery].toLowerCase()} from ${match.deliverySource}.`;
+  const missing = !draft.instrumental && !line;
+  const changed = draft.instrumental || draft.voices.join() !== start.voices.join() || draft.genre !== start.genre || draft.direction !== start.direction;
 
   return (
-    <div className="grid gap-1.5">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Vocals">
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Voices">
         <Select value={count} onValueChange={setCount}>
           <SelectTrigger size="sm" className="w-36" aria-label="How many voices">
             <SelectValue />
@@ -66,7 +65,7 @@ export function VocalLinePicker({ match, draft, onChange }: { match: VocalMatch;
         </Select>
         {!draft.instrumental &&
           draft.voices.map((v, i) => (
-            <Select key={i} value={v ?? undefined} onValueChange={(g) => setGender(i, g as Gender)}>
+            <Select key={i} value={v ?? undefined} onValueChange={(g) => onChange({ ...draft, voices: draft.voices.map((x, j) => (j === i ? (g as Gender) : x)) })}>
               <SelectTrigger size="sm" className="w-36" aria-label={`Voice ${VOICE_NAMES[i]}`}>
                 <SelectValue placeholder={`Voice ${VOICE_NAMES[i]}: choose`} />
               </SelectTrigger>
@@ -80,23 +79,23 @@ export function VocalLinePicker({ match, draft, onChange }: { match: VocalMatch;
               </SelectContent>
             </Select>
           ))}
-        {!draft.instrumental && (
-          <Select value={draft.delivery} onValueChange={(d) => onChange({ ...draft, delivery: d as Delivery })}>
-            <SelectTrigger size="sm" className="w-36" aria-label="Rap or sung">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(DELIVERIES) as Delivery[]).map((d) => (
-                <SelectItem key={d} value={d}>
-                  {DELIVERIES[d]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {line && <span className="text-sm font-medium">{describeVoices(line)}</span>}
       </div>
-      {line && <p className="text-sm font-medium">{describeVocalLine(line)}</p>}
-      <p className="text-xs text-muted-foreground">{note}</p>
+      <div className="grid gap-1.5">
+        <Label htmlFor="sing-genre">Genre</Label>
+        <Input id="sing-genre" value={draft.genre} maxLength={MAX_DIRECTION} onChange={(e) => onChange({ ...draft, genre: e.target.value })} />
+      </div>
+      {!draft.instrumental && (
+        <div className="grid gap-1.5">
+          <Label htmlFor="sing-direction">Vocal direction</Label>
+          <Textarea id="sing-direction" rows={2} value={draft.direction} maxLength={MAX_DIRECTION} onChange={(e) => onChange({ ...draft, direction: e.target.value })} />
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {missing
+          ? `${sheet.vocals.source}, so choose every voice before singing.`
+          : `The genre and vocal direction come from Qloo's tags for ${sheet.artist}; the voices are from ${sheet.vocals.source}.${changed ? " You changed them." : ""}`}
+      </p>
     </div>
   );
 }
