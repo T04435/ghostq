@@ -182,7 +182,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
                   <InlineCitation className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <InlineCitationText className="text-base">{line.text}</InlineCitationText>
                     <span className="flex flex-wrap gap-1">
-                      {line.signalIds.map((id) => {
+                      {[...new Set(line.signalIds)].map((id) => {
                         const s = byId.get(id);
                         return (
                           <InlineCitationCard key={id}>
