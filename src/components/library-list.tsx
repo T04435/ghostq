@@ -117,6 +117,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
                 <Link href={`/song/${s.id}`} className="truncate hover:underline">
                   {s.title}
                 </Link>
+                {s.remixOf && <Badge variant="outline">Remix</Badge>}
               </ItemTitle>
               <ItemDescription className="truncate">
                 {s.featuring ? `${s.artist} feat. ${s.featuring}` : s.artist} · {describeCrowd(s.crowd)} · {s.language}

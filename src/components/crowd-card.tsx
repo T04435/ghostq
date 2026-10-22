@@ -6,15 +6,16 @@ import { describePlace } from "@/lib/place";
 export function CrowdCard({ artist, crowd: raw, featured }: { artist: string; crowd: Crowd; featured?: boolean }) {
   const crowd = normalizeCrowd(raw);
   const fromQloo = crowd.from.place === "qloo" && crowd.from.ages === "qloo";
+  const remixed = crowd.from.place === "remix" || crowd.from.ages === "remix";
   return (
     <div className="grid gap-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-medium">
           {featured ? "Featuring" : "Writing as"} {artist}
-          {crowd.home ? ` (from ${describeHome(crowd.home)})` : ""} for their fans{crowd.place ? ` around ${crowd.place.name}` : ""}
+          {crowd.home ? ` (from ${describeHome(crowd.home)})` : ""} for {remixed ? "a new crowd" : "their fans"}{crowd.place ? ` around ${crowd.place.name}` : ""}
         </h3>
         {featured && <Badge>feat. · verse 2</Badge>}
-        <Badge variant="secondary">{fromQloo ? "From Qloo" : "Qloo and your answers"}</Badge>
+        <Badge variant="secondary">{fromQloo ? "From Qloo" : remixed ? "Remix: your pick and Qloo" : "Qloo and your answers"}</Badge>
       </div>
       <dl className="grid gap-3 text-sm sm:grid-cols-4">
         <div>
@@ -26,7 +27,9 @@ export function CrowdCard({ artist, crowd: raw, featured }: { artist: string; cr
           <dt className="text-muted-foreground">Crowd city</dt>
           <dd className="font-medium">{crowd.place ? describePlace(crowd.place) : "Worldwide"}</dd>
           <dd className="text-xs text-muted-foreground">
-            {crowd.from.place === "you"
+            {crowd.from.place === "remix"
+              ? "Your pick for this remix"
+              : crowd.from.place === "you"
               ? "Your answer: Qloo had no location data"
               : `Fans' strongest area on Qloo${crowd.placeRank ? ` (#${crowd.placeRank.rank.toLocaleString()} of ${crowd.placeRank.of.toLocaleString()})` : ""}`}
           </dd>
@@ -35,7 +38,7 @@ export function CrowdCard({ artist, crowd: raw, featured }: { artist: string; cr
           <dt className="text-muted-foreground">Age</dt>
           <dd className="font-medium">{crowd.ages.map((a) => AGE_BANDS[a.age]).join(", ")}</dd>
           <dd className="text-xs text-muted-foreground">
-            {crowd.from.ages === "you" ? "Your answer: Qloo had no age data" : `Fans skew ${crowd.ages.map((a) => (a.skew === null ? "" : `+${a.skew}`)).join(", ")}`}
+            {crowd.from.ages === "remix" ? "Your pick for this remix" : crowd.from.ages === "you" ? "Your answer: Qloo had no age data" : `Fans skew ${crowd.ages.map((a) => (a.skew === null ? "" : `+${a.skew}`)).join(", ")}`}
           </dd>
         </div>
         <div>

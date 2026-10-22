@@ -7,7 +7,7 @@ import { SavedSong } from "@/components/saved-song";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import { songArtist } from "@/lib/song-sheet";
-import { getSong, publicSong } from "@/server/store/songs";
+import { getSong, publicSong, remixesOf } from "@/server/store/songs";
 
 export async function generateMetadata({ params }: PageProps<"/song/[id]">): Promise<Metadata> {
   const song = await getSong((await params).id);
@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps<"/song/[id]">): Pro
   const title = `${song.sheet.title} (${songArtist(song.sheet)}) · GhostQ`;
   const { sheet } = song;
   const crowds = sheet.featuring ? `${sheet.artist}'s and ${sheet.featuring.artist}'s crowds` : `${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}`;
-  const description = `${draftLabel(sheet.artist, sheet.featuring?.artist)}. Written for ${crowds}.`;
+  const description = `${draftLabel(sheet.artist, sheet.featuring?.artist)}. ${sheet.remixOf ? `A RemixQ of "${sheet.remixOf.title}" for` : "Written for"} ${crowds}.`;
   return { title, description, openGraph: { title, description, type: "music.song", siteName: "GhostQ" }, twitter: { card: "summary", title, description } };
 }
 
@@ -34,6 +34,8 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   if (!saved) notFound();
   // Only what the page shows reaches the browser: no raw Qloo responses in the page payload.
   const song = publicSong(saved);
+  // RemixQ: a remix shows next to its original; any song lists its remixes.
+  const [original, remixes] = await Promise.all([song.sheet.remixOf ? getSong(song.sheet.remixOf.id) : null, remixesOf(id)]);
   return (
     <div className="grid gap-6">
       <p className="text-sm text-muted-foreground">
@@ -42,7 +44,13 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
           Write your own
         </Link>
       </p>
-      <SavedSong sheet={song.sheet} research={song.research} audioUrl={song.audio ? `/api/songs/${id}/audio?v=${encodeURIComponent(song.audio.createdAt)}` : undefined} />
+      <SavedSong
+        sheet={{ ...song.sheet, id }}
+        original={original ? { ...original.sheet, id: original.id } : undefined}
+        remixes={remixes}
+        research={song.research}
+        audioUrl={song.audio ? `/api/songs/${id}/audio?v=${encodeURIComponent(song.audio.createdAt)}` : undefined}
+      />
     </div>
   );
 }

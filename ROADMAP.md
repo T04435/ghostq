@@ -56,7 +56,7 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Counters in Neon, so they hold across serverless instances.
 - Done when: going past each limit shows the message, the caps stop new paid calls, and normal use is unaffected.
 
-## CollabQ: Artist A feat. Artist B
+## CollabQ: Artist A feat. Artist B (done 23 Oct, v1.4.0)
 
 - Pick two artists. GhostQ reads both crowds from Qloo (city, ages, language) and writes one song for where they meet: verse 1 from A's crowd, verse 2 from B's, the chorus on what both share.
 - Qloo: two crowd reads plus `/v2/analysis/compare` with one artist on each side. Probed 21 Oct: 14 KB in 1 s (comparing 10 artists a side returned 1.24 MB). The shared part was styles (Engaging, Energetic, Dynamic) rather than themes, so the chorus builds on shared styles plus the closest themes.
@@ -65,7 +65,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Receipts say which crowd each line came from.
 - Done when: "A feat. B" runs end to end, shows both crowds and what they share, sings with the matched voices, and appears in the Library as "A feat. B".
 
-## RemixQ: the same song for another crowd
+## RemixQ: the same song for another crowd (built 23 Oct)
+
+- Built: "Remix for another crowd" on every solo song opens /remix/<id>: pick a city (Qloo locality search), up to three age bands, or both; what's left out stays Qloo's. The server reads the original from the store, re-reads the crowd (skipping the Qloo calls the picks replace), and the writer keeps the title, key, tempo, sections, line counts and hook while rewriting the verses and bridge for the new crowd. The remix shows next to the original with changed lines marked; each song page links the other. CollabQ songs can't be remixed yet.
+
 
 - On a finished song: rewrite it for another city or age. The brief stays artist-only; the new crowd is chosen after Qloo has shown the artist's own.
 - The two versions sit side by side, each with its own receipts. Both are saved and linked.

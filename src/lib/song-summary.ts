@@ -7,6 +7,8 @@ export type SongSummary = {
   artist: string;
   /** CollabQ's featured artist, when there is one. */
   featuring: string | null;
+  /** RemixQ: the original's title, when this song remixes one. */
+  remixOf: string | null;
   crowd: Crowd;
   language: string;
   story: string | null;

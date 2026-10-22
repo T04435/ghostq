@@ -1,5 +1,5 @@
 import "server-only";
-import type { AskField, Brief, Crowd } from "@/lib/brief";
+import type { AskField, Brief, Crowd, Remix } from "@/lib/brief";
 import { hotspots, topAgeBands } from "@/lib/fan-profile";
 import { geohashBounds } from "@/lib/geohash";
 import type { Place } from "@/lib/place";
@@ -45,17 +45,21 @@ export async function readCrowd(
   artist: QlooEntity | null,
   answers: Brief["answers"],
   onCall?: OnCall,
+  remix?: Pick<Remix, "place" | "ages">,
 ): Promise<{ crowd: Pick<Crowd, "from" | "place" | "placeRank" | "ages">; missing: AskField[] }> {
-  const [demo, area] = artist ? await Promise.all([artistDemographics(artist.id, onCall).catch(noData), topArea(artist, onCall)]) : [null, null];
+  // A RemixQ's picked city or ages replace Qloo's, so those Qloo calls are skipped.
+  const [demo, area] = artist
+    ? await Promise.all([remix?.ages ? null : artistDemographics(artist.id, onCall).catch(noData), remix?.place ? null : topArea(artist, onCall)])
+    : [null, null];
   const qlooAges = topAgeBands(demo);
-  const place = area?.place ?? answers?.place ?? null;
-  const ages = qlooAges.length ? qlooAges : (answers?.ages ?? []).map((age) => ({ age, skew: null }));
+  const place = remix?.place ?? area?.place ?? answers?.place ?? null;
+  const ages = remix?.ages ? remix.ages.map((age) => ({ age, skew: null })) : qlooAges.length ? qlooAges : (answers?.ages ?? []).map((age) => ({ age, skew: null }));
   const missing: AskField[] = [...(place ? [] : (["place"] as const)), ...(ages.length ? [] : (["ages"] as const))];
   return {
     crowd: {
-      from: { place: area ? "qloo" : "you", ages: qlooAges.length ? "qloo" : "you" },
+      from: { place: remix?.place ? "remix" : area ? "qloo" : "you", ages: remix?.ages ? "remix" : qlooAges.length ? "qloo" : "you" },
       place,
-      placeRank: area ? { rank: area.rank, of: area.of } : null,
+      placeRank: !remix?.place && area ? { rank: area.rank, of: area.of } : null,
       ages,
     },
     missing,
