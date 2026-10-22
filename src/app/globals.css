@@ -24,6 +24,14 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-env-preview: var(--env-preview);
+  --color-env-preview-surface: var(--env-preview-surface);
+  --color-env-preview-border: var(--env-preview-border);
+  --color-env-preview-muted: var(--env-preview-muted);
+  --color-env-local: var(--env-local);
+  --color-env-local-surface: var(--env-local-surface);
+  --color-env-local-border: var(--env-local-border);
+  --color-env-local-muted: var(--env-local-muted);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -67,6 +75,15 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* VersionBadge env tints (variant B): preview amber, local blue. */
+  --env-preview: #8a4b00;
+  --env-preview-surface: #fff6e8;
+  --env-preview-border: #e3b16b;
+  --env-preview-muted: #6b5a40;
+  --env-local: #1d4fa8;
+  --env-local-surface: #eef4ff;
+  --env-local-border: #9db8ea;
+  --env-local-muted: #4a5a78;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -102,6 +119,14 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  --env-preview: #f2b45c;
+  --env-preview-surface: #241c10;
+  --env-preview-border: #6b4a1c;
+  --env-preview-muted: #c9b38f;
+  --env-local: #8db4ff;
+  --env-local-surface: #121b2b;
+  --env-local-border: #2f4570;
+  --env-local-muted: #9fb0cc;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
