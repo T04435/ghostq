@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">{children}</main>
           <footer className="border-t">
             <div className="mx-auto grid max-w-4xl gap-3 px-4 py-4">
-              <p className="text-xs text-muted-foreground">Taste data from Qloo. Place names © <a href="https://www.openstreetmap.org/copyright" className="underline">OpenStreetMap contributors</a>. Songs are original; GhostQ never names or imitates a real artist.</p>
+              <p className="text-xs text-muted-foreground">Taste data from Qloo. Place names © <a href="https://www.openstreetmap.org/copyright" className="underline">OpenStreetMap contributors</a>. Every song is an AI-generated GhostQ draft, not affiliated with the artist it&apos;s written for; GhostQ never names or imitates a real artist.</p>
               <div className="flex justify-center">
                 <VersionBadge />
               </div>

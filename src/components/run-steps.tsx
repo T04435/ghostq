@@ -7,7 +7,7 @@ import type { Signal } from "@/lib/signals";
 
 export type StepItem =
   | { kind: "note"; key: string; text: string }
-  | { kind: "step"; key: string; label: string; input: unknown; status: "running" | "ok" | "failed"; summary?: string; signals: Signal[]; raw: unknown }
+  | { kind: "step"; key: string; label: string; status: "running" | "ok" | "failed"; summary?: string; signals: Signal[] }
   | { kind: "writing"; key: string; signalCount: number; done: boolean };
 
 /** Folds one research event into the step list (live, and when replaying a saved song's research). */
@@ -16,9 +16,9 @@ export function applyStepEvent(items: StepItem[], event: RunEvent, n: number): S
     case "note":
       return [...items, { kind: "note", key: `n${n}`, text: event.text }];
     case "step-start":
-      return [...items, { kind: "step", key: event.id, label: event.label, input: event.input, status: "running", signals: [], raw: null }];
+      return [...items, { kind: "step", key: event.id, label: event.label, status: "running", signals: [] }];
     case "step-end":
-      return items.map((x) => (x.kind === "step" && x.key === event.id ? { ...x, status: event.ok ? "ok" : "failed", summary: event.summary, signals: event.signals, raw: event.raw } : x));
+      return items.map((x) => (x.kind === "step" && x.key === event.id ? { ...x, status: event.ok ? "ok" : "failed", summary: event.summary, signals: event.signals } : x));
     case "writing":
       return [...items, { kind: "writing", key: "writing", signalCount: event.signalCount, done: false }];
     case "sheet":
@@ -28,7 +28,7 @@ export function applyStepEvent(items: StepItem[], event: RunEvent, n: number): S
   }
 }
 
-export function RunSteps({ items, showRaw }: { items: StepItem[]; showRaw: boolean }) {
+export function RunSteps({ items }: { items: StepItem[] }) {
   return (
     <ol className="grid gap-3" aria-live="polite">
       {items.map((item) => {
@@ -60,9 +60,6 @@ export function RunSteps({ items, showRaw }: { items: StepItem[]; showRaw: boole
               </Badge>
             </div>
             {item.summary && <p className="text-sm text-muted-foreground">{item.summary}</p>}
-            {showRaw && (
-              <pre className="max-h-64 overflow-auto rounded bg-muted p-2 text-xs">{JSON.stringify({ input: item.input, output: item.raw }, null, 2)}</pre>
-            )}
           </li>
         );
       })}

@@ -6,14 +6,27 @@ import type { SongSheet } from "./song-sheet";
 export type RunEvent =
   | { type: "note"; text: string }
   | { type: "step-start"; id: string; tool: string; label: string; input: unknown }
-  | { type: "step-end"; id: string; ok: boolean; summary: string; signals: Signal[]; raw: unknown }
+  /** `raw` is Qloo's response: kept in the store with the song, never sent to a browser (see publicEvent). */
+  | { type: "step-end"; id: string; ok: boolean; summary: string; signals: Signal[]; raw?: unknown }
   | { type: "crowd"; artist: string; crowd: Crowd }
   /** The run stopped: Qloo has no data for these. The page asks, then sends the brief again with the answers. */
   | { type: "ask"; fields: AskField[]; artist: string; message: string }
   | { type: "writing"; signalCount: number }
   | { type: "sheet"; sheet: SongSheet }
-  | { type: "error"; message: string }
+  /** `budget`: a daily budget or a rate limit was hit; the page points to the Library, whose songs always play. */
+  | { type: "error"; message: string; budget?: boolean }
   | { type: "done"; qlooCalls: number; qlooCached: number; seconds: number };
+
+/**
+ * An event as a browser may see it: Qloo's raw response is dropped. Only what the page shows leaves the server:
+ * summaries, signal labels and scores, entity names (Qloo's terms; their support confirmed this is fine, 22 Oct).
+ */
+export function publicEvent(event: RunEvent): RunEvent {
+  if (event.type !== "step-end") return event;
+  const rest = { ...event };
+  delete rest.raw;
+  return rest;
+}
 
 export const TOOL_LABELS: Record<string, string> = {
   find_artist: "Find the artist on Qloo",

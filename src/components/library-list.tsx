@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { describeCrowd } from "@/lib/brief";
+import { draftLabel } from "@/lib/draft-label";
 import type { SongSummary } from "@/lib/song-summary";
 
 const ALL = "all";
@@ -103,6 +104,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
               <p className="truncate text-sm text-muted-foreground">
                 {s.artist} · {describeCrowd(s.crowd)} · {s.language}
               </p>
+              <p className="truncate text-xs text-muted-foreground">{draftLabel(s.artist)}</p>
             </div>
             {!s.sung && <Badge variant="secondary">Not sung yet</Badge>}
           </li>

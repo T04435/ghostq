@@ -3,7 +3,7 @@ import { generateText, Output, ToolLoopAgent, type StopCondition } from "ai";
 import { AGE_BANDS, describeBrief, describeCrowd, describeHome, type AskField, type Brief, type Crowd } from "@/lib/brief";
 import { countryCodeFor, describePlace, languageFor, type Home } from "@/lib/place";
 import { pickArtist } from "@/lib/qloo-parse";
-import { TOOL_LABELS, type RunEvent } from "@/lib/run-events";
+import { publicEvent, TOOL_LABELS, type RunEvent } from "@/lib/run-events";
 import { signalLine } from "@/lib/signals";
 import { writtenSongSchema, type SongSheet, type WrittenSong } from "@/lib/song-sheet";
 import { dropUnknownIds, validateSong, type Problem } from "@/lib/validate-sheet";
@@ -45,15 +45,24 @@ const WRITER_RULES = `Rules for the song:
 
 type Emit = (event: RunEvent) => void;
 
-export async function runGhostQ(brief: Brief, send: Emit, abortSignal?: AbortSignal): Promise<void> {
+/** One run. `onQlooCalls` gets the number of live (uncached) Qloo calls it made, however it ended: the daily budget. */
+export async function runGhostQ(brief: Brief, send: Emit, abortSignal?: AbortSignal, onQlooCalls?: (calls: number) => Promise<void>): Promise<void> {
+  const state = new RunState(brief);
+  try {
+    await run(state, brief, send, abortSignal);
+  } finally {
+    await onQlooCalls?.(state.qlooCalls).catch((e) => console.error("qloo budget count failed", e instanceof Error ? e.message : e));
+  }
+}
+
+async function run(state: RunState, brief: Brief, send: Emit, abortSignal?: AbortSignal): Promise<void> {
   const started = Date.now();
   // Every research event is kept with the saved song, so its page can replay how it was made.
   const log: RunEvent[] = [];
   const emit: Emit = (event) => {
     if (event.type === "note" || event.type === "step-start" || event.type === "step-end" || event.type === "crowd") log.push(event);
-    send(event);
+    send(publicEvent(event));
   };
-  const state = new RunState(brief);
   if (!(await readArtistAndCrowd(state, emit))) return;
   await research(state, emit, abortSignal);
   if (state.signals.all().length === 0) {

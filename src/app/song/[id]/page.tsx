@@ -5,11 +5,15 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SavedSong } from "@/components/saved-song";
 import { describeCrowd } from "@/lib/brief";
-import { getSong } from "@/server/store/songs";
+import { draftLabel } from "@/lib/draft-label";
+import { getSong, publicSong } from "@/server/store/songs";
 
 export async function generateMetadata({ params }: PageProps<"/song/[id]">): Promise<Metadata> {
   const song = await getSong((await params).id);
-  return song ? { title: `${song.sheet.title} · GhostQ`, description: `An original song for ${song.sheet.artist}'s crowd: ${describeCrowd(song.sheet.crowd)}.` } : { title: "GhostQ" };
+  if (!song) return { title: "GhostQ" };
+  const title = `${song.sheet.title} · GhostQ`;
+  const description = `${draftLabel(song.sheet.artist)}. Written for ${song.sheet.artist}'s crowd: ${describeCrowd(song.sheet.crowd)}.`;
+  return { title, description, openGraph: { title, description, type: "music.song", siteName: "GhostQ" }, twitter: { card: "summary", title, description } };
 }
 
 /** A shared song: read-only, no login. The song is read per request, so it streams in behind a placeholder. */
@@ -23,8 +27,10 @@ export default function SongPage({ params }: PageProps<"/song/[id]">) {
 
 async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   const { id } = await params;
-  const song = await getSong(id);
-  if (!song) notFound();
+  const saved = await getSong(id);
+  if (!saved) notFound();
+  // Only what the page shows reaches the browser: no raw Qloo responses in the page payload.
+  const song = publicSong(saved);
   return (
     <div className="grid gap-6">
       <p className="text-sm text-muted-foreground">
