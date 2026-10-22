@@ -89,7 +89,7 @@ export function RunSteps({ items }: { items: StepItem[] }) {
                     </PlanHeader>
                     <PlanContent>
                       <ul className="flex flex-wrap gap-1" aria-label="Chosen signals">
-                        {item.pick.signalIds.map((id) => (
+                        {[...new Set(item.pick.signalIds)].map((id) => (
                           <li key={id}>
                             <Badge variant="outline" className="font-mono">
                               {id}
@@ -102,7 +102,8 @@ export function RunSteps({ items }: { items: StepItem[] }) {
                 )}
                 {item.signals.length > 0 && (
                   <ul className="flex flex-wrap gap-1" aria-label="Signals from this step">
-                    {item.signals.map((s) => (
+                    {/* A step can return the same Qloo tag twice (the registry gives it one id): show it once. */}
+                    {[...new Map(item.signals.map((s) => [s.id, s])).values()].map((s) => (
                       <li key={s.id}>
                         <Badge variant="secondary">
                           <span className="font-mono">{s.id}</span> {s.label.trim()}
