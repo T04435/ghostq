@@ -1,11 +1,10 @@
-import { normalizeCrowd, type Brief } from "./brief";
-import type { SongSheet } from "./song-sheet";
-import { normalizeVocals } from "./voice";
+import type { Brief } from "./brief";
+import { normalizeSheet, type SongSheet } from "./song-sheet";
 
 /**
  * The last brief and song, kept on this device only. v2 since 21 Oct: the brief is the artist and story only and the
  * sheet carries the crowd; older saves don't fit and are ignored. A v2 sheet from before 22 Oct is read into today's
- * shape (a city id on the crowd, one lead voice instead of vocals).
+ * shape by normalizeSheet.
  */
 const KEY = "ghostq:last-run:v2";
 
@@ -17,8 +16,7 @@ export function loadLastRun(): LastRun | null {
     if (!raw) return null;
     const run = JSON.parse(raw) as LastRun;
     if (!run.sheet) return run;
-    const { voice, ...sheet } = run.sheet as SongSheet & { voice?: unknown };
-    return { ...run, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice, sheet) } };
+    return { ...run, sheet: normalizeSheet(run.sheet) };
   } catch {
     return null;
   }

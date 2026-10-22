@@ -3,11 +3,11 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
-import { normalizeCrowd, type Brief } from "@/lib/brief";
+import type { Brief } from "@/lib/brief";
 import type { RunEvent } from "@/lib/run-events";
-import type { SongSheet } from "@/lib/song-sheet";
+import { normalizeSheet, type SongSheet } from "@/lib/song-sheet";
 import type { SongSummary } from "@/lib/song-summary";
-import { normalizeVocals, toVocalLine, type VocalLine } from "@/lib/voice";
+import { toVocalLine, type VocalLine } from "@/lib/voice";
 import { env, providerStatus } from "@/server/env";
 import { getObject, putObject } from "./objects";
 
@@ -170,15 +170,11 @@ const fileStore: Store = {
 
 // ---- The store the app uses ---------------------------------------------------------------------------------------
 
-/**
- * Songs saved before 22 Oct kept a city id and no home on their crowd, and one lead voice ({voice}) instead of vocals:
- * read them into today's shape.
- */
+/** Older songs read into today's shape: the sheet by normalizeSheet, the sung vocals by toVocalLine. */
 function normalize(song: SavedSong | null): SavedSong | null {
   if (!song) return null;
-  const { voice, ...sheet } = song.sheet as SavedSong["sheet"] & { voice?: unknown };
   const audio = song.audio && "voice" in song.audio ? { vocals: toVocalLine(String(song.audio.voice)), createdAt: song.audio.createdAt } : song.audio;
-  return { ...song, audio, sheet: { ...sheet, crowd: normalizeCrowd(sheet.crowd), vocals: normalizeVocals(sheet.vocals ?? voice, sheet) } };
+  return { ...song, audio, sheet: normalizeSheet(song.sheet) };
 }
 
 function store(): Store {

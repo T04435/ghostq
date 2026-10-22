@@ -14,6 +14,8 @@ function song(lines: { text: string; signalIds: string[] }[]): WrittenSong {
     key: "A minor",
     tempo: 96,
     feel: "f",
+    genre: "Indie pop (T1)",
+    vocalDirection: "Sung softly (T1)",
     productionBrief: "p",
     angle: "a",
     sections: [{ name: "Verse 1", melody: "m", lines: lines.map((l) => ({ ...l, chords: "Am F" })) }],
@@ -60,5 +62,24 @@ describe("dropUnknownIds", () => {
   it("keeps only real ids", () => {
     const fixed = dropUnknownIds(song([{ text: "a", signalIds: ["T1", "X9"] }]), registry.all());
     expect(fixed.sections[0].lines[0].signalIds).toEqual(["T1"]);
+  });
+});
+
+describe("genre and vocal direction", () => {
+  const r = new SignalRegistry();
+  const pop = r.add("style", "Minimalist Indie Pop", "Qloo", null);
+  const muse = r.add("artist", "Lana Del Rey", "Qloo", 0.9);
+  const base = song([{ text: "a", signalIds: [pop.id] }]);
+  const check = (genre: string, vocalDirection: string) => validateSong({ ...base, genre, vocalDirection }, r.all(), ["Lana Del Rey"]).map((p) => `${p.where}: ${p.issue}`);
+
+  it("passes real receipts", () => {
+    expect(check(`Minimalist indie pop (${pop.id})`, `Breathy, close-mic'd (${pop.id})`)).toEqual([]);
+  });
+
+  it("needs a receipt, and never an artist by id or by name", () => {
+    expect(check("Indie pop", `Sung (${pop.id})`)).toEqual(["Genre: cites no signal"]);
+    expect(check(`Pop (${muse.id})`, `Sung (${pop.id})`)).toEqual([`Genre: cites an artist (${muse.id}); use genre and style signals`]);
+    expect(check(`Pop (${pop.id})`, `Sung like Lana Del Rey (${pop.id})`)).toEqual(["Vocal direction: names a real artist (Lana Del Rey)"]);
+    expect(check(`Pop (${pop.id})`, "")).toEqual(["Vocal direction: is empty"]);
   });
 });
