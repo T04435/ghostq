@@ -15,6 +15,7 @@ import { RemixCompare } from "@/components/remix-compare";
 import { RemixForm } from "@/components/remix-form";
 import { describeAges, type Brief, type Crowd, type Remix } from "@/lib/brief";
 import { describePlace } from "@/lib/place";
+import { possessive } from "@/lib/possessive";
 import { loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
@@ -292,7 +293,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
               Another crowd
             </Button>
           )}
-          <span className="text-sm text-muted-foreground">{remixOf ? "Remix again writes another take for the same crowd." : `Write another keeps ${sheet.featuring ? "both crowds" : `${sheet.artist}'s crowd`} and writes a different song.`}</span>
+          <span className="text-sm text-muted-foreground">{remixOf ? "Remix again writes another take for the same crowd." : `Write another keeps ${sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song.`}</span>
         </div>
       )}
     </div>

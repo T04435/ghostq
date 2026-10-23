@@ -10,7 +10,7 @@ Target: everything below is done by **Thu 29 Oct 2026**, the day before the Qloo
 | Sun 25 | CollabQ: duet voice, a verse per crowd, "A feat. B" in the Library. |
 | Mon 26 | RemixQ. |
 | Tue 27 | Brand port into the app. |
-| Wed 28 | Languages pass, fix list, seed the Library with real runs. |
+| Wed 28 | Languages pass, fix list, seed the Library with real runs (done 23 Oct: Japanese, Korean and Hindi added; one run each in Spanish, Korean, Japanese, Portuguese, French, German and Hindi). |
 | Thu 29 | Feature-complete. Release candidate: full build, tests, one QA pass. |
 
 ## Fixes

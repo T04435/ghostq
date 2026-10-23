@@ -8,13 +8,14 @@ import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import { songArtist } from "@/lib/song-sheet";
 import { getSong, publicSong, remixesOf } from "@/server/store/songs";
+import { possessive } from "@/lib/possessive";
 
 export async function generateMetadata({ params }: PageProps<"/song/[id]">): Promise<Metadata> {
   const song = await getSong((await params).id);
   if (!song) return { title: "GhostQ" };
   const title = `${song.sheet.title} (${songArtist(song.sheet)}) · GhostQ`;
   const { sheet } = song;
-  const crowds = sheet.featuring ? `${sheet.artist}'s and ${sheet.featuring.artist}'s crowds` : `${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}`;
+  const crowds = sheet.featuring ? `${possessive(sheet.artist)} and ${possessive(sheet.featuring.artist)} crowds` : `${possessive(sheet.artist)} crowd: ${describeCrowd(sheet.crowd)}`;
   const description = `${draftLabel(sheet.artist, sheet.featuring?.artist)}. ${sheet.remixOf ? `A RemixQ of "${sheet.remixOf.title}" for` : "Written for"} ${crowds}.`;
   return { title, description, openGraph: { title, description, type: "music.song", siteName: "GhostQ" }, twitter: { card: "summary", title, description } };
 }
@@ -39,7 +40,7 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   return (
     <div className="grid gap-6">
       <p className="text-sm text-muted-foreground">
-        Written by GhostQ for {song.sheet.featuring ? `${song.sheet.artist}'s and ${song.sheet.featuring.artist}'s crowds` : `${song.sheet.artist}'s crowd`}{song.brief.story ? `, about "${song.brief.story}"` : ""}.{" "}
+        Written by GhostQ for {song.sheet.featuring ? `${possessive(song.sheet.artist)} and ${possessive(song.sheet.featuring.artist)} crowds` : `${possessive(song.sheet.artist)} crowd`}{song.brief.story ? `, about "${song.brief.story}"` : ""}.{" "}
         <Link href="/" className="underline">
           Write your own
         </Link>

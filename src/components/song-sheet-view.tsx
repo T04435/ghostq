@@ -20,6 +20,7 @@ import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, songArtist, type SongSheet } from "@/lib/song-sheet";
+import { possessive } from "@/lib/possessive";
 
 // AI Elements' Audio Player, browser-only (its media-chrome elements can't hydrate from server HTML).
 const SongAudio = dynamic(() => import("@/components/song-audio"), { ssr: false, loading: () => <Skeleton className="h-10 w-full" /> });
@@ -144,7 +145,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange
           </p>
         )}
         <CardDescription>
-          {sheet.featuring ? `Verse 1 for ${sheet.artist}'s crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${sheet.featuring.artist}'s (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.` : `For ${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}.`} {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
+          {sheet.featuring ? `Verse 1 for ${possessive(sheet.artist)} crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${possessive(sheet.featuring.artist)} (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.` : `For ${possessive(sheet.artist)} crowd: ${describeCrowd(sheet.crowd)}.`} {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
         </CardDescription>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <Button variant="outline" size="sm" onClick={copy}>
