@@ -89,7 +89,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - A check on story seeds before a run (abusive or targeted content is refused).
 - Done when: report, auto-hide and the hide script work against the deployed store (Neon).
 
-## Improve chords and lyrics
+## Improve chords and lyrics (built 23 Oct)
+
+- Built: the chord check in code (key, borrowed chords, repeated progressions) feeds the writer's repair pass; a visible craft pass (hook, filler, syllables, rhyme, length; at most 6 lines rewritten, the rest kept); transpose, capo and ChordPro export on the sheet; Rewrite on each section (only the browser that wrote the song, and only before it's sung). Not built: editing a line by hand with a receipt check.
+
 
 - Chords, checked in code: every chord belongs to the key or is a common borrowed chord; a repeated section repeats its progression; transpose and capo; ChordPro export.
 - Lyrics, a craft pass shown as a step: matching syllable counts between verses, a clear rhyme scheme, the hook on the strongest beat, no filler. Only the lines that fail are rewritten.

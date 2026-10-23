@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleAlert, Copy, Download, Link2, Mic, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, FileMusic, Link2, Mic, Minus, Plus, RefreshCw, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,6 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
+import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
+import { capoFor, parseKey, toChordPro, transposeKey, transposeLine } from "@/lib/chords";
 import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
@@ -39,9 +41,19 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
   home: "Home (voice)",
 };
 
-/** readOnly: a shared song page (no singing); audioUrl: a saved sung version to play. */
-export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string }) {
+/**
+ * readOnly: a shared song page (no singing); audioUrl: a saved sung version to play; onSheetChange: the write page's
+ * hook for a rewritten section (only the browser that wrote the song may rewrite it, and only before it's sung).
+ */
+export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string; onSheetChange?: (sheet: SongSheet) => void }) {
   const [selected, setSelected] = useState<string | null>(null);
+  // Transpose, in semitones: display and ChordPro only; the saved sheet keeps its key.
+  const [steps, setSteps] = useState(0);
+  const shownKey = transposeKey(sheet.key, steps);
+  // Chords are spelt the way the shown key is (Ab major, not G# major).
+  const flats = parseKey(shownKey)?.flats ?? false;
+  const capo = capoFor(shownKey);
+  const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
   const [copied, setCopied] = useState(false);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
   const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string; retry?: boolean; budget?: boolean }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
@@ -84,6 +96,29 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
     setTimeout(() => setCopied(false), 1500);
   }
 
+  async function rewrite(section: number) {
+    if (!sheet.id || !onSheetChange) return;
+    setRewriting({ section });
+    try {
+      const response = await fetch("/api/rewrite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ songId: sheet.id, section }) });
+      const body = (await response.json()) as { sheet?: SongSheet; error?: string };
+      if (!response.ok || !body.sheet) throw new Error(body.error ?? `The server returned ${response.status}`);
+      onSheetChange(body.sheet);
+      setRewriting({ section: null });
+    } catch (e) {
+      setRewriting({ section: null, error: e instanceof Error ? e.message : "The rewrite failed." });
+    }
+  }
+
+  function downloadChordPro() {
+    const url = URL.createObjectURL(new Blob([toChordPro({ ...sheet, artist: sheet.artist }, steps)], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${sheet.title.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() || "song"}.cho`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function download() {
     const url = URL.createObjectURL(new Blob([sheetToMarkdown(sheet)], { type: "text/markdown" }));
     const a = document.createElement("a");
@@ -119,6 +154,10 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           <Button variant="outline" size="sm" onClick={download}>
             <Download aria-hidden />
             Download .md
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadChordPro}>
+            <FileMusic aria-hidden />
+            ChordPro
           </Button>
           {sheet.id && (
             <Button variant="outline" size="sm" onClick={copyLink}>
@@ -184,16 +223,55 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           </Alert>
         )}
 
+        <div className="flex flex-wrap items-center gap-3">
+          <ButtonGroup aria-label="Transpose">
+            <Button variant="outline" size="icon-sm" aria-label="Down a semitone" onClick={() => setSteps((n) => n - 1)}>
+              <Minus aria-hidden />
+            </Button>
+            <ButtonGroupText className="font-mono text-xs">
+              {shownKey}
+              {steps ? ` (${steps > 0 ? "+" : ""}${steps})` : ""}
+            </ButtonGroupText>
+            <Button variant="outline" size="icon-sm" aria-label="Up a semitone" onClick={() => setSteps((n) => n + 1)}>
+              <Plus aria-hidden />
+            </Button>
+          </ButtonGroup>
+          {steps !== 0 && (
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setSteps(0)}>
+              Back to {sheet.key}
+            </Button>
+          )}
+          {capo && (
+            <span className="text-xs text-muted-foreground">
+              On guitar: capo {capo.fret}, play {capo.shapes} shapes.
+            </span>
+          )}
+        </div>
+        {rewriting.error && (
+          <Alert variant="destructive">
+            <CircleAlert aria-hidden />
+            <AlertDescription>{rewriting.error}</AlertDescription>
+          </Alert>
+        )}
+
         {sheet.sections.map((section, si) => (
           <section key={`${section.name}-${si}`} className="grid gap-3">
-            <div>
-              <h3 className="font-semibold">{section.name}</h3>
-              <p className="text-sm text-muted-foreground">Melody: {section.melody}</p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 className="font-semibold">{section.name}</h3>
+                <p className="text-sm text-muted-foreground">Melody: {section.melody}</p>
+              </div>
+              {onSheetChange && sheet.id && song.status !== "done" && (
+                <Button variant="ghost" size="sm" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
+                  {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
+                  {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
+                </Button>
+              )}
             </div>
             <div className="grid gap-3">
               {section.lines.map((line, li) => (
                 <div key={li} className="grid gap-0.5">
-                  <p className="font-mono text-xs text-muted-foreground">{line.chords}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{transposeLine(line.chords, steps, flats)}</p>
                   {/* Every line's receipts as AI Elements' Inline Citation: hover or focus a badge for its Qloo signal. */}
                   <InlineCitation className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <InlineCitationText className="text-base">{line.text}</InlineCitationText>
