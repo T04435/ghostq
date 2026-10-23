@@ -2,6 +2,7 @@ import { z } from "zod";
 import { singProblem } from "@/lib/sing-check";
 import { buildSingPrompt } from "@/lib/sing-prompt";
 import { vocalLineSchema } from "@/lib/voice";
+import { botRefusal } from "@/server/bot";
 import { providerStatus } from "@/server/env";
 import { perVisitor, refusalResponse, takeLyria } from "@/server/limits";
 import { generateSong, LyriaError } from "@/server/lyria";
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
   if (!song) return Response.json({ error: "This song wasn't saved, so it can't be sung. Write it again." }, { status: 404 });
   const problem = singProblem(song.sheet, vocals);
   if (problem) return Response.json({ error: problem }, { status: 422 });
+  const bot = await botRefusal();
+  if (bot) return bot;
   const refused = (await perVisitor("sing", request)) ?? (await takeLyria());
   if (refused) return refusalResponse(refused);
   try {
