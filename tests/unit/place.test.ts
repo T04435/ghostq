@@ -12,9 +12,15 @@ describe("languageFor", () => {
     expect(languageFor("AU")).toBe("English");
   });
 
-  it("falls back to English when unknown or not one of the five", () => {
+  it("falls back to English when unknown or not one Lyria sings", () => {
     expect(languageFor(null)).toBe("English");
-    expect(languageFor("JP")).toBe("English");
+    expect(languageFor("IT")).toBe("English");
+  });
+
+  it("writes in Japanese, Korean and Hindi too", () => {
+    expect(languageFor("JP")).toBe("Japanese");
+    expect(languageFor("KR")).toBe("Korean");
+    expect(languageFor("IN")).toBe("Hindi");
   });
 });
 

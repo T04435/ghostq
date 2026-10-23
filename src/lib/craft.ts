@@ -59,6 +59,9 @@ export const MAX_CRAFT_FIXES = 6;
 
 export function craftProblems(song: Pick<WrittenSong, "title" | "sections" | "genre" | "vocalDirection">): CraftProblem[] {
   const rapped = /\b(rap|rapped|rapping|hip[ -]?hop|spoken)\b/i.test(`${song.genre} ${song.vocalDirection}`);
+  // Syllables and rhyme are counted on Latin letters; songs in Japanese, Korean or Hindi get the hook and filler checks only.
+  const letters = song.sections.flatMap((s) => s.lines.map((l) => l.text)).join("").match(/\p{L}/gu) ?? [];
+  const latin = letters.filter((c) => /\p{Script=Latin}/u.test(c)).length >= letters.length * 0.6;
   const problems: CraftProblem[] = [];
   const add = (section: number, line: number, issue: string) => problems.push({ section, line, where: `${song.sections[section].name}, line ${line + 1}`, issue });
 
@@ -67,7 +70,7 @@ export function craftProblems(song: Pick<WrittenSong, "title" | "sections" | "ge
     s.lines.forEach((l, li) => {
       if (FILLER.test(l.text)) add(si, li, "is filler (vocables or repeated words); give it an image or a point");
       const n = syllables(l.text);
-      if (!rapped && n > MAX_SUNG) add(si, li, `is too long to sing (${n} syllables); keep it under ${MAX_SUNG - 4}`);
+      if (latin && !rapped && n > MAX_SUNG) add(si, li, `is too long to sing (${n} syllables); keep it under ${MAX_SUNG - 4}`);
     }),
   );
 
@@ -75,7 +78,7 @@ export function craftProblems(song: Pick<WrittenSong, "title" | "sections" | "ge
   const firstOf = new Map<string, number>();
   song.sections.forEach((s, si) => {
     const kind = sectionKind(s.name);
-    if (!kind.startsWith("verse") && !kind.startsWith("pre-chorus")) return;
+    if (!latin || (!kind.startsWith("verse") && !kind.startsWith("pre-chorus"))) return;
     const first = firstOf.get(kind);
     if (first === undefined) return void firstOf.set(kind, si);
     s.lines.forEach((l, li) => {
@@ -89,7 +92,7 @@ export function craftProblems(song: Pick<WrittenSong, "title" | "sections" | "ge
 
   // Every section of 3+ lines rhymes somewhere; a line that rhymes with nothing ends the section is the one to fix.
   song.sections.forEach((s, si) => {
-    if (s.lines.length < 3) return;
+    if (!latin || s.lines.length < 3) return;
     const t = s.lines.map((l) => l.text);
     const any = t.some((a, i) => t.some((b, j) => j > i && rhymes(a, b)));
     if (!any) add(si, t.length - 1, "the section doesn't rhyme anywhere; make this line rhyme with an earlier one");

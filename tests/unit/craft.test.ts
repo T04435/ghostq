@@ -51,4 +51,9 @@ describe("craftProblems", () => {
     expect(craftProblems(sung).some((p) => p.issue.includes("too long"))).toBe(true);
     expect(craftProblems({ ...sung, vocalDirection: "Rapped, fast" }).some((p) => p.issue.includes("too long"))).toBe(false);
   });
+
+  it("checks only the hook and filler in a non-Latin script", () => {
+    const ko = song([["Verse 1", ["서울의 밤은 길고", "우리는 걷는다", "불빛 아래서", "너를 기다려"]], ["Chorus", ["Shore Road 너와 함께", "노래해"]]]);
+    expect(craftProblems(ko)).toEqual([]);
+  });
 });
