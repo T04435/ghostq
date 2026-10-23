@@ -74,6 +74,14 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - The two versions sit side by side, each with its own receipts. Both are saved and linked.
 - Done when: a remix runs from a song page, keeps the structure and hook, changes the lines the new crowd's data calls for, and shows both versions with their receipts.
 
+## RemixQ2: an answer song to a real song (parked 23 Oct)
+
+- Idea: pick a real song; GhostQ writes an ORIGINAL song for a chosen crowd that answers or echoes the real song's idea.
+- Never fetch or use lyrics: no lyrics source allows AI use (Musixmatch terms forbid it without written approval; Genius returns no lyrics; LRCLIB and lyrics.ovh have no licence), and breaking a third-party API's terms breaks the hackathon rules.
+- Viable design ($0): an editable "idea card" (theme, story, mood, point of view) from Wikipedia's section on the song's meaning (CC BY-SA, quoted lines stripped), Last.fm track tags (non-commercial, credited) and Qloo's artist tags; when there's no Wikipedia article, ask the user for one line. Spotify only for the song picker (its terms bar feeding its content to AI). Block the original title and any copied phrase in the output.
+- Qloo has no track entities (singles show up as albums, with no tags).
+- Research with sources: `media/research/remixq2-real-songs.md` (outside the repo).
+
 ## Report: the Library guard
 
 - A "Report this song" link on every song page. Three reports hide a song from the Library until it's reviewed; its own link keeps working.
