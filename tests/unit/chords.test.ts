@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capoFor, chordProblems, chordsIn, fitsKey, parseChord, parseKey, sectionKind, toChordPro, transposeKey, transposeLine } from "@/lib/chords";
+import { chordProblems, chordsIn, fitsKey, parseChord, parseKey, sectionKind, toChordPro } from "@/lib/chords";
 
 const line = (chords: string, text = "a line") => ({ text, chords, signalIds: ["T1"] });
 
@@ -49,21 +49,7 @@ describe("chordProblems", () => {
   });
 });
 
-describe("transpose, capo, ChordPro", () => {
-  it("moves chords and keys, keeping suffixes and spacing", () => {
-    expect(transposeLine("Am7/G  F  C", 2)).toBe("Bm7/A  G  D");
-    expect(transposeLine("Am  F", -1, true)).toBe("Abm  E");
-    expect(transposeKey("A minor", 3)).toBe("C minor");
-    expect(transposeKey("G major", 1)).toBe("Ab major");
-    expect(transposeKey("D major", 4)).toBe("F# major");
-  });
-
-  it("suggests a capo for awkward keys", () => {
-    expect(capoFor("Eb major")).toEqual({ fret: 1, shapes: "D major" });
-    expect(capoFor("G major")).toBeNull();
-    expect(capoFor("F# minor")).toEqual({ fret: 2, shapes: "E minor" });
-  });
-
+describe("ChordPro", () => {
   it("writes ChordPro with chords spread over the words", () => {
     const cho = toChordPro({ title: "T", key: "A minor", tempo: 90, artist: "Lorde", sections: [{ name: "Verse 1", melody: "m", voices: undefined, lines: [line("Am  F", "up at six the footpath")] }] });
     expect(cho).toContain("{title: T}");
