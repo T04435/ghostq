@@ -119,6 +119,12 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
     void run({ artist: remixOf.artist, remix: { of: remixOf.id, ...r } });
   }
 
+  /** A section rewritten on the sheet: shown, and kept as this device's last run (a remix stays on its own page). */
+  function rewritten(next: SongSheet) {
+    setSheet(next);
+    if (current.current && !current.current.remix) saveLastRun({ brief: current.current, sheet: next, at: new Date().toISOString() });
+  }
+
   function writeAnother() {
     if (!current.current) return;
     void run({ ...current.current, avoid: written.current });
@@ -260,7 +266,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
 
       {sheet && remixOf && sheet.remixOf && <RemixCompare original={remixOf} remix={sheet} />}
 
-      {sheet && <SongSheetView sheet={sheet} />}
+      {sheet && <SongSheetView key={sheet.id} sheet={sheet} onSheetChange={rewritten} />}
 
       {sheet && !busy && (
         <div className="flex flex-wrap items-center gap-3">

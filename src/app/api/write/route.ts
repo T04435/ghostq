@@ -2,7 +2,7 @@ import { briefSchema } from "@/lib/brief";
 import type { RunEvent } from "@/lib/run-events";
 import { runGhostQ } from "@/server/agent/run";
 import { providerStatus } from "@/server/env";
-import { addQlooCalls, checkQloo, perVisitor, refusalResponse } from "@/server/limits";
+import { addQlooCalls, checkQloo, device, perVisitor, refusalResponse } from "@/server/limits";
 
 export const maxDuration = 300;
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     async start(controller) {
       const emit = (event: RunEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       try {
-        await runGhostQ(parsed.data, emit, request.signal, addQlooCalls);
+        await runGhostQ(parsed.data, emit, request.signal, addQlooCalls, device(request));
       } catch (error) {
         console.error("GhostQ run failed", error instanceof Error ? error.message : error);
         if (!request.signal.aborted) emit({ type: "error", message: "The run failed part-way. Try again in a minute." });

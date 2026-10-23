@@ -32,6 +32,8 @@ export type SavedSong = {
   audio: { vocals: VocalLine | null; createdAt: string } | null;
   /** Hidden from the Library (moderation); the song's own link still works. */
   hidden?: boolean;
+  /** The writing device's hashed id (limits.device): only it may rewrite a section. Never leaves the server. */
+  owner?: string | null;
   /** How many times Lyria refused to sing it (content filter). Three takes it out of the Library. */
   singBlocks?: number;
 };
@@ -87,12 +89,20 @@ function ensureSchema(): Promise<unknown> {
 
 type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; sing_blocks?: number; audio_voice: string | null; audio_created_at: string | Date | null };
 
+function withoutOwner(brief: Brief & { _owner?: unknown }): Brief {
+  const copy = { ...brief };
+  delete copy._owner;
+  return copy;
+}
+
 function fromRow(r: Row): SavedSong {
   const iso = (d: string | Date) => new Date(d).toISOString();
   return {
     id: r.id,
     createdAt: iso(r.created_at),
-    brief: r.brief,
+    // The owner rides in the brief's JSON (no schema change); it's split back out here and never reaches a page.
+    brief: withoutOwner(r.brief),
+    owner: (r.brief as { _owner?: string | null })._owner ?? null,
     sheet: r.sheet,
     research: r.research ?? [],
     hidden: r.hidden,
@@ -106,7 +116,7 @@ const neonStore: Store = {
     await ensureSchema();
     await sql()`
       INSERT INTO songs (id, created_at, brief, sheet, research, hidden)
-      VALUES (${song.id}, ${song.createdAt}, ${JSON.stringify(song.brief)}::jsonb, ${JSON.stringify(song.sheet)}::jsonb, ${JSON.stringify(song.research)}::jsonb, ${song.hidden ?? false})
+      VALUES (${song.id}, ${song.createdAt}, ${JSON.stringify({ ...song.brief, _owner: song.owner ?? null })}::jsonb, ${JSON.stringify(song.sheet)}::jsonb, ${JSON.stringify(song.research)}::jsonb, ${song.hidden ?? false})
       ON CONFLICT (id) DO UPDATE SET brief = EXCLUDED.brief, sheet = EXCLUDED.sheet, research = EXCLUDED.research, hidden = EXCLUDED.hidden`;
   },
   async get(id) {
