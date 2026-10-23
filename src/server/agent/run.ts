@@ -10,7 +10,7 @@ import { dropUnknownIds, validateSong, type Problem } from "@/lib/validate-sheet
 import { idsIn } from "@/lib/signal-text";
 import type { VocalMatch } from "@/lib/voice";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
-import { readCrowd } from "@/server/crowd";
+import { nextAreas, readCrowd } from "@/server/crowd";
 import { artistProfile } from "@/server/musicbrainz";
 import { getSong, newSongId, saveSong } from "@/server/store/songs";
 import { compareArtists, genresFromWords, searchArtist } from "@/server/qloo/api";
@@ -92,6 +92,8 @@ async function run(state: RunState, brief: Brief, send: Emit, abortSignal?: Abor
   const id = newSongId();
   const { voices, source } = songVocals(state);
   const sheet: SongSheet = { ...(await write(state, emit, abortSignal)), vocals: { voices, source }, id };
+  const otherAreas = await state.artist().nextAreas;
+  if (otherAreas?.length) sheet.crowd = { ...sheet.crowd, otherAreas };
   // Saved for the share link; a failed save keeps the song on the page, just without a link.
   await saveSong({ id, brief, sheet, research: log, createdAt: new Date().toISOString(), audio: null }).catch((e) => {
     console.error("save song failed", e instanceof Error ? e.message : e);
@@ -179,7 +181,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const artistName = x.act?.name ?? x.name;
   emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
-  const [{ crowd: read, missing: crowdMissing }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
+  const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
   x.vocals = profile.voices;
   const home: Home | null = profile.home ?? (x.homeFromTags ? { name: x.homeFromTags, country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags), source: "qloo" } : null);
   const languageFrom = home?.countryCode ? "home" : "city";
@@ -193,6 +195,8 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     return false;
   }
   x.crowdInfo = crowd;
+  // RemixQ's quick picks, named in the background while the agent researches (awaited when the song is saved).
+  if (!state.collab) x.nextAreas = nextAreas(area).catch(() => []);
   const crowdSignals = [
     ...(home ? [state.signals.add("home", describeHome(home), home.source === "musicbrainz" ? `MusicBrainz: where ${artistName} is from` : `Qloo: ${artistName}'s tags`, null, side)] : []),
     ...(crowd.place ? [state.signals.add("crowd", `Crowd around ${describePlace(crowd.place)}`, crowd.from.place === "qloo" ? `Qloo insights: ${artistName}'s fans' strongest area (heatmap; place named by OpenStreetMap)` : "Your answer", null, side)] : []),

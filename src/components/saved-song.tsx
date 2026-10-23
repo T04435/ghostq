@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 import Link from "next/link";
 import { CrowdCard } from "@/components/crowd-card";
+import { RemixCard } from "@/components/remix-card";
 import { RemixCompare } from "@/components/remix-compare";
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
 import { describeCrowd, type Crowd } from "@/lib/brief";
@@ -34,6 +35,7 @@ export function SavedSong({
     <div className="grid gap-8">
       {original && <RemixCompare original={original} remix={sheet} />}
       <SongSheetView sheet={sheet} readOnly audioUrl={audioUrl} />
+      <RemixCard sheet={sheet} />
       {remixes.length > 0 && (
         <section className="grid gap-2" aria-label="Remixes of this song">
           <h2 className="text-lg font-semibold">Remixed for other crowds</h2>

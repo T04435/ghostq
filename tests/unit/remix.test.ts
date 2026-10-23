@@ -11,9 +11,10 @@ const qloo = vi.hoisted(() => ({
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/qloo/api", () => qloo);
-vi.mock("@/server/geocode", () => ({ cityAt: async () => null }));
+const cityAt = vi.hoisted(() => vi.fn(async (): Promise<unknown> => null));
+vi.mock("@/server/geocode", () => ({ cityAt }));
 
-const { readCrowd } = await import("@/server/crowd");
+const { nextAreas, readCrowd } = await import("@/server/crowd");
 
 const lisbon = { name: "Lisbon", country: "Portugal", countryCode: "PT", lat: 38.72, lon: -9.14 };
 const act = { id: "E1", name: "Lorde", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, tags: [] };
@@ -63,5 +64,29 @@ describe("changedLines", () => {
       ["Bridge", ["New here"]],
     ]);
     expect([...changedLines(original, remix)]).toEqual(["0:0", "2:0"]);
+  });
+});
+
+describe("nextAreas (RemixQ's quick picks)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("names the next heatmap cells, skipping the chosen city, repeats and the sea", async () => {
+    const at = (name: string, country = "Portugal") => ({ name, country, countryCode: "PT", lat: 1, lon: 2, settlement: true });
+    cityAt.mockResolvedValueOnce(at("Lisbon")).mockResolvedValueOnce(null).mockResolvedValueOnce(at("Porto")).mockResolvedValueOnce(at("Porto")).mockResolvedValueOnce(at("Faro"));
+    const rest = ["eyc", "eyd", "eyf", "eyg", "eyu"].map((geohash) => ({ geohash }));
+    const got = await nextAreas({ place: { name: "Lisbon", country: "Portugal", countryCode: "PT", lat: 0, lon: 0 }, rest });
+    expect(got.map((p) => p.name)).toEqual(["Porto", "Faro"]);
+  });
+
+  it("prefers towns over rural districts", async () => {
+    const at = (name: string, settlement: boolean) => ({ name, country: "New Zealand", countryCode: "NZ", lat: 1, lon: 2, settlement });
+    cityAt.mockResolvedValueOnce(at("Northern Community (Southland)", false)).mockResolvedValueOnce(at("Wellington", true)).mockResolvedValueOnce(at("Dunedin", true));
+    const got = await nextAreas({ place: { name: "Auckland", country: "New Zealand", countryCode: "NZ", lat: 0, lon: 0 }, rest: ["rck", "rbs", "rbm"].map((geohash) => ({ geohash })) });
+    expect(got.map((p) => p.name)).toEqual(["Wellington", "Dunedin"]);
+    expect(got[0]).not.toHaveProperty("settlement");
+  });
+
+  it("is empty without an area", async () => {
+    expect(await nextAreas(null)).toEqual([]);
   });
 });
