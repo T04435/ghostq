@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, PenLine, RotateCcw, Sparkles } from "lucide-react";
+import { CircleAlert, PenLine, RotateCcw, Shuffle, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -28,10 +28,11 @@ function withAnswers(brief: Brief, who: "A" | "B" | undefined, answers: NonNulla
 /** `remixOf`: RemixQ mode, on /remix/<id>: the form asks for the new crowd, and the result shows next to the original. */
 /** "18–24 in Mexico City": the remix's new crowd, as picked (what's left out stays Qloo's). */
 function describeRemix(r: Remix): string {
-  return [r.ages ? describeAges(r.ages) : null, r.place ? `in ${describePlace(r.place)}` : null].filter(Boolean).join(" ");
+  if (!r.ages) return `the crowd in ${describePlace(r.place!)}`;
+  return [describeAges(r.ages), r.place ? `in ${describePlace(r.place)}` : null].filter(Boolean).join(" ");
 }
 
-export function GhostQApp({ remixOf }: { remixOf?: SongSheet } = {}) {
+export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ picks made on the song page: the run starts on its own. */ start?: Omit<Remix, "of"> } = {}) {
   const [initial, setInitial] = useState<Brief | undefined>();
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<StepItem[]>([]);
@@ -52,10 +53,27 @@ export function GhostQApp({ remixOf }: { remixOf?: SongSheet } = {}) {
   const abort = useRef<AbortController | null>(null);
   const router = useRouter();
 
+  const started = useRef(false);
+  useEffect(() => {
+    if (!remixOf || !start) return;
+    // Once only, each start being a paid run. The timer is cleared when React's development double-mount unmounts the
+    // first pass, so only the second pass starts it (an immediate start would be aborted by that unmount).
+    const timer = setTimeout(() => {
+      if (started.current) return;
+      started.current = true;
+      // Drop the picks from the address, so reloading the page doesn't run (and pay for) the remix again.
+      window.history.replaceState(null, "", window.location.pathname);
+      remix(start);
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per page: the picks don't change after load.
+  }, []);
+
   useEffect(() => {
     if (remixOf) return () => abort.current?.abort();
     const last = loadLastRun();
-    if (last) {
+    // A remix lives on its own page; the home page restores plain runs only (remixes saved before this fix too).
+    if (last && !last.brief.remix) {
       // Restoring from this device's storage after hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitial(last.brief);
@@ -164,7 +182,7 @@ export function GhostQApp({ remixOf }: { remixOf?: SongSheet } = {}) {
           apply(event, n++);
         }
       }
-      saveLastRun({ brief, sheet: finalSheet, at: new Date().toISOString() });
+      if (!brief.remix) saveLastRun({ brief, sheet: finalSheet, at: new Date().toISOString() });
     } catch (e) {
       if (!controller.signal.aborted) setError({ message: e instanceof Error ? e.message : "Something went wrong." });
     } finally {
@@ -254,6 +272,14 @@ export function GhostQApp({ remixOf }: { remixOf?: SongSheet } = {}) {
             <RotateCcw aria-hidden />
             New artist
           </Button>
+          {!remixOf && sheet.id && !sheet.featuring && (
+            <Button size="lg" variant="outline" asChild>
+              <Link href={`/remix/${sheet.id}`}>
+                <Shuffle aria-hidden />
+                Remix for another crowd
+              </Link>
+            </Button>
+          )}
           {remixOf && (
             <Button type="button" size="lg" variant="outline" onClick={() => setFolded(false)}>
               <PenLine aria-hidden />

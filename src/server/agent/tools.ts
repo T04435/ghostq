@@ -1,7 +1,7 @@
 import "server-only";
 import { tool } from "ai";
 import { z, ZodError } from "zod";
-import { describeCrowd, type Brief, type Crowd } from "@/lib/brief";
+import { describeCrowd, type Brief, type Crowd, type Place } from "@/lib/brief";
 import type { SongSheet } from "@/lib/song-sheet";
 import type { VocalMatch } from "@/lib/voice";
 import { isMusicGenre, type QlooEntity } from "@/lib/qloo-parse";
@@ -21,6 +21,8 @@ export class ArtistRun {
   homeFromTags: string | null = null;
   /** The voices that match the artist (MusicBrainz), read with the crowd; the writer gets them as fixed input. */
   vocals: VocalMatch | null = null;
+  /** RemixQ's quick picks: the fans' next-strongest areas, named in the background (solo runs only). */
+  nextAreas: Promise<Place[]> | null = null;
 
   constructor(
     readonly key: "A" | "B",

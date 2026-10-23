@@ -78,6 +78,8 @@ export type Crowd = {
   place: Place | null;
   /** The fans' top area's rank among Qloo's world heatmap cells, e.g. 3 of 3,136. */
   placeRank: { rank: number; of: number } | null;
+  /** The fans' next-strongest areas on Qloo after `place` (RemixQ's quick picks); absent on songs before 23 Oct. */
+  otherAreas?: Place[];
   /** Up to three age bands the fans skew towards, strongest first; empty when Qloo has no fan data. */
   ages: { age: AgeBand; skew: number | null }[];
   /** Where the artist is from (MusicBrainz, else Qloo's country tags); null when neither knows. */
@@ -94,6 +96,7 @@ export function normalizeCrowd(raw: unknown): Crowd {
     from: c.from ?? { place: "qloo", ages: "qloo" },
     place: toPlace(c.place),
     placeRank: c.placeRank ?? null,
+    ...(c.otherAreas?.length ? { otherAreas: c.otherAreas.map(toPlace).filter((p): p is Place => p !== null) } : {}),
     ages: c.ages ?? [],
     home: c.home ?? null,
     language: c.language ?? "English",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Shuffle, X } from "lucide-react";
+import { MapPin, Search, Shuffle, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,8 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
   const [cities, setCities] = useState<{ status: "idle" | "searching" | "done" | "error"; results: Place[]; message?: string }>({ status: "idle", results: [] });
   const [place, setPlace] = useState<Place | null>(null);
   const [ages, setAges] = useState<AgeBand[]>([]);
+  // Qloo's heatmap: where else this artist's fans are strongest (saved with songs written from 23 Oct).
+  const quick = original.crowd.otherAreas ?? [];
 
   async function search() {
     const q = query.trim();
@@ -56,6 +58,20 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="grid gap-6">
+          {quick.length > 0 && (
+            <div className="grid gap-2">
+              <p className="text-sm font-medium">One click: the fans&apos; next-strongest areas on Qloo</p>
+              <div className="flex flex-wrap gap-2">
+                {quick.map((p) => (
+                  <Button key={`${p.name}-${p.lat}-${p.lon}`} type="button" variant="secondary" disabled={busy} onClick={() => onSubmit({ place: p })}>
+                    <MapPin aria-hidden />
+                    Remix for the fans around {p.name}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Or pick any city and ages:</p>
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="remix-city">City</Label>
             {place ? (

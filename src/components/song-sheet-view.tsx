@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleAlert, Copy, Download, Link2, Mic, Shuffle, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, Link2, Mic, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -126,14 +126,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
               {linkCopied ? "Link copied" : "Copy share link"}
             </Button>
           )}
-          {sheet.id && !sheet.featuring && (
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/remix/${sheet.id}`}>
-                <Shuffle aria-hidden />
-                Remix for another crowd
-              </Link>
-            </Button>
-          )}
+
         </div>
         {!readOnly && (
           <div className="grid gap-2 pt-2">
