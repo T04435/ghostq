@@ -12,6 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AGE_BANDS, describeCrowd, type AgeBand, type Remix } from "@/lib/brief";
 import { describePlace, type Place } from "@/lib/place";
 import type { SongSheet } from "@/lib/song-sheet";
+import { possessive } from "@/lib/possessive";
 
 const MAX_AGES = 3;
 
@@ -52,7 +53,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
       <CardHeader>
         <CardTitle>Remix &quot;{original.title}&quot; for another crowd</CardTitle>
         <CardDescription>
-          Written for {original.artist}&apos;s crowd: {describeCrowd(original.crowd)}. Pick a new city, new ages, or both. What you leave stays as Qloo reads it; the
+          Written for {possessive(original.artist)} crowd: {describeCrowd(original.crowd)}. Pick a new city, new ages, or both. What you leave stays as Qloo reads it; the
           song keeps its structure and hook, and changes the lines the new crowd calls for.
         </CardDescription>
       </CardHeader>

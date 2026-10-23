@@ -21,6 +21,7 @@ export const LIMITS = {
   maxSteps: 12,
   maxOutputTokensPerStep: 3000,
   agentTimeoutMs: 150_000,
-  writerMaxOutputTokens: 6000,
-  writerTimeoutMs: 120_000,
+  // Korean, Japanese and Hindi take many more tokens per line: 6000 cut a BTS song off mid-object (23 Oct).
+  writerMaxOutputTokens: 12000,
+  writerTimeoutMs: 150_000,
 } as const;

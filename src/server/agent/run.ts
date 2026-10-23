@@ -1,5 +1,5 @@
 import "server-only";
-import { generateText, Output, ToolLoopAgent, type StopCondition } from "ai";
+import { generateText, NoObjectGeneratedError, Output, ToolLoopAgent, type StopCondition } from "ai";
 import { AGE_BANDS, describeBrief, describeCrowd, describeHome, type AskField, type Brief, type Crowd } from "@/lib/brief";
 import { countryCodeFor, countryFromDescription, describePlace, languageFor, type Home } from "@/lib/place";
 import { pickArtist, type ComparedTag } from "@/lib/qloo-parse";
@@ -36,7 +36,7 @@ Rules:
 - Qloo has no language filter: the language is the one given in the prompt.`;
 
 export const WRITER_RULES = `Rules for the song:
-- Write an ORIGINAL song in the language given above. Don't quote, paraphrase or imitate any existing lyric, and don't name any real artist, song, film or book in a lyric.
+- Write an ORIGINAL song in the language given above: the title and the lyrics. The notes for musicians and the singer (feel, melody, genre, vocal direction, production brief, angle) stay in English. Don't quote, paraphrase or imitate any existing lyric, and don't name any real artist, song, film or book in a lyric.
 - Voice: write as the artist, from their home. The voice signals (their own themes and styles, and home) set the language, slang, places and images. The crowd signals set what the song is about for these listeners.
 - Artists in the signals are style references for the music and production brief only.
 - Films and books in the signals set the mood and the kind of images only. Never use their titles, their characters, their settings or their plots, and never retell a famous scene (a song drawing on a film about four sisters must not mention four sisters).
@@ -524,7 +524,7 @@ async function craftPass(state: RunState, song: WrittenSong, emit: Emit, abortSi
 async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Promise<Omit<SongSheet, "vocals">> {
   emit({ type: "writing", signalCount: state.chosen?.signalIds.length ?? state.signals.all().length });
   const signals = state.signals.all();
-  const ask = async (prompt: string) =>
+  const once = async (prompt: string) =>
     (
       await generateText({
         model: MODELS.writer,
@@ -534,6 +534,16 @@ async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Pr
         abortSignal: AbortSignal.any([AbortSignal.timeout(LIMITS.writerTimeoutMs), ...(abortSignal ? [abortSignal] : [])]),
       })
     ).output;
+  // A draft that doesn't parse (cut off, or malformed) gets one more try before the run fails.
+  const ask = async (prompt: string) => {
+    try {
+      return await once(prompt);
+    } catch (error) {
+      if (!NoObjectGeneratedError.isInstance(error) || abortSignal?.aborted) throw error;
+      emit({ type: "note", text: "The writer's draft came back unreadable, so it writes it once more." });
+      return once(prompt);
+    }
+  };
   let song = await ask(writerPrompt(state));
   let problems = [...validateSong(song, signals, [...state.artistNames]), ...chordProblems(song)];
   if (problems.length) {
@@ -546,7 +556,8 @@ async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Pr
   const cited = new Set([...song.sections.flatMap((s) => s.lines.flatMap((l) => l.signalIds)), ...idsIn([song.genre, song.vocalDirection, song.productionBrief, song.feel, song.angle].join(" "))]);
   return {
     ...song,
-    artist: state.act?.name ?? state.brief.artist,
+    // Qloo's name, unless it only differs in case from the user's Spotify pick ("yoasobi" vs "YOASOBI").
+    artist: state.act && state.act.name.toLowerCase() !== state.brief.artist.toLowerCase() ? state.act.name : state.brief.artist,
     crowd: state.crowdInfo!,
     ...(state.collab ? { featuring: { artist: state.artist("B").act?.name ?? state.artist("B").name, crowd: state.artist("B").crowdInfo! } } : {}),
     ...(state.original ? { title: state.original.title, remixOf: { id: state.original.id!, title: state.original.title, crowd: state.original.crowd } } : {}),
