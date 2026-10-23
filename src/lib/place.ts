@@ -21,10 +21,11 @@ export type Place = z.infer<typeof placeSchema>;
  */
 export type Home = { name: string; country: string; countryCode: string | null; source: "musicbrainz" | "qloo" | "qloo+musicbrainz" };
 
-export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German"] as const;
+/** The languages GhostQ writes in: the ones Lyria sings (Lyria 3's launch list, Feb 2026; checked 23 Oct). */
+export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German", "Japanese", "Korean", "Hindi"] as const;
 export type Language = (typeof LANGUAGES)[number];
 
-const BY_CODE: Record<string, Language> = { en: "English", es: "Spanish", pt: "Portuguese", fr: "French", de: "German" };
+const BY_CODE: Record<string, Language> = { en: "English", es: "Spanish", pt: "Portuguese", fr: "French", de: "German", ja: "Japanese", ko: "Korean", hi: "Hindi" };
 
 /** The main language of a country (Unicode CLDR likely-subtags, built into Intl); English when it's not one GhostQ writes in. */
 export function languageFor(countryCode: string | null | undefined): Language {
