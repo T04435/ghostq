@@ -39,7 +39,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Receipts for these lines say "Spotify: the artist's catalogue", not Qloo.
 - Done when: an artist on Spotify but not in Qloo gets a run without the sound question, with the source shown.
 
-### F3. Qloo first for every data point
+### F3. Qloo first for every data point (done 23 Oct, as far as Qloo has the data)
+
+- Built: Qloo's artist entity has no origin, gender or member fields (probed 23 Oct: only `short_description` and external ids). Home's country now comes from Qloo's description (else its country-named tags); MusicBrainz, looked up by Qloo's own MusicBrainz id, adds the city only when it agrees on the country, and answers alone only when Qloo says nothing. Voices stay MusicBrainz's (by Qloo's id), labelled as such. Receipts and the crowd card name the source.
+
 
 - Rule: Qloo is the first source for any data point it can give. MusicBrainz, Spotify and OpenStreetMap only fill gaps (user, 22 Oct).
 - Today:

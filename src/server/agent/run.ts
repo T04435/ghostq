@@ -1,7 +1,7 @@
 import "server-only";
 import { generateText, Output, ToolLoopAgent, type StopCondition } from "ai";
 import { AGE_BANDS, describeBrief, describeCrowd, describeHome, type AskField, type Brief, type Crowd } from "@/lib/brief";
-import { countryCodeFor, describePlace, languageFor, type Home } from "@/lib/place";
+import { countryCodeFor, countryFromDescription, describePlace, languageFor, type Home } from "@/lib/place";
 import { pickArtist, type ComparedTag } from "@/lib/qloo-parse";
 import { publicEvent, TOOL_LABELS, type RunEvent } from "@/lib/run-events";
 import { signalLine, type Signal } from "@/lib/signals";
@@ -133,6 +133,24 @@ function whose(state: RunState, key: "A" | "B", name?: string): { who?: "A" | "B
   return { who: key, artist: name ?? x.act?.name ?? x.name };
 }
 
+/**
+ * Where the artist is from, Qloo first (F3): the country from Qloo's description of the act (else a country Qloo files
+ * among its genre tags); MusicBrainz, found by Qloo's own MusicBrainz id, only adds the city when it agrees on the
+ * country, or answers alone when Qloo says nothing.
+ */
+function homeFor(x: ArtistRun, mb: Home | null): Home | null {
+  const fromQloo = countryFromDescription(x.act?.description) ?? (x.homeFromTags ? { country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags) } : null);
+  if (!fromQloo) return mb;
+  if (mb && mb.countryCode && mb.countryCode === fromQloo.countryCode && mb.name !== mb.country) return { ...mb, source: "qloo+musicbrainz" };
+  return { name: fromQloo.country, country: fromQloo.country, countryCode: fromQloo.countryCode, source: "qloo" };
+}
+
+const HOME_SOURCE: Record<Home["source"], (artist: string) => string> = {
+  qloo: (a) => `Qloo: ${a}'s profile`,
+  "qloo+musicbrainz": (a) => `Qloo: ${a}'s country; MusicBrainz (by Qloo's id): the city`,
+  musicbrainz: (a) => `MusicBrainz: where ${a} is from (Qloo doesn't say)`,
+};
+
 async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boolean> {
   const answers = x.answers;
   const missing: AskField[] = [];
@@ -186,8 +204,9 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
   const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
-  x.vocals = profile.voices;
-  const home: Home | null = profile.home ?? (x.homeFromTags ? { name: x.homeFromTags, country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags), source: "qloo" } : null);
+  // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's, found by Qloo's id.
+  x.vocals = { ...profile.voices, source: `${profile.voices.source} (Qloo has no voice data)` };
+  const home = homeFor(x, profile.home);
   const languageFrom = home?.countryCode ? "home" : "city";
   const crowd: Crowd = { ...read, home, language: languageFor(home?.countryCode ?? read.place?.countryCode), languageFrom };
   missing.push(...crowdMissing);
@@ -202,7 +221,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   // RemixQ's quick picks, named in the background while the agent researches (awaited when the song is saved).
   if (!state.collab) x.nextAreas = nextAreas(area).catch(() => []);
   const crowdSignals = [
-    ...(home ? [state.signals.add("home", describeHome(home), home.source === "musicbrainz" ? `MusicBrainz: where ${artistName} is from` : `Qloo: ${artistName}'s tags`, null, side)] : []),
+    ...(home ? [state.signals.add("home", describeHome(home), HOME_SOURCE[home.source](artistName), null, side)] : []),
     ...(crowd.place ? [state.signals.add("crowd", `Crowd around ${describePlace(crowd.place)}`, crowd.from.place === "qloo" ? `Qloo insights: ${artistName}'s fans' strongest area (heatmap; place named by OpenStreetMap)` : "Your answer", null, side)] : []),
     ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? `Qloo insights: ${artistName}'s fans (demographics)` : "Your answer", a.skew, side)),
   ];

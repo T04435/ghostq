@@ -49,3 +49,15 @@ describe("toPlace and normalizeCrowd", () => {
     expect(describePlace({ name: "Bogotá", country: "Colombia" })).toBe("Bogotá, Colombia");
   });
 });
+
+describe("countryFromDescription (Qloo first for home)", () => {
+  it("reads the country from Qloo's description, by name or demonym", async () => {
+    const { countryFromDescription } = await import("@/lib/place");
+    expect(countryFromDescription("Lorde is a New Zealand singer-songwriter known for…")).toEqual({ country: "New Zealand", countryCode: "NZ" });
+    expect(countryFromDescription("BTS is a South Korean boy band formed in Seoul.")).toMatchObject({ countryCode: "KR" });
+    expect(countryFromDescription("Los Aldeanos are a Cuban hip hop duo.")).toMatchObject({ countryCode: "CU" });
+    expect(countryFromDescription("The xx are an English indie pop band.")).toMatchObject({ countryCode: "GB" });
+    expect(countryFromDescription("A band that plays loud.")).toBeNull();
+    expect(countryFromDescription(null)).toBeNull();
+  });
+});
