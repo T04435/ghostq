@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { rewriteSection } from "@/server/agent/rewrite";
+import { botRefusal } from "@/server/bot";
 import { providerStatus } from "@/server/env";
 import { device, perVisitor, refusalResponse } from "@/server/limits";
 import { getSong, isSongId, saveSong } from "@/server/store/songs";
@@ -22,6 +23,8 @@ export async function POST(request: Request) {
   const who = device(request);
   if (!song.owner || !who || song.owner !== who) return Response.json({ error: "Only the browser that wrote this song can rewrite it. Remix it instead." }, { status: 403 });
   if (song.audio) return Response.json({ error: "This song is already sung, so its words stay. Write another or remix it." }, { status: 409 });
+  const bot = await botRefusal();
+  if (bot) return bot;
   const refused = await perVisitor("write", request);
   if (refused) return refusalResponse(refused);
   try {

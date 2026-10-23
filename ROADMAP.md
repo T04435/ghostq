@@ -55,7 +55,7 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 
 - Per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`, with a plain message when one is hit and when to try again.
 - A daily cap on singing (Lyria, US$0.08 a song) and on fresh runs (Qloo's 10,000 calls a month are shared with Busk Map).
-- Vercel BotID on the write and sing routes.
+- Vercel BotID on the write and sing routes (done 23 Oct: Basic mode on write, sing and rewrite).
 - Counters in Neon, so they hold across serverless instances.
 - Done when: going past each limit shows the message, the caps stop new paid calls, and normal use is unaffected.
 

@@ -1,6 +1,7 @@
 import { briefSchema } from "@/lib/brief";
 import type { RunEvent } from "@/lib/run-events";
 import { runGhostQ } from "@/server/agent/run";
+import { botRefusal } from "@/server/bot";
 import { providerStatus } from "@/server/env";
 import { addQlooCalls, checkQloo, device, perVisitor, refusalResponse } from "@/server/limits";
 
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "GhostQ can't write songs right now. Try again later." }, { status: 503 });
   }
 
+  const bot = await botRefusal();
+  if (bot) return bot;
   const refused = (await perVisitor("write", request)) ?? (await checkQloo(parsed.data.feat ? 2 : 1));
   if (refused) return refusalResponse(refused);
 
