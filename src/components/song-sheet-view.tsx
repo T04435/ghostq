@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleAlert, Copy, Download, Link2, Mic, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, FileMusic, Link2, Mic, RefreshCw, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,11 +13,13 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
+import { toChordPro } from "@/lib/chords";
 import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { Signal } from "@/lib/signals";
 import { sheetToMarkdown, songArtist, type SongSheet } from "@/lib/song-sheet";
+import { possessive } from "@/lib/possessive";
 
 // AI Elements' Audio Player, browser-only (its media-chrome elements can't hydrate from server HTML).
 const SongAudio = dynamic(() => import("@/components/song-audio"), { ssr: false, loading: () => <Skeleton className="h-10 w-full" /> });
@@ -39,9 +41,13 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
   home: "Home (voice)",
 };
 
-/** readOnly: a shared song page (no singing); audioUrl: a saved sung version to play. */
-export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string }) {
+/**
+ * readOnly: a shared song page (no singing); audioUrl: a saved sung version to play; onSheetChange: the write page's
+ * hook for a rewritten section (only the browser that wrote the song may rewrite it, and only before it's sung).
+ */
+export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string; onSheetChange?: (sheet: SongSheet) => void }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
   const [copied, setCopied] = useState(false);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
   const [song, setSong] = useState<{ status: "idle" | "singing" | "done" | "error"; url?: string; message?: string; retry?: boolean; budget?: boolean }>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
@@ -84,6 +90,29 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
     setTimeout(() => setCopied(false), 1500);
   }
 
+  async function rewrite(section: number) {
+    if (!sheet.id || !onSheetChange) return;
+    setRewriting({ section });
+    try {
+      const response = await fetch("/api/rewrite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ songId: sheet.id, section }) });
+      const body = (await response.json()) as { sheet?: SongSheet; error?: string };
+      if (!response.ok || !body.sheet) throw new Error(body.error ?? `The server returned ${response.status}`);
+      onSheetChange(body.sheet);
+      setRewriting({ section: null });
+    } catch (e) {
+      setRewriting({ section: null, error: e instanceof Error ? e.message : "The rewrite failed." });
+    }
+  }
+
+  function downloadChordPro() {
+    const url = URL.createObjectURL(new Blob([toChordPro({ ...sheet, artist: sheet.artist })], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${sheet.title.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() || "song"}.cho`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function download() {
     const url = URL.createObjectURL(new Blob([sheetToMarkdown(sheet)], { type: "text/markdown" }));
     const a = document.createElement("a");
@@ -109,7 +138,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           </p>
         )}
         <CardDescription>
-          {sheet.featuring ? `Verse 1 for ${sheet.artist}'s crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${sheet.featuring.artist}'s (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.` : `For ${sheet.artist}'s crowd: ${describeCrowd(sheet.crowd)}.`} {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
+          {sheet.featuring ? `Verse 1 for ${possessive(sheet.artist)} crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${possessive(sheet.featuring.artist)} (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.` : `For ${possessive(sheet.artist)} crowd: ${describeCrowd(sheet.crowd)}.`} {sheet.key} · {sheet.tempo} BPM · {sheet.language}. {sheet.feel}
         </CardDescription>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <Button variant="outline" size="sm" onClick={copy}>
@@ -119,6 +148,10 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           <Button variant="outline" size="sm" onClick={download}>
             <Download aria-hidden />
             Download .md
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadChordPro}>
+            <FileMusic aria-hidden />
+            ChordPro
           </Button>
           {sheet.id && (
             <Button variant="outline" size="sm" onClick={copyLink}>
@@ -184,11 +217,26 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl }: { sheet: So
           </Alert>
         )}
 
+        {rewriting.error && (
+          <Alert variant="destructive">
+            <CircleAlert aria-hidden />
+            <AlertDescription>{rewriting.error}</AlertDescription>
+          </Alert>
+        )}
+
         {sheet.sections.map((section, si) => (
           <section key={`${section.name}-${si}`} className="grid gap-3">
-            <div>
-              <h3 className="font-semibold">{section.name}</h3>
-              <p className="text-sm text-muted-foreground">Melody: {section.melody}</p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 className="font-semibold">{section.name}</h3>
+                <p className="text-sm text-muted-foreground">Melody: {section.melody}</p>
+              </div>
+              {onSheetChange && sheet.id && song.status !== "done" && (
+                <Button variant="ghost" size="sm" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
+                  {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
+                  {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
+                </Button>
+              )}
             </div>
             <div className="grid gap-3">
               {section.lines.map((line, li) => (

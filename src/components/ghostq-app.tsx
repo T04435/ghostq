@@ -15,6 +15,7 @@ import { RemixCompare } from "@/components/remix-compare";
 import { RemixForm } from "@/components/remix-form";
 import { describeAges, type Brief, type Crowd, type Remix } from "@/lib/brief";
 import { describePlace } from "@/lib/place";
+import { possessive } from "@/lib/possessive";
 import { loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
@@ -117,6 +118,12 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
     if (!remixOf?.id) return;
     written.current = [];
     void run({ artist: remixOf.artist, remix: { of: remixOf.id, ...r } });
+  }
+
+  /** A section rewritten on the sheet: shown, and kept as this device's last run (a remix stays on its own page). */
+  function rewritten(next: SongSheet) {
+    setSheet(next);
+    if (current.current && !current.current.remix) saveLastRun({ brief: current.current, sheet: next, at: new Date().toISOString() });
   }
 
   function writeAnother() {
@@ -260,7 +267,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
 
       {sheet && remixOf && sheet.remixOf && <RemixCompare original={remixOf} remix={sheet} />}
 
-      {sheet && <SongSheetView sheet={sheet} />}
+      {sheet && <SongSheetView key={sheet.id} sheet={sheet} onSheetChange={rewritten} />}
 
       {sheet && !busy && (
         <div className="flex flex-wrap items-center gap-3">
@@ -286,7 +293,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
               Another crowd
             </Button>
           )}
-          <span className="text-sm text-muted-foreground">{remixOf ? "Remix again writes another take for the same crowd." : `Write another keeps ${sheet.featuring ? "both crowds" : `${sheet.artist}'s crowd`} and writes a different song.`}</span>
+          <span className="text-sm text-muted-foreground">{remixOf ? "Remix again writes another take for the same crowd." : `Write another keeps ${sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song.`}</span>
         </div>
       )}
     </div>

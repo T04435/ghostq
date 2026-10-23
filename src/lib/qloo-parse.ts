@@ -15,7 +15,7 @@ function idsOf(value: unknown): string[] {
 
 const entity = z.object({
   entity_id: z.string(),
-  properties: z.object({ external: external.optional() }).partial().optional(),
+  properties: z.object({ external: external.optional(), short_description: z.string().nullable().optional() }).partial().optional(),
   external: external.optional(),
   name: z.string(),
   popularity: z.number().optional(),
@@ -32,6 +32,8 @@ export type QlooEntity = {
   spotifyIds: string[];
   /** MusicBrainz artist id, for the voice match (server/musicbrainz.ts). */
   musicbrainzId: string | null;
+  /** Qloo's one-line description ("Lorde is a New Zealand singer-songwriter…"): where the artist is from, for now. */
+  description?: string | null;
 };
 
 function toEntity(e: z.infer<typeof entity>): QlooEntity {
@@ -42,6 +44,7 @@ function toEntity(e: z.infer<typeof entity>): QlooEntity {
     affinity: e.query?.affinity ?? null,
     spotifyIds: [...idsOf(e.properties?.external?.spotify), ...idsOf(e.external?.spotify)],
     musicbrainzId: [...idsOf(e.properties?.external?.musicbrainz), ...idsOf(e.external?.musicbrainz)][0] ?? null,
+    description: e.properties?.short_description ?? null,
     tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
   };
 }

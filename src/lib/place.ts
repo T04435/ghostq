@@ -15,12 +15,17 @@ export const placeSchema = z.object({
 export type Place = z.infer<typeof placeSchema>;
 
 /** Where the artist is from: their voice. A city when MusicBrainz knows it, else the country. */
-export type Home = { name: string; country: string; countryCode: string | null; source: "musicbrainz" | "qloo" };
+/**
+ * Where the artist is from. `source`: "qloo" (Qloo's description or tags, country only), "qloo+musicbrainz" (the
+ * country from Qloo, the city from MusicBrainz, found by Qloo's own MusicBrainz id) or "musicbrainz" (the fallback).
+ */
+export type Home = { name: string; country: string; countryCode: string | null; source: "musicbrainz" | "qloo" | "qloo+musicbrainz" };
 
-export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German"] as const;
+/** The languages GhostQ writes in: the ones Lyria sings (Lyria 3's launch list, Feb 2026; checked 23 Oct). */
+export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German", "Japanese", "Korean", "Hindi"] as const;
 export type Language = (typeof LANGUAGES)[number];
 
-const BY_CODE: Record<string, Language> = { en: "English", es: "Spanish", pt: "Portuguese", fr: "French", de: "German" };
+const BY_CODE: Record<string, Language> = { en: "English", es: "Spanish", pt: "Portuguese", fr: "French", de: "German", ja: "Japanese", ko: "Korean", hi: "Hindi" };
 
 /** The main language of a country (Unicode CLDR likely-subtags, built into Intl); English when it's not one GhostQ writes in. */
 export function languageFor(countryCode: string | null | undefined): Language {
@@ -50,6 +55,32 @@ export function countryCodeFor(name: string): string | null {
     for (const [alias, code] of [["united states of america", "US"], ["usa", "US"], ["uk", "GB"], ["england", "GB"], ["russia", "RU"], ["south korea", "KR"]] as const) regionNames.set(alias, code);
   }
   return regionNames.get(name.trim().toLowerCase()) ?? null;
+}
+
+/** Demonyms that aren't a country's own name ("New Zealand singer" already is), for reading Qloo's descriptions. */
+const DEMONYMS: Record<string, string> = {
+  american: "US", australian: "AU", british: "GB", english: "GB", scottish: "GB", welsh: "GB", irish: "IE", canadian: "CA", "new zealander": "NZ",
+  mexican: "MX", cuban: "CU", colombian: "CO", argentine: "AR", argentinian: "AR", chilean: "CL", peruvian: "PE", venezuelan: "VE", "puerto rican": "PR",
+  dominican: "DO", brazilian: "BR", spanish: "ES", portuguese: "PT", french: "FR", german: "DE", italian: "IT", dutch: "NL", belgian: "BE", swedish: "SE",
+  norwegian: "NO", danish: "DK", finnish: "FI", icelandic: "IS", polish: "PL", russian: "RU", ukrainian: "UA", greek: "GR", turkish: "TR", israeli: "IL",
+  "south korean": "KR", korean: "KR", japanese: "JP", chinese: "CN", taiwanese: "TW", filipino: "PH", indonesian: "ID", indian: "IN", pakistani: "PK",
+  nigerian: "NG", ghanaian: "GH", "south african": "ZA", kenyan: "KE", jamaican: "JM", trinidadian: "TT", egyptian: "EG", moroccan: "MA", lebanese: "LB",
+};
+
+/**
+ * The country in Qloo's short description of an artist ("Lorde is a New Zealand singer-songwriter", "BTS is a South
+ * Korean boy band"): the words after "is a/an", read as a country name or a demonym. Null when it names none.
+ */
+export function countryFromDescription(text: string | null | undefined): { country: string; countryCode: string } | null {
+  const m = text?.match(/\b(?:is|are|was|were)\s+(?:an?|the)\s+((?:[A-Z][\p{L}'-]*\s+){1,3})/u);
+  if (!m) return null;
+  const words = m[1].trim().split(/\s+/);
+  for (let n = Math.min(3, words.length); n >= 1; n--) {
+    const phrase = words.slice(0, n).join(" ");
+    const code = countryCodeFor(phrase) ?? DEMONYMS[phrase.toLowerCase()];
+    if (code) return { country: new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? phrase, countryCode: code };
+  }
+  return null;
 }
 
 export function describePlace(p: { name: string; country: string }): string {

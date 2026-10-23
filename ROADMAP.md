@@ -10,7 +10,7 @@ Target: everything below is done by **Thu 29 Oct 2026**, the day before the Qloo
 | Sun 25 | CollabQ: duet voice, a verse per crowd, "A feat. B" in the Library. |
 | Mon 26 | RemixQ. |
 | Tue 27 | Brand port into the app. |
-| Wed 28 | Languages pass, fix list, seed the Library with real runs. |
+| Wed 28 | Languages pass, fix list, seed the Library with real runs (done 23 Oct: Japanese, Korean and Hindi added; one run each in Spanish, Korean, Japanese, Portuguese, French, German and Hindi). |
 | Thu 29 | Feature-complete. Release candidate: full build, tests, one QA pass. |
 
 ## Fixes
@@ -39,7 +39,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Receipts for these lines say "Spotify: the artist's catalogue", not Qloo.
 - Done when: an artist on Spotify but not in Qloo gets a run without the sound question, with the source shown.
 
-### F3. Qloo first for every data point
+### F3. Qloo first for every data point (done 23 Oct, as far as Qloo has the data)
+
+- Built: Qloo's artist entity has no origin, gender or member fields (probed 23 Oct: only `short_description` and external ids). Home's country now comes from Qloo's description (else its country-named tags); MusicBrainz, looked up by Qloo's own MusicBrainz id, adds the city only when it agrees on the country, and answers alone only when Qloo says nothing. Voices stay MusicBrainz's (by Qloo's id), labelled as such. Receipts and the crowd card name the source.
+
 
 - Rule: Qloo is the first source for any data point it can give. MusicBrainz, Spotify and OpenStreetMap only fill gaps (user, 22 Oct).
 - Today:
@@ -52,7 +55,7 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 
 - Per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`, with a plain message when one is hit and when to try again.
 - A daily cap on singing (Lyria, US$0.08 a song) and on fresh runs (Qloo's 10,000 calls a month are shared with Busk Map).
-- Vercel BotID on the write and sing routes.
+- Vercel BotID on the write and sing routes (done 23 Oct: Basic mode on write, sing and rewrite).
 - Counters in Neon, so they hold across serverless instances.
 - Done when: going past each limit shows the message, the caps stop new paid calls, and normal use is unaffected.
 
@@ -89,7 +92,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - A check on story seeds before a run (abusive or targeted content is refused).
 - Done when: report, auto-hide and the hide script work against the deployed store (Neon).
 
-## Improve chords and lyrics
+## Improve chords and lyrics (built 23 Oct)
+
+- Built: the chord check in code (key, borrowed chords, repeated progressions) feeds the writer's repair pass; a visible craft pass (hook, filler, syllables, rhyme, length; at most 6 lines rewritten, the rest kept); ChordPro export on the sheet (transpose and capo built, then dropped as clutter); Rewrite on each section (only the browser that wrote the song, and only before it's sung). Not built: editing a line by hand with a receipt check.
+
 
 - Chords, checked in code: every chord belongs to the key or is a common borrowed chord; a repeated section repeats its progression; transpose and capo; ChordPro export.
 - Lyrics, a craft pass shown as a step: matching syllable counts between verses, a clear rhyme scheme, the hook on the strongest beat, no filler. Only the lines that fail are rewritten.

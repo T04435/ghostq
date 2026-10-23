@@ -21,7 +21,7 @@ export function CrowdCard({ artist, crowd: raw, featured }: { artist: string; cr
         <div>
           <dt className="text-muted-foreground">Home (the voice)</dt>
           <dd className="font-medium">{crowd.home ? describeHome(crowd.home) : "Unknown"}</dd>
-          <dd className="text-xs text-muted-foreground">{crowd.home ? (crowd.home.source === "musicbrainz" ? "MusicBrainz" : "Qloo's tags for the artist") : "Neither MusicBrainz nor Qloo says"}</dd>
+          <dd className="text-xs text-muted-foreground">{crowd.home ? { qloo: "Qloo's profile of the artist", "qloo+musicbrainz": "Qloo (country), MusicBrainz (city)", musicbrainz: "MusicBrainz (Qloo doesn't say)" }[crowd.home.source] : "Neither Qloo nor MusicBrainz says"}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Crowd city</dt>

@@ -12,9 +12,15 @@ describe("languageFor", () => {
     expect(languageFor("AU")).toBe("English");
   });
 
-  it("falls back to English when unknown or not one of the five", () => {
+  it("falls back to English when unknown or not one Lyria sings", () => {
     expect(languageFor(null)).toBe("English");
-    expect(languageFor("JP")).toBe("English");
+    expect(languageFor("IT")).toBe("English");
+  });
+
+  it("writes in Japanese, Korean and Hindi too", () => {
+    expect(languageFor("JP")).toBe("Japanese");
+    expect(languageFor("KR")).toBe("Korean");
+    expect(languageFor("IN")).toBe("Hindi");
   });
 });
 
@@ -47,5 +53,17 @@ describe("toPlace and normalizeCrowd", () => {
   it("describes a place once when it's a country", () => {
     expect(describePlace({ name: "Cuba", country: "Cuba" })).toBe("Cuba");
     expect(describePlace({ name: "Bogotá", country: "Colombia" })).toBe("Bogotá, Colombia");
+  });
+});
+
+describe("countryFromDescription (Qloo first for home)", () => {
+  it("reads the country from Qloo's description, by name or demonym", async () => {
+    const { countryFromDescription } = await import("@/lib/place");
+    expect(countryFromDescription("Lorde is a New Zealand singer-songwriter known for…")).toEqual({ country: "New Zealand", countryCode: "NZ" });
+    expect(countryFromDescription("BTS is a South Korean boy band formed in Seoul.")).toMatchObject({ countryCode: "KR" });
+    expect(countryFromDescription("Los Aldeanos are a Cuban hip hop duo.")).toMatchObject({ countryCode: "CU" });
+    expect(countryFromDescription("The xx are an English indie pop band.")).toMatchObject({ countryCode: "GB" });
+    expect(countryFromDescription("A band that plays loud.")).toBeNull();
+    expect(countryFromDescription(null)).toBeNull();
   });
 });

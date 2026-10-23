@@ -1,12 +1,15 @@
 import "server-only";
-import { generateText, Output, ToolLoopAgent, type StopCondition } from "ai";
+import { generateText, NoObjectGeneratedError, Output, ToolLoopAgent, type StopCondition } from "ai";
 import { AGE_BANDS, describeBrief, describeCrowd, describeHome, type AskField, type Brief, type Crowd } from "@/lib/brief";
-import { countryCodeFor, describePlace, languageFor, type Home } from "@/lib/place";
+import { countryCodeFor, countryFromDescription, describePlace, languageFor, type Home } from "@/lib/place";
 import { pickArtist, type ComparedTag } from "@/lib/qloo-parse";
 import { publicEvent, TOOL_LABELS, type RunEvent } from "@/lib/run-events";
 import { signalLine, type Signal } from "@/lib/signals";
 import { writtenSongSchema, type SongSheet, type WrittenSong } from "@/lib/song-sheet";
 import { dropUnknownIds, validateSong, type Problem } from "@/lib/validate-sheet";
+import { chordProblems } from "@/lib/chords";
+import { craftProblems, MAX_CRAFT_FIXES } from "@/lib/craft";
+import { z } from "zod";
 import { idsIn } from "@/lib/signal-text";
 import type { VocalMatch } from "@/lib/voice";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
@@ -32,22 +35,23 @@ Rules:
 - Never invent a signal. Only ids returned by tools exist.
 - Qloo has no language filter: the language is the one given in the prompt.`;
 
-const WRITER_RULES = `Rules for the song:
-- Write an ORIGINAL song in the language given above. Don't quote, paraphrase or imitate any existing lyric, and don't name any real artist, song, film or book in a lyric.
+export const WRITER_RULES = `Rules for the song:
+- Write an ORIGINAL song in the language given above: the title and the lyrics. The notes for musicians and the singer (feel, melody, genre, vocal direction, production brief, angle) stay in English. Don't quote, paraphrase or imitate any existing lyric, and don't name any real artist, song, film or book in a lyric.
 - Voice: write as the artist, from their home. The voice signals (their own themes and styles, and home) set the language, slang, places and images. The crowd signals set what the song is about for these listeners.
 - Artists in the signals are style references for the music and production brief only.
 - Films and books in the signals set the mood and the kind of images only. Never use their titles, their characters, their settings or their plots, and never retell a famous scene (a song drawing on a film about four sisters must not mention four sisters).
 - Every line cites 1–3 signal ids from the list that shaped it (a theme it's about, an image drawn from a film or book's mood, a style). Use only ids from the list.
 - Build the song mostly on the chosen signals. Each theme you use should be audible in the words.
 - Structure: verses, a chorus that repeats, and a bridge. Concrete images, not abstractions. Singable lines.
-- Chords fit the key. Melody notes are practical directions a musician can use.
+- Chords fit the key (diatonic, or a common borrowed chord such as bVII or iv in major). A section that repeats (every chorus, every verse) repeats its chord progression. Melody notes are practical directions a musician can use.
+- Craft: the title is the hook, sung on the chorus's first or last line. Each verse matches the first verse's syllable count line by line (within 4), so one melody fits both. Every section rhymes (end rhyme or, in Spanish and Portuguese, assonance). Sung lines stay under 18 syllables. No filler ("oh oh", "yeah yeah", "baby baby").
 - Genre: a few words naming the music's genre, built from the artist's own genre and style signals and citing their ids. Be specific (a style, not just "pop"). A singer gets exactly this, so it decides what the song sounds like.
 - Vocal direction: 1–2 sentences on how the voices given above perform this song: sung, rapped, spoken, whispered, harmonies, call and answer, who takes which part. Make it fit the genre and cite signal ids. Use exactly the voices given: never add, drop or change one. Never name an artist or cite an artist id here.`;
 
 type Emit = (event: RunEvent) => void;
 
 /** One run. `onQlooCalls` gets the number of live (uncached) Qloo calls it made, however it ended: the daily budget. */
-export async function runGhostQ(given: Brief, send: Emit, abortSignal?: AbortSignal, onQlooCalls?: (calls: number) => Promise<void>): Promise<void> {
+export async function runGhostQ(given: Brief, send: Emit, abortSignal?: AbortSignal, onQlooCalls?: (calls: number) => Promise<void>, owner: string | null = null): Promise<void> {
   const remix = given.remix ? await remixBrief(given) : null;
   if (remix && "error" in remix) {
     send({ type: "error", message: remix.error });
@@ -57,7 +61,7 @@ export async function runGhostQ(given: Brief, send: Emit, abortSignal?: AbortSig
   const state = new RunState(brief);
   state.original = remix?.original ?? null;
   try {
-    await run(state, brief, send, abortSignal);
+    await run(state, brief, send, abortSignal, owner);
   } finally {
     await onQlooCalls?.(state.qlooCalls).catch((e) => console.error("qloo budget count failed", e instanceof Error ? e.message : e));
   }
@@ -75,7 +79,7 @@ async function remixBrief(given: Brief): Promise<{ brief: Brief; original: SongS
   return { brief: { artist, spotifyId, story, answers, remix: given.remix }, original: { ...saved.sheet, id: saved.id } };
 }
 
-async function run(state: RunState, brief: Brief, send: Emit, abortSignal?: AbortSignal): Promise<void> {
+async function run(state: RunState, brief: Brief, send: Emit, abortSignal: AbortSignal | undefined, owner: string | null): Promise<void> {
   const started = Date.now();
   // Every research event is kept with the saved song, so its page can replay how it was made.
   const log: RunEvent[] = [];
@@ -95,7 +99,7 @@ async function run(state: RunState, brief: Brief, send: Emit, abortSignal?: Abor
   const otherAreas = await state.artist().nextAreas;
   if (otherAreas?.length) sheet.crowd = { ...sheet.crowd, otherAreas };
   // Saved for the share link; a failed save keeps the song on the page, just without a link.
-  await saveSong({ id, brief, sheet, research: log, createdAt: new Date().toISOString(), audio: null }).catch((e) => {
+  await saveSong({ id, brief, sheet, research: log, createdAt: new Date().toISOString(), audio: null, owner }).catch((e) => {
     console.error("save song failed", e instanceof Error ? e.message : e);
     delete sheet.id;
   });
@@ -128,6 +132,24 @@ function whose(state: RunState, key: "A" | "B", name?: string): { who?: "A" | "B
   const x = state.artist(key);
   return { who: key, artist: name ?? x.act?.name ?? x.name };
 }
+
+/**
+ * Where the artist is from, Qloo first (F3): the country from Qloo's description of the act (else a country Qloo files
+ * among its genre tags); MusicBrainz, found by Qloo's own MusicBrainz id, only adds the city when it agrees on the
+ * country, or answers alone when Qloo says nothing.
+ */
+function homeFor(x: ArtistRun, mb: Home | null): Home | null {
+  const fromQloo = countryFromDescription(x.act?.description) ?? (x.homeFromTags ? { country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags) } : null);
+  if (!fromQloo) return mb;
+  if (mb && mb.countryCode && mb.countryCode === fromQloo.countryCode && mb.name !== mb.country) return { ...mb, source: "qloo+musicbrainz" };
+  return { name: fromQloo.country, country: fromQloo.country, countryCode: fromQloo.countryCode, source: "qloo" };
+}
+
+const HOME_SOURCE: Record<Home["source"], (artist: string) => string> = {
+  qloo: (a) => `Qloo: ${a}'s profile`,
+  "qloo+musicbrainz": (a) => `Qloo: ${a}'s country; MusicBrainz (by Qloo's id): the city`,
+  musicbrainz: (a) => `MusicBrainz: where ${a} is from (Qloo doesn't say)`,
+};
 
 async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boolean> {
   const answers = x.answers;
@@ -182,8 +204,9 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
   const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
-  x.vocals = profile.voices;
-  const home: Home | null = profile.home ?? (x.homeFromTags ? { name: x.homeFromTags, country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags), source: "qloo" } : null);
+  // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's, found by Qloo's id.
+  x.vocals = { ...profile.voices, source: `${profile.voices.source} (Qloo has no voice data)` };
+  const home = homeFor(x, profile.home);
   const languageFrom = home?.countryCode ? "home" : "city";
   const crowd: Crowd = { ...read, home, language: languageFor(home?.countryCode ?? read.place?.countryCode), languageFrom };
   missing.push(...crowdMissing);
@@ -198,7 +221,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   // RemixQ's quick picks, named in the background while the agent researches (awaited when the song is saved).
   if (!state.collab) x.nextAreas = nextAreas(area).catch(() => []);
   const crowdSignals = [
-    ...(home ? [state.signals.add("home", describeHome(home), home.source === "musicbrainz" ? `MusicBrainz: where ${artistName} is from` : `Qloo: ${artistName}'s tags`, null, side)] : []),
+    ...(home ? [state.signals.add("home", describeHome(home), HOME_SOURCE[home.source](artistName), null, side)] : []),
     ...(crowd.place ? [state.signals.add("crowd", `Crowd around ${describePlace(crowd.place)}`, crowd.from.place === "qloo" ? `Qloo insights: ${artistName}'s fans' strongest area (heatmap; place named by OpenStreetMap)` : "Your answer", null, side)] : []),
     ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? `Qloo insights: ${artistName}'s fans (demographics)` : "Your answer", a.skew, side)),
   ];
@@ -416,10 +439,92 @@ function writerPrompt(state: RunState, previous?: { song: WrittenSong; problems:
     .join("\n");
 }
 
+const craftFixes = z.object({
+  fixes: z.array(
+    z.object({
+      section: z.number().int().describe("The section's index, as given"),
+      line: z.number().int().describe("The line's index in its section, as given"),
+      text: z.string().describe("The rewritten line"),
+      signalIds: z.array(z.string()).describe("1–3 signal ids behind the rewritten line"),
+    }),
+  ),
+});
+
+/**
+ * The craft pass, shown as a step: the lines that fail the craft rules (lib/craft.ts) go back to the writer on their
+ * own, at most MAX_CRAFT_FIXES. A rewrite that breaks a receipt rule is dropped, so the line stays as it was.
+ */
+async function craftPass(state: RunState, song: WrittenSong, emit: Emit, abortSignal?: AbortSignal): Promise<WrittenSong> {
+  const signals = state.signals.all();
+  emit({ type: "step-start", id: "craft", tool: "craft_pass", label: TOOL_LABELS.craft_pass, input: { checks: ["hook", "filler", "syllables", "rhyme", "length"] } });
+  const todo = craftProblems(song).slice(0, MAX_CRAFT_FIXES);
+  if (!todo.length) {
+    emit({ type: "step-end", id: "craft", ok: true, summary: "Every line passes: the hook is in the chorus, the verses match, every section rhymes, no filler.", signals: [] });
+    return song;
+  }
+  try {
+    const lines = song.sections.map((s, si) => [`[${si}] ${s.name}`, ...s.lines.map((l, li) => `  (${si}.${li}) ${l.text}  [${l.signalIds.join(", ")}]`)].join("\n")).join("\n");
+    const prompt = [
+      `A song titled "${song.title}", in ${state.crowdInfo!.language}. Rewrite ONLY the lines listed below, to fix the craft problem named for each. Keep each line's meaning, images and receipts where you can, keep the language, and keep it singable over the same chords. Every other line stays as it is.`,
+      "",
+      "The song:",
+      lines,
+      "",
+      "Lines to rewrite:",
+      ...todo.map((p) => `- (${p.section}.${p.line}) ${p.where}: ${p.issue}`),
+      "",
+      "Signals you may cite:",
+      ...signals.map(signalLine),
+      "",
+      WRITER_RULES,
+    ].join("\n");
+    const { output } = await generateText({
+      model: MODELS.writer,
+      output: Output.object({ schema: craftFixes }),
+      prompt,
+      maxOutputTokens: 2000,
+      abortSignal: AbortSignal.any([AbortSignal.timeout(LIMITS.writerTimeoutMs), ...(abortSignal ? [abortSignal] : [])]),
+    });
+    const wanted = new Set(todo.map((p) => `${p.section}.${p.line}`));
+    const changed: string[] = [];
+    let patched = song;
+    for (const fix of output.fixes) {
+      const key = `${fix.section}.${fix.line}`;
+      const before = song.sections[fix.section]?.lines[fix.line];
+      if (!wanted.has(key) || !before || !fix.text.trim() || fix.text.trim() === before.text) continue;
+      const next: WrittenSong = {
+        ...patched,
+        sections: patched.sections.map((s, si) => (si !== fix.section ? s : { ...s, lines: s.lines.map((l, li) => (li !== fix.line ? l : { ...l, text: fix.text.trim(), signalIds: fix.signalIds })) })),
+      };
+      // A rewrite that cites an unknown id or names an artist or title is dropped; the line keeps its first draft.
+      const where = `${song.sections[fix.section].name || `Section ${fix.section + 1}`}, line ${fix.line + 1}`;
+      if (validateSong(next, signals, [...state.artistNames]).some((p) => p.where === where)) continue;
+      patched = next;
+      changed.push(`${where}: "${before.text}" → "${fix.text.trim()}"`);
+    }
+    const left = craftProblems(patched).length;
+    emit({
+      type: "step-end",
+      id: "craft",
+      ok: true,
+      summary: changed.length
+        ? `Rewrote ${changed.length} of ${todo.length} flagged line${todo.length === 1 ? "" : "s"}; the rest of the song stays. ${changed.join(" · ")}${left ? ` (${left} smaller point${left === 1 ? "" : "s"} left as written.)` : ""}`
+        : `Checked ${todo.length} flagged line${todo.length === 1 ? "" : "s"} and kept them as written.`,
+      signals: [],
+      raw: { flagged: todo },
+    });
+    return patched;
+  } catch (error) {
+    if (abortSignal?.aborted) throw error;
+    emit({ type: "step-end", id: "craft", ok: false, summary: "The craft pass didn't answer, so the song stays as first written.", signals: [] });
+    return song;
+  }
+}
+
 async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Promise<Omit<SongSheet, "vocals">> {
   emit({ type: "writing", signalCount: state.chosen?.signalIds.length ?? state.signals.all().length });
   const signals = state.signals.all();
-  const ask = async (prompt: string) =>
+  const once = async (prompt: string) =>
     (
       await generateText({
         model: MODELS.writer,
@@ -429,18 +534,30 @@ async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Pr
         abortSignal: AbortSignal.any([AbortSignal.timeout(LIMITS.writerTimeoutMs), ...(abortSignal ? [abortSignal] : [])]),
       })
     ).output;
+  // A draft that doesn't parse (cut off, or malformed) gets one more try before the run fails.
+  const ask = async (prompt: string) => {
+    try {
+      return await once(prompt);
+    } catch (error) {
+      if (!NoObjectGeneratedError.isInstance(error) || abortSignal?.aborted) throw error;
+      emit({ type: "note", text: "The writer's draft came back unreadable, so it writes it once more." });
+      return once(prompt);
+    }
+  };
   let song = await ask(writerPrompt(state));
-  let problems = validateSong(song, signals, [...state.artistNames]);
+  let problems = [...validateSong(song, signals, [...state.artistNames]), ...chordProblems(song)];
   if (problems.length) {
-    emit({ type: "note", text: `The draft broke ${problems.length} receipt rule${problems.length === 1 ? "" : "s"}, so it goes back for one repair.` });
+    emit({ type: "note", text: `The draft broke ${problems.length} receipt or chord rule${problems.length === 1 ? "" : "s"}, so it goes back for one repair.` });
     song = await ask(writerPrompt(state, { song, problems }));
   }
   song = dropUnknownIds(song, signals);
-  problems = validateSong(song, signals, [...state.artistNames]);
+  song = await craftPass(state, song, emit, abortSignal);
+  problems = [...validateSong(song, signals, [...state.artistNames]), ...chordProblems(song)];
   const cited = new Set([...song.sections.flatMap((s) => s.lines.flatMap((l) => l.signalIds)), ...idsIn([song.genre, song.vocalDirection, song.productionBrief, song.feel, song.angle].join(" "))]);
   return {
     ...song,
-    artist: state.act?.name ?? state.brief.artist,
+    // Qloo's name, unless it only differs in case from the user's Spotify pick ("yoasobi" vs "YOASOBI").
+    artist: state.act && state.act.name.toLowerCase() !== state.brief.artist.toLowerCase() ? state.act.name : state.brief.artist,
     crowd: state.crowdInfo!,
     ...(state.collab ? { featuring: { artist: state.artist("B").act?.name ?? state.artist("B").name, crowd: state.artist("B").crowdInfo! } } : {}),
     ...(state.original ? { title: state.original.title, remixOf: { id: state.original.id!, title: state.original.title, crowd: state.original.crowd } } : {}),
