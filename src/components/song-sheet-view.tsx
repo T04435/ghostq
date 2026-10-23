@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleAlert, Copy, Download, FileMusic, Link2, Mic, Minus, Plus, RefreshCw, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, FileMusic, Link2, Mic, RefreshCw, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,8 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
-import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
-import { capoFor, parseKey, toChordPro, transposeKey, transposeLine } from "@/lib/chords";
+import { toChordPro } from "@/lib/chords";
 import { draftFromSheet, lineFromDraft, VocalLinePicker } from "@/components/vocal-line-picker";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
@@ -48,12 +47,6 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
  */
 export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string; onSheetChange?: (sheet: SongSheet) => void }) {
   const [selected, setSelected] = useState<string | null>(null);
-  // Transpose, in semitones: display and ChordPro only; the saved sheet keeps its key.
-  const [steps, setSteps] = useState(0);
-  const shownKey = transposeKey(sheet.key, steps);
-  // Chords are spelt the way the shown key is (Ab major, not G# major).
-  const flats = parseKey(shownKey)?.flats ?? false;
-  const capo = capoFor(shownKey);
   const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
   const [copied, setCopied] = useState(false);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
@@ -112,7 +105,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange
   }
 
   function downloadChordPro() {
-    const url = URL.createObjectURL(new Blob([toChordPro({ ...sheet, artist: sheet.artist }, steps)], { type: "text/plain" }));
+    const url = URL.createObjectURL(new Blob([toChordPro({ ...sheet, artist: sheet.artist })], { type: "text/plain" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = `${sheet.title.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() || "song"}.cho`;
@@ -224,30 +217,6 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange
           </Alert>
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <ButtonGroup aria-label="Transpose">
-            <Button variant="outline" size="icon-sm" aria-label="Down a semitone" onClick={() => setSteps((n) => n - 1)}>
-              <Minus aria-hidden />
-            </Button>
-            <ButtonGroupText className="font-mono text-xs">
-              {shownKey}
-              {steps ? ` (${steps > 0 ? "+" : ""}${steps})` : ""}
-            </ButtonGroupText>
-            <Button variant="outline" size="icon-sm" aria-label="Up a semitone" onClick={() => setSteps((n) => n + 1)}>
-              <Plus aria-hidden />
-            </Button>
-          </ButtonGroup>
-          {steps !== 0 && (
-            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setSteps(0)}>
-              Back to {sheet.key}
-            </Button>
-          )}
-          {capo && (
-            <span className="text-xs text-muted-foreground">
-              On guitar: capo {capo.fret}, play {capo.shapes} shapes.
-            </span>
-          )}
-        </div>
         {rewriting.error && (
           <Alert variant="destructive">
             <CircleAlert aria-hidden />
@@ -272,7 +241,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange
             <div className="grid gap-3">
               {section.lines.map((line, li) => (
                 <div key={li} className="grid gap-0.5">
-                  <p className="font-mono text-xs text-muted-foreground">{transposeLine(line.chords, steps, flats)}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{line.chords}</p>
                   {/* Every line's receipts as AI Elements' Inline Citation: hover or focus a badge for its Qloo signal. */}
                   <InlineCitation className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <InlineCitationText className="text-base">{line.text}</InlineCitationText>

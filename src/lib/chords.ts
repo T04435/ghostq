@@ -3,7 +3,7 @@ import type { WrittenSong } from "./song-sheet";
 
 /**
  * Chords, checked in code: every chord fits the key (or is a common borrowed chord), and repeated sections repeat their
- * progression. Plus transpose, capo and ChordPro, which the sheet's tools use.
+ * progression. Plus the ChordPro export.
  */
 
 const SHARPS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -105,48 +105,13 @@ export function chordProblems(song: Pick<WrittenSong, "key" | "sections">): Prob
   return problems;
 }
 
-/** A chord moved by `steps` semitones, keeping its suffix and slash bass ("Am7/G" +2 → "Bm7/A"). */
-export function transposeChord(text: string, steps: number, flats = false): string {
-  const names = flats ? FLATS : SHARPS;
-  return text.replace(/(^|\/)([A-G])([#b♯♭]?)/g, (_m, lead: string, l: string, acc: string) => {
-    const n = NOTE[l + acc.replace("♯", "#").replace("♭", "b")];
-    return n === undefined ? _m : lead + names[(((n + steps) % 12) + 12) % 12];
-  });
-}
-
-/** A chord line moved by `steps` semitones, spacing kept as written. */
-export function transposeLine(line: string, steps: number, flats = false): string {
-  if (!steps) return line;
-  return line.replace(/[A-G][#b♯♭]?[^\s|/]*(?:\/[A-G][#b♯♭]?)?/g, (c) => (parseChord(c) ? transposeChord(c, steps, flats) : c));
-}
-
-/** The key moved by `steps` ("A minor" +2 → "B minor"). */
-export function transposeKey(text: string, steps: number): string {
-  const key = parseKey(text);
-  if (!key || !steps) return text;
-  const tonic = (((key.tonic + steps) % 12) + 12) % 12;
-  return `${(prefersFlats(tonic, key.minor) ? FLATS : SHARPS)[tonic]} ${key.minor ? "minor" : "major"}`;
-}
-
-/** Capo for open shapes: the fret and the shapes' key, for keys that are awkward open (e.g. Eb major → capo 3, C). */
-export function capoFor(text: string): { fret: number; shapes: string } | null {
-  const key = parseKey(text);
-  if (!key) return null;
-  const easy = key.minor ? [9, 4, 2] : [7, 0, 2, 9, 4]; // Am, Em, Dm / G, C, D, A, E
-  for (let fret = 0; fret <= 7; fret++) {
-    const shape = (((key.tonic - fret) % 12) + 12) % 12;
-    if (easy.includes(shape)) return fret === 0 ? null : { fret, shapes: `${SHARPS[shape]} ${key.minor ? "minor" : "major"}` };
-  }
-  return null;
-}
-
 /** The song as ChordPro: {title}, {key}, {tempo}, sections as comments, each chord inline before its line. */
-export function toChordPro(song: Pick<WrittenSong, "title" | "key" | "tempo" | "sections"> & { artist?: string }, steps = 0): string {
-  const out = [`{title: ${song.title}}`, ...(song.artist ? [`{subtitle: GhostQ draft for ${song.artist}}`] : []), `{key: ${transposeKey(song.key, steps)}}`, `{tempo: ${song.tempo}}`, ""];
+export function toChordPro(song: Pick<WrittenSong, "title" | "key" | "tempo" | "sections"> & { artist?: string }): string {
+  const out = [`{title: ${song.title}}`, ...(song.artist ? [`{subtitle: GhostQ draft for ${song.artist}}`] : []), `{key: ${song.key}}`, `{tempo: ${song.tempo}}`, ""];
   for (const section of song.sections) {
     out.push(`{comment: ${section.name}}`);
     for (const line of section.lines) {
-      const chords = chordsIn(transposeLine(line.chords, steps, parseKey(transposeKey(song.key, steps))?.flats));
+      const chords = chordsIn(line.chords);
       // Spread the chords over the line's words in order (the sheet doesn't say which syllable each falls on).
       const words = line.text.split(" ");
       const at = new Map<number, string>();
