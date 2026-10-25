@@ -8,7 +8,8 @@ import { signalLine, type Signal } from "@/lib/signals";
 import { writtenSongSchema, type SongSheet, type WrittenSong } from "@/lib/song-sheet";
 import { dropUnknownIds, validateSong, type Problem } from "@/lib/validate-sheet";
 import { chordProblems } from "@/lib/chords";
-import { craftProblems, MAX_CRAFT_FIXES } from "@/lib/craft";
+import { AGENT_NAME_START, PERSONA_PROMPT } from "@/lib/agent-persona";
+import { craftProblems, MAX_CRAFT_FIXES, type CraftProblem } from "@/lib/craft";
 import { z } from "zod";
 import { idsIn } from "@/lib/signal-text";
 import type { VocalMatch } from "@/lib/voice";
@@ -21,14 +22,16 @@ import { compareArtists, genresFromWords, searchArtist } from "@/server/qloo/api
 import { QlooError } from "@/server/qloo/client";
 import { ArtistRun, createTools, RunState, type ToolOutput } from "./tools";
 
-const AGENT_INSTRUCTIONS = `You are GhostQ's research agent. A songwriter wants an ORIGINAL song written for a specific crowd. You read that crowd's taste through Qloo tools, then choose the signals the song will be built on.
+const AGENT_INSTRUCTIONS = `${PERSONA_PROMPT}
+
+A songwriter wants an ORIGINAL song written for a specific crowd. You read that crowd's taste through Qloo tools, then choose the signals the song will be built on.
 
 How to work:
 - The artist, where they're from, and their crowd (city, age bands, language) are already read and given in the prompt. Don't ask for them again.
 - Two kinds of signal: the VOICE (the artist's own themes, styles and home, already found) sets how the song sounds; the CROWD (crowd_tags, crowd_taste, fan_audiences, the local scene) sets what it's about for these listeners. Choose from both.
 - Decide each next call from what you have found. There's no fixed order, but cover: the act's sound (sound_alikes, or artists_in_genres; sound_from_words if the artist's genre tags are thin), the crowd's themes (crowd_tags kind "theme"; it's the strongest lyric signal), and at least one source of imagery or detail (crowd_taste, fan_audiences or crowd_tags kind "style").
 - If sound_alikes says Qloo has no taste data for the act, switch to artists_in_genres. Don't retry the same call with the same input.
-- About 6–9 tool calls in total. Before each call, write one short sentence on what you'll check and why.
+- About 6–9 tool calls in total. Before each call, write one short note on what we'll check and why, as "we" (for example: "We'll ask Qloo which themes this crowd leans to, since that's the strongest lyric signal."). Measured and plain, no hype, and no fact a tool didn't return.
 - Finish with ready_to_write: the signal ids the song should rest on, and its angle in one sentence.
 
 Rules:
@@ -516,6 +519,18 @@ const craftFixes = z.object({
   ),
 });
 
+/** What the flagged lines were wrong on, in plain words: "the hook and rhyme". */
+function craftReasons(problems: CraftProblem[]): string {
+  const kinds = [
+    ...new Set(
+      problems.map((p) =>
+        p.issue.includes("hook") ? "the hook" : p.issue.includes("filler") ? "filler" : p.issue.includes("too long") ? "line length" : p.issue.includes("rhyme") ? "rhyme" : "verse syllables",
+      ),
+    ),
+  ];
+  return kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} and ${kinds.at(-1)}` : kinds[0];
+}
+
 /**
  * The craft pass, shown as a step: the lines that fail the craft rules (lib/craft.ts) go back to the writer on their
  * own, at most MAX_CRAFT_FIXES. A rewrite that breaks a receipt rule is dropped, so the line stays as it was.
@@ -525,7 +540,7 @@ async function craftPass(state: RunState, song: WrittenSong, emit: Emit, abortSi
   emit({ type: "step-start", id: "craft", tool: "craft_pass", label: TOOL_LABELS.craft_pass, input: { checks: ["hook", "filler", "syllables", "rhyme", "length"] } });
   const todo = craftProblems(song).slice(0, MAX_CRAFT_FIXES);
   if (!todo.length) {
-    emit({ type: "step-end", id: "craft", ok: true, summary: "Every line passes: the hook is in the chorus, the verses match, every section rhymes, no filler.", signals: [] });
+    emit({ type: "step-end", id: "craft", ok: true, summary: `${AGENT_NAME_START} checked every line: the hook is in the chorus, the verses match, every section rhymes, no filler.`, signals: [] });
     return song;
   }
   try {
@@ -574,8 +589,8 @@ async function craftPass(state: RunState, song: WrittenSong, emit: Emit, abortSi
       id: "craft",
       ok: true,
       summary: changed.length
-        ? `Rewrote ${changed.length} of ${todo.length} flagged line${todo.length === 1 ? "" : "s"}; the rest of the song stays. ${changed.join(" · ")}${left ? ` (${left} smaller point${left === 1 ? "" : "s"} left as written.)` : ""}`
-        : `Checked ${todo.length} flagged line${todo.length === 1 ? "" : "s"} and kept them as written.`,
+        ? `${AGENT_NAME_START} reworked ${changed.length} line${changed.length === 1 ? "" : "s"} for ${craftReasons(todo)}. The rest stays as written. ${changed.join(" · ")}${left ? ` (${left} smaller point${left === 1 ? "" : "s"} left as written.)` : ""}`
+        : `${AGENT_NAME_START} checked ${todo.length} flagged line${todo.length === 1 ? "" : "s"} and kept them as written.`,
       signals: [],
       raw: { flagged: todo },
     });
