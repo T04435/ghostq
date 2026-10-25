@@ -3,11 +3,11 @@
 import { Check, ChevronRight, Clock, LoaderCircle, Minus, X } from "lucide-react";
 import { cn } from "cn";
 import type { ReactNode } from "react";
-import { AgentTag } from "@/components/brand/agent-tag";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { isQloo, ReceiptChip, SideMark, SourceTag } from "@/components/brand/receipt";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AGENT_NAME_START } from "@/lib/agent-persona";
 import type { Signal } from "@/lib/signals";
 
 export type StepStatus = "running" | "done" | "nodata" | "failed" | "pending";
@@ -145,13 +145,15 @@ export function StepCard({
   );
 }
 
-/** The Ghost's own words between steps (the DS's AgentNote, compact), tagged with its mark and name. */
+/** The Ghost's own words between steps (the DS's AgentNote, compact): its mark (GHOST_SIZES.tag) as the tag, then its name. */
 export function AgentNote({ children }: { children: ReactNode }) {
   return (
-    <div className="px-1 text-sm leading-normal whitespace-pre-line text-muted-foreground">
-      <AgentTag className="align-[-2px]" />
-      <span className="font-semibold text-foreground"> · </span>
-      {children}
+    <div className="flex items-start gap-2 px-1 text-sm leading-normal text-muted-foreground">
+      <GhostMark size={GHOST_SIZES.tag} decorative className="mt-[3px]" />
+      <span className="min-w-0 whitespace-pre-line">
+        <span className="font-semibold text-foreground">{AGENT_NAME_START} · </span>
+        {children}
+      </span>
     </div>
   );
 }
