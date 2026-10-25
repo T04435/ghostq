@@ -1,3 +1,4 @@
+import type { SungTiming } from "./lyric-align";
 import type { SongSheet } from "./song-sheet";
 
 /** The length GhostQ asks Lyria for ("an original 2-minute song"). */
@@ -108,4 +109,40 @@ export function positionAt(timing: SongTiming, t: number): { section: number; li
     if (l.end <= t) previous = i;
   });
   return { section: t >= timing.duration ? timing.sections.length - 1 : section, line, next, previous };
+}
+
+/**
+ * The timeline from when the lines were actually heard (lyric-align, Whisper): each sung line at its real time, any
+ * line Whisper missed spread between its neighbours, sections from their first line to the next section's, with the
+ * intro before the first line and the outro after the last.
+ */
+export function timingFromSung(sheet: Pick<SongSheet, "sections">, sung: SungTiming): SongTiming {
+  const flat = sheet.sections.flatMap((s, section) => s.lines.map((_, line) => ({ section, line })));
+  const times = flat.map((_, i) => sung.lines[i] ?? null);
+  // Fill the gaps: a run of missed lines shares the time between the lines around it.
+  for (let i = 0; i < times.length; i++) {
+    if (times[i]) continue;
+    let j = i;
+    while (j < times.length && !times[j]) j++;
+    const from = i > 0 ? times[i - 1]!.end : 0;
+    const to = j < times.length ? times[j]!.start : sung.duration;
+    const per = Math.max(0, to - from) / (j - i);
+    for (let k = i; k < j; k++) times[k] = { start: from + (k - i) * per, end: from + (k - i + 1) * per };
+    i = j - 1;
+  }
+  const lines: TimedLine[] = flat.map((f, i) => ({ ...f, start: times[i]!.start, end: times[i]!.end }));
+  const firstOf = (s: number) => lines.find((l) => l.section === s);
+  const sections: TimedSection[] = [];
+  const first = lines[0]?.start ?? 0;
+  if (first > 0.5) sections.push({ name: "Intro", short: "In", start: 0, end: first, lyric: false });
+  sheet.sections.forEach((s, i) => {
+    const start = firstOf(i)?.start ?? sections.at(-1)?.end ?? 0;
+    const nextStart = sheet.sections.slice(i + 1).map((_, k) => firstOf(i + 1 + k)?.start).find((t) => t !== undefined);
+    const lastLine = lines.filter((l) => l.section === i).at(-1);
+    const end = nextStart ?? (lastLine ? lastLine.end : start);
+    sections.push({ name: s.name, short: shortName(s.name), start, end: Math.max(start, end), lyric: Boolean(firstOf(i)) });
+  });
+  const lastEnd = sections.at(-1)?.end ?? 0;
+  if (sung.duration - lastEnd > 0.5) sections.push({ name: "Outro", short: "Out", start: lastEnd, end: sung.duration, lyric: false });
+  return { duration: sung.duration, sections: sections.filter((s) => s.end > s.start), lines };
 }

@@ -51,6 +51,7 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
       remixes={remixes}
       research={song.research}
       audioUrl={song.audio ? `/api/songs/${id}/audio?v=${encodeURIComponent(song.audio.createdAt)}` : undefined}
+      timing={song.audio?.timing ?? null}
       link={`${host}/song/${id}`}
     />
   );

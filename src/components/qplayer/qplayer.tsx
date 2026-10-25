@@ -28,8 +28,9 @@ export function QPlayer() {
   const player = usePlayer();
   const router = useRouter();
   const [full, setFull] = useState(false);
-  const sheet = useSavedSheet(player?.song?.id);
-  const sing = useSingAlong(sheet ?? NO_SHEET, sheet ? (player?.song ?? undefined) : undefined);
+  const saved = useSavedSheet(player?.song?.id);
+  const sheet = saved?.sheet ?? null;
+  const sing = useSingAlong(sheet ?? NO_SHEET, sheet ? (player?.song ?? undefined) : undefined, saved?.timing);
   if (!player?.song) return null;
   const { song, playing, time, duration, muted } = player;
   const label = draftLabel(song.artist, song.featuring ?? undefined);

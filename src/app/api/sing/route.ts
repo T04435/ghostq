@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { singProblem } from "@/lib/sing-check";
 import { buildSingPrompt } from "@/lib/sing-prompt";
@@ -5,8 +6,9 @@ import { vocalLineSchema } from "@/lib/voice";
 import { botRefusal } from "@/server/bot";
 import { providerStatus } from "@/server/env";
 import { perVisitor, refusalResponse, takeLyria } from "@/server/limits";
+import { timeSung } from "@/server/lyric-timing";
 import { generateSong, LyriaError } from "@/server/lyria";
-import { getSong, isSongId, recordSingBlock, saveAudio, SING_BLOCKS_TO_HIDE } from "@/server/store/songs";
+import { getSong, isSongId, recordSingBlock, saveAudio, saveTiming, SING_BLOCKS_TO_HIDE } from "@/server/store/songs";
 
 export const maxDuration = 300;
 
@@ -34,7 +36,17 @@ export async function POST(request: Request) {
   try {
     const { audio } = await generateSong(buildSingPrompt(song.sheet, vocals));
     // Kept with the saved song so the share link plays it and a reload doesn't lose it.
-    await saveAudio(songId, vocals, audio).catch((e) => console.error("save audio failed", e instanceof Error ? e.message : e));
+    const saved = await saveAudio(songId, vocals, audio).then(
+      () => true,
+      (e) => console.error("save audio failed", e instanceof Error ? e.message : e),
+    );
+    // The sing-along's timing, after the response: Whisper hears the new audio (the page polls for it).
+    if (saved)
+      after(() =>
+        timeSung(song.sheet, audio)
+          .then((timing) => saveTiming(songId, timing))
+          .catch((e) => console.error("timing failed", e instanceof Error ? e.message : e)),
+      );
     return new Response(new Uint8Array(audio), { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof LyriaError ? error.message : "Singing failed";

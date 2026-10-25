@@ -4,6 +4,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
 import type { Brief, Crowd } from "@/lib/brief";
+import type { SungTiming } from "@/lib/lyric-align";
 import { publicEvent, type RunEvent } from "@/lib/run-events";
 import { normalizeSheet, type SongSheet } from "@/lib/song-sheet";
 import type { SongSummary } from "@/lib/song-summary";
@@ -29,7 +30,7 @@ export type SavedSong = {
   research: RunEvent[];
   createdAt: string;
   /** The latest sung version: the vocals it was sung with (null for an old value that no longer reads). */
-  audio: { vocals: VocalLine | null; createdAt: string } | null;
+  audio: { vocals: VocalLine | null; createdAt: string; timing?: SungTiming | null } | null;
   /** Hidden from the Library (moderation); the song's own link still works. */
   hidden?: boolean;
   /** The writing device's hashed id (limits.device): only it may rewrite a section. Never leaves the server. */
@@ -42,6 +43,8 @@ type Store = {
   save(song: SavedSong): Promise<void>;
   get(id: string): Promise<SavedSong | null>;
   saveAudio(id: string, vocals: VocalLine, audio: Buffer): Promise<void>;
+  /** When each line is sung in the saved audio (lyric-align), for the sing-along. */
+  saveTiming(id: string, timing: SungTiming): Promise<void>;
   getAudio(id: string): Promise<Buffer | null>;
   list(limit: number): Promise<SavedSong[]>;
   /** RemixQ: the songs that remix this one, oldest first (hidden ones included: they're linked, not listed). */
@@ -80,6 +83,7 @@ function ensureSchema(): Promise<unknown> {
       audio_created_at timestamptz
     )`
     .then(() => sql()`ALTER TABLE songs ADD COLUMN IF NOT EXISTS sing_blocks integer NOT NULL DEFAULT 0`)
+    .then(() => sql()`ALTER TABLE songs ADD COLUMN IF NOT EXISTS audio_timing jsonb`)
     .catch((e) => {
     schema = null;
     throw e;
@@ -87,7 +91,7 @@ function ensureSchema(): Promise<unknown> {
   return schema;
 }
 
-type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; sing_blocks?: number; audio_voice: string | null; audio_created_at: string | Date | null };
+type Row = { id: string; created_at: string | Date; brief: Brief; sheet: SongSheet; research: RunEvent[]; hidden: boolean; sing_blocks?: number; audio_voice: string | null; audio_created_at: string | Date | null; audio_timing?: SungTiming | null };
 
 function withoutOwner(brief: Brief & { _owner?: unknown }): Brief {
   const copy = { ...brief };
@@ -107,7 +111,7 @@ function fromRow(r: Row): SavedSong {
     research: r.research ?? [],
     hidden: r.hidden,
     singBlocks: r.sing_blocks ?? 0,
-    audio: r.audio_voice && r.audio_created_at ? { vocals: toVocalLine(r.audio_voice), createdAt: iso(r.audio_created_at) } : null,
+    audio: r.audio_voice && r.audio_created_at ? { vocals: toVocalLine(r.audio_voice), createdAt: iso(r.audio_created_at), timing: r.audio_timing ?? null } : null,
   };
 }
 
@@ -128,7 +132,12 @@ const neonStore: Store = {
     await ensureSchema();
     await putObject(`songs/${id}.mp3`, audio, "audio/mpeg");
     // audio_voice held a voice name ("male") before 22 Oct; now the vocal line as JSON. toVocalLine reads both.
-    await sql()`UPDATE songs SET audio_voice = ${JSON.stringify(vocals)}, audio_created_at = now() WHERE id = ${id}`;
+    // A new sing drops the old version's timing until it's timed again.
+    await sql()`UPDATE songs SET audio_voice = ${JSON.stringify(vocals)}, audio_created_at = now(), audio_timing = NULL WHERE id = ${id}`;
+  },
+  async saveTiming(id, timing) {
+    await ensureSchema();
+    await sql()`UPDATE songs SET audio_timing = ${JSON.stringify(timing)}::jsonb WHERE id = ${id}`;
   },
   async getAudio(id) {
     return getObject(`songs/${id}.mp3`);
@@ -179,6 +188,10 @@ const fileStore: Store = {
     await writeFile(file(id, "mp3"), audio);
     await fileStore.save({ ...song, audio: { vocals, createdAt: new Date().toISOString() } });
   },
+  async saveTiming(id, timing) {
+    const song = await fileStore.get(id);
+    if (song?.audio) await fileStore.save({ ...song, audio: { ...song.audio, timing } });
+  },
   async getAudio(id) {
     try {
       return await readFile(file(id, "mp3"));
@@ -224,7 +237,7 @@ const fileStore: Store = {
 /** Older songs read into today's shape: the sheet by normalizeSheet, the sung vocals by toVocalLine. */
 function normalize(song: SavedSong | null): SavedSong | null {
   if (!song) return null;
-  const audio = song.audio && "voice" in song.audio ? { vocals: toVocalLine(String(song.audio.voice)), createdAt: song.audio.createdAt } : song.audio;
+  const audio = song.audio && "voice" in song.audio ? { vocals: toVocalLine(String(song.audio.voice)), createdAt: song.audio.createdAt, timing: song.audio.timing } : song.audio;
   return { ...song, audio, sheet: normalizeSheet(song.sheet) };
 }
 
@@ -244,6 +257,11 @@ export async function getSong(id: string): Promise<SavedSong | null> {
 export async function saveAudio(id: string, vocals: VocalLine, audio: Buffer): Promise<void> {
   if (!isSongId(id)) throw new Error("Invalid song id");
   await store().saveAudio(id, vocals, audio);
+}
+
+export async function saveTiming(id: string, timing: SungTiming): Promise<void> {
+  if (!isSongId(id)) throw new Error("Invalid song id");
+  await store().saveTiming(id, timing);
 }
 
 export async function getAudio(id: string): Promise<Buffer | null> {

@@ -37,7 +37,9 @@ export function SingAlongPanel({ sheet, sing }: { sheet: SongSheet; sing: SingAl
           </span>
         </div>
         <SongMap timing={sing.timing} time={sing.time} onSeek={sing.seek} />
-        <span className="text-xs leading-[1.45] text-muted-foreground">Tap a line or a section to jump. The timing follows the plan GhostQ gave Lyria, so it can drift a little.</span>
+        <span className="text-xs leading-[1.45] text-muted-foreground">
+          {sing.heard ? "Tap a line or a section to jump. Timed from the recording." : "Tap a line or a section to jump. Timed from the sheet until the recording is timed, so it can drift."}
+        </span>
       </Card>
       {focus?.line && (
         <Card className="gap-3.5 p-5" aria-live="polite">

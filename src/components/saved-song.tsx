@@ -1,5 +1,6 @@
 "use client";
 
+import type { SungTiming } from "@/lib/lyric-align";
 import { ChevronLeft, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -27,6 +28,7 @@ export function SavedSong({
   remixes = [],
   research,
   audioUrl,
+  timing,
   link,
 }: {
   sheet: SongSheet;
@@ -36,6 +38,8 @@ export function SavedSong({
   remixes?: { id: string; title: string; crowd: Crowd }[];
   research: RunEvent[];
   audioUrl?: string;
+  /** When each line is sung in that audio (Whisper), for the sing-along. */
+  timing?: SungTiming | null;
   /** The page's address as shown at the top ("ghostq.app/song/…"). */
   link: string;
 }) {
@@ -59,6 +63,7 @@ export function SavedSong({
         sheet={sheet}
         readOnly={Boolean(audioUrl)}
         audioUrl={audioUrl}
+        timing={timing}
         asideFirst
         share="popover"
         brief="aside"
