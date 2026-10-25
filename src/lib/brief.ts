@@ -106,7 +106,7 @@ export function normalizeCrowd(raw: unknown): Crowd {
 
 export const EXAMPLE_BRIEFS: { label: string; brief: Brief }[] = [
   { label: "Teenage Joans · last tram home", brief: { artist: "Teenage Joans", spotifyId: "6i78AQeGl4IGuGePiz3woE", story: "Last tram home after a share-house party" } },
-  { label: "Natalia Lafourcade · rain on the metro", brief: { artist: "Natalia Lafourcade", story: "Rain on the metro, going home to my mother's" } },
+  { label: "Natalia Lafourcade · rain on the metro", brief: { artist: "Natalia Lafourcade", spotifyId: "1hcdI2N1023RvSwLzTtdsp", story: "Rain on the metro, going home to my mother's" } },
 ];
 
 /** "25–29" or "24 and under, 25–29 and 30–34", in Qloo's order. */

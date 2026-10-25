@@ -42,9 +42,12 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
     }
   }
 
+  // A typed city that wasn't picked from the results would be dropped without a word: ask for the pick instead.
+  const unpicked = !place && query.trim().length > 0;
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!place && !ages.length) return;
+    if (unpicked || (!place && !ages.length)) return;
     onSubmit({ ...(place ? { place } : {}), ...(ages.length ? { ages } : {}) });
   }
 
@@ -150,7 +153,8 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
           </div>
 
           <div>
-            <Button type="submit" size="lg" disabled={busy || (!place && !ages.length)}>
+            {unpicked && <p className="mb-2 text-sm text-destructive">Pick &quot;{query.trim()}&quot; from the city results (press Enter to search), or clear the field.</p>}
+            <Button type="submit" size="lg" disabled={busy || unpicked || (!place && !ages.length)}>
               {busy ? <Spinner /> : <Shuffle aria-hidden />}
               {busy ? "Remixing…" : "Remix it"}
             </Button>
