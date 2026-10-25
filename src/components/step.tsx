@@ -42,7 +42,8 @@ export type StepCall = { key: string; who: string; side?: Signal["side"]; summar
 /**
  * ONE step card for the agent's research (the DS's StepCard on AI Elements' Trace step): number, title, status pill;
  * the summary, the receipts it found, and the source. Repeated calls to one tool fold into one step with a call count,
- * and "Show each of the N calls" opens them, each with its side.
+ * and "Show each of the N calls" opens them, each with its side. `collapsed`: the header only (a finished run's steps,
+ * once the sheet is there).
  */
 export function StepCard({
   n,
@@ -52,6 +53,7 @@ export function StepCard({
   source,
   receipts = [],
   calls = [],
+  collapsed = false,
   children,
 }: {
   n: number;
@@ -61,6 +63,7 @@ export function StepCard({
   source: string;
   receipts?: Signal[];
   calls?: StepCall[];
+  collapsed?: boolean;
   children?: ReactNode;
 }) {
   const grouped = calls.length > 1;
@@ -79,7 +82,7 @@ export function StepCard({
         </span>
         <StatusPill status={status} qloo={isQloo(source)} />
       </div>
-      {status !== "pending" && (
+      {status !== "pending" && !collapsed && (
         <>
           {summary && <p className="text-sm leading-[1.45]">{summary}</p>}
           {unique.length > 0 && (

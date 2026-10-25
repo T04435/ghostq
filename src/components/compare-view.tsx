@@ -1,17 +1,34 @@
 "use client";
 
 import { CircleAlert } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { ReceiptChip } from "@/components/brand/receipt";
+import { EmptyState } from "@/components/empty-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { describeBrief } from "@/lib/brief";
+import { Spinner } from "@/components/ui/spinner";
+import { describeCrowd } from "@/lib/brief";
 import { loadLastRun, type LastRun } from "@/lib/last-run";
 import type { PlainSong } from "@/lib/plain-song";
+import type { SongSheet } from "@/lib/song-sheet";
 
-/** The last GhostQ song next to the same brief written by plain AI with no Qloo data. */
+/** The lines the compare shows: the chorus first, then the first verse (the DS's order), else the opening sections. */
+function compareLines<L>(sections: { name: string; lines: L[] }[]): L[] {
+  const chorus = sections.find((s) => /chorus/i.test(s.name));
+  const first = sections.find((s) => s !== chorus);
+  return [...(chorus?.lines ?? []), ...(first?.lines ?? [])].slice(0, 8);
+}
+
+/** A pill with a pixel count: "0 signals" outline for plain AI, "15 signals" lime for GhostQ. */
+function SignalCount({ n, lime }: { n: number; lime?: boolean }) {
+  return (
+    <span className={lime ? "inline-flex items-baseline gap-1 rounded-full bg-signal px-[9px] py-0.5 text-xs text-signal-foreground" : "inline-flex items-baseline gap-1 rounded-full border px-[9px] py-0.5 text-xs text-muted-foreground"}>
+      <span className="pixel-circle text-sm">{n}</span>signals
+    </span>
+  );
+}
+
+/** "Same brief, two writers": the same brief by a plain AI model with no crowd data, next to this device's last GhostQ song. */
 export function CompareView() {
   const [last, setLast] = useState<LastRun | null>(null);
   const [plain, setPlain] = useState<PlainSong | null>(null);
@@ -41,71 +58,66 @@ export function CompareView() {
   }
 
   if (!last?.sheet) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Write a song first, then come back to compare it with plain AI. <Link href="/" className="underline">Write a song</Link>
-      </p>
-    );
+    return <EmptyState title="No song to compare yet" body="Write a song first, then come back to see it next to the same brief written with no crowd data." action={{ label: "Write a song", href: "/write" }} />;
   }
 
-  const sheet = last.sheet;
+  const sheet: SongSheet = last.sheet;
+  const byId = new Map(sheet.signals.map((s) => [s.id, s]));
   return (
-    <div className="grid gap-4">
-      <p className="text-sm text-muted-foreground">Brief: {describeBrief(last.brief, sheet.crowd)}</p>
-      {!plain && (
-        <div>
-          <Button onClick={writePlain} disabled={busy}>
-            {busy ? "Writing the plain AI version…" : "Write the same brief with plain AI"}
-          </Button>
+    <div className="grid items-start gap-3.5 sm:grid-cols-[1fr_1.2fr]">
+      <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-muted p-5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13px] font-semibold text-muted-foreground">Plain AI{plain ? ` · ${plain.title}` : ""}</span>
+          <SignalCount n={0} />
         </div>
-      )}
-      {error && (
-        <Alert variant="destructive">
-          <CircleAlert aria-hidden />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {sheet.title} <Badge>GhostQ</Badge>
-            </CardTitle>
-            <CardDescription>Built on {sheet.signals.length} Qloo signals, cited line by line.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 text-sm">
-            {sheet.sections.map((s, i) => (
-              <div key={i}>
-                <p className="font-semibold">{s.name}</p>
-                {s.lines.map((l, j) => (
-                  <p key={j}>
-                    {l.text} <span className="font-mono text-xs text-muted-foreground">[{l.signalIds.join(", ")}]</span>
-                  </p>
-                ))}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        {plain && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {plain.title} <Badge variant="secondary">Plain AI</Badge>
-              </CardTitle>
-              <CardDescription>The same model and brief with no Qloo data. Nothing to cite.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 text-sm">
-              {plain.sections.map((s, i) => (
-                <div key={i}>
-                  <p className="font-semibold">{s.name}</p>
-                  {s.lines.map((l, j) => (
-                    <p key={j}>{l.text}</p>
-                  ))}
-                </div>
+        {plain ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              {compareLines(plain.sections).map((l, i) => (
+                <span key={i} className="text-base leading-[1.4] text-muted-foreground">
+                  {l.text}
+                </span>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+            <span className="text-xs leading-[1.45] text-muted-foreground">The same model and brief with no Qloo data. Nothing to cite.</span>
+          </>
+        ) : (
+          <div className="flex flex-col items-start gap-2.5">
+            <p className="text-sm leading-normal text-muted-foreground">Write the same brief with a plain AI model and no crowd data, to see what the crowd changes.</p>
+            <Button onClick={writePlain} disabled={busy}>
+              {busy && <Spinner />}
+              {busy ? "Writing the plain AI version…" : "Write the same brief with plain AI"}
+            </Button>
+          </div>
         )}
+        {error && (
+          <Alert variant="destructive">
+            <CircleAlert aria-hidden />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-foreground bg-card p-5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13px] font-semibold">GhostQ · {sheet.title}</span>
+          <SignalCount n={sheet.signals.length} lime />
+        </div>
+        <div className="flex flex-col gap-2">
+          {compareLines(sheet.sections).map((l, i) => (
+            <div key={i} className="flex flex-wrap items-baseline justify-between gap-2.5">
+              <span className="text-base leading-[1.4] font-medium">{l.text}</span>
+              <span className="flex gap-1">
+                {l.signalIds.map((id) => {
+                  const s = byId.get(id);
+                  return s ? <ReceiptChip key={id} signal={s} /> : null;
+                })}
+              </span>
+            </div>
+          ))}
+        </div>
+        <span className="text-xs leading-[1.45] text-muted-foreground">
+          For {describeCrowd(sheet.crowd)}, in {sheet.language}. Every line can say why.
+        </span>
       </div>
     </div>
   );

@@ -9,12 +9,21 @@ import type { SongSummary } from "@/lib/song-summary";
 
 const ALL = "all";
 
+/** The Library's Type filter: originals, remixes or CollabQ songs. */
+const TYPES: [string, string][] = [
+  ["original", "Originals"],
+  ["remix", "Remixes"],
+  ["collab", "CollabQ"],
+];
+const typeOf = (s: SongSummary) => (s.remixOf ? "remix" : s.featuring ? "collab" : "original");
+
 /** The public Library: every saved song, with search, filters and play in place. */
 export function LibraryList({ songs }: { songs: SongSummary[] }) {
   const [query, setQuery] = useState("");
   const [artist, setArtist] = useState(ALL);
   const [city, setCity] = useState(ALL);
   const [language, setLanguage] = useState(ALL);
+  const [type, setType] = useState(ALL);
   const [playing, setPlaying] = useState<string | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
 
@@ -34,9 +43,10 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
         (artist === ALL || s.artist === artist || s.featuring === artist) &&
         (city === ALL || s.crowd.place?.name === city) &&
         (language === ALL || s.language === language) &&
+        (type === ALL || typeOf(s) === type) &&
         (!q || [s.title, s.artist, s.featuring ?? "", s.story ?? ""].some((t) => t.toLowerCase().includes(q))),
     );
-  }, [songs, query, artist, city, language]);
+  }, [songs, query, artist, city, language, type]);
 
   function toggle(song: SongSummary) {
     const el = audio.current;
@@ -52,30 +62,44 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
   }
 
   if (!songs.length) {
-    return <EmptyState size="lg" title="No songs yet" body="Every song written with GhostQ appears here, with the research behind it." action={{ label: "Write the first one", href: "/" }} />;
+    return (
+      <EmptyState
+        size="lg"
+        title="The Library is empty"
+        body="Nobody has written a song yet. The first one lands here with its crowd and receipts, for everyone to open."
+        action={{ label: "Write the first song", href: "/write" }}
+      />
+    );
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="flex flex-col gap-6">
       {/* One shared player, so only one song plays at a time. */}
       <audio ref={audio} onEnded={() => setPlaying(null)} className="hidden">
         <track kind="captions" />
       </audio>
       <div className="flex flex-col gap-3">
-        <Label htmlFor="lib-search" className="sr-only">
-          Search
-        </Label>
-        <SearchField id="lib-search" placeholder="Title, artist or story" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterSelect id="lib-artist" label="Artist" all={ALL} value={artist} onChange={setArtist} options={options.artists.map((a) => [a, a])} />
-          <FilterSelect id="lib-city" label="City" all={ALL} value={city} onChange={setCity} options={options.cities.map((c) => [c, c])} />
-          <FilterSelect id="lib-language" label="Language" all={ALL} value={language} onChange={setLanguage} options={options.languages.map((l) => [l, l])} />
-          <p className="ml-auto text-sm text-muted-foreground">
-            <span className="pixel-square text-foreground">{shown.length}</span> of {songs.length} songs
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          <Label htmlFor="lib-search" className="sr-only">
+            Search title or artist
+          </Label>
+          <SearchField id="lib-search" placeholder="Search title or artist" className="flex-1" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <div className="flex flex-wrap gap-1.5">
+            <FilterSelect id="lib-artist" label="Artist" all={ALL} value={artist} onChange={setArtist} options={options.artists.map((a) => [a, a])} />
+            <FilterSelect id="lib-city" label="City" all={ALL} value={city} onChange={setCity} options={options.cities.map((c) => [c, c])} />
+            <FilterSelect id="lib-language" label="Language" all={ALL} value={language} onChange={setLanguage} options={options.languages.map((l) => [l, l])} />
+            <FilterSelect id="lib-type" label="Type" all={ALL} value={type} onChange={setType} options={TYPES} />
+          </div>
+        </div>
+        <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+          <p className="inline-flex items-baseline gap-[5px]" aria-live="polite">
+            <span className="pixel-square text-sm text-foreground">{shown.length}</span>
+            {shown.length < songs.length ? `of ${songs.length} songs · filtered` : `song${shown.length === 1 ? "" : "s"}`}
           </p>
+          <span>Newest first</span>
         </div>
       </div>
-      <div className="grid gap-2">
+      <div className="flex flex-col gap-2">
         {shown.map((s) => (
           <SongCard key={s.id} song={s} playing={playing === s.id} onToggle={() => toggle(s)} />
         ))}

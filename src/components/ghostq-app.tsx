@@ -1,21 +1,23 @@
 "use client";
 
-import { CircleAlert, Clock, GitFork, PenLine, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronLeft, CircleAlert, GitFork, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BriefForm } from "@/components/brief-form";
-import { applyStepEvent, RunSteps, type StepItem } from "@/components/run-steps";
-import { StatusLine } from "@/components/step";
+import { BudgetNotice } from "@/components/budget-notice";
+import { applyStepEvent, runNotes, RunSteps, stepCount, type StepItem } from "@/components/run-steps";
+import { AgentNote, StatusLine } from "@/components/step";
 import { SongSheetView } from "@/components/song-sheet-view";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AskCard } from "@/components/ask-card";
-import { CrowdCard } from "@/components/crowd-card";
+import { CrowdCard, sharedOf } from "@/components/crowd-card";
 import { RemixCompare } from "@/components/remix-compare";
 import { RemixForm } from "@/components/remix-form";
-import { describeAges, type Brief, type Crowd, type Remix } from "@/lib/brief";
-import { describePlace } from "@/lib/place";
+import { RemixOfLink } from "@/components/remix-links";
+import { SectionCollapsible } from "@/components/section-collapsible";
+import { describeAges, describeCrowd, type Brief, type Crowd, type Remix } from "@/lib/brief";
 import { possessive } from "@/lib/possessive";
 import { loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
@@ -27,23 +29,43 @@ function withAnswers(brief: Brief, who: "A" | "B" | undefined, answers: NonNulla
   return { ...brief, answers: { ...brief.answers, ...answers } };
 }
 
-/** `remixOf`: RemixQ mode, on /remix/<id>: the form asks for the new crowd, and the result shows next to the original. */
-/** "18–24 in Mexico City": the remix's new crowd, as picked (what's left out stays Qloo's). */
-function describeRemix(r: Remix): string {
-  if (!r.ages) return `the crowd in ${describePlace(r.place!)}`;
-  return [describeAges(r.ages), r.place ? `in ${describePlace(r.place)}` : null].filter(Boolean).join(" ");
+/** "Los Angeles, 18–24": the remix's new crowd in the heading's words. */
+function remixHeading(r: Remix): string {
+  return [r.place?.name, r.ages ? describeAges(r.ages) : null].filter(Boolean).join(", ");
 }
 
-export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ picks made on the song page: the run starts on its own. */ start?: Omit<Remix, "of"> } = {}) {
+type Crowds = { A?: { artist: string; crowd: Crowd }; B?: { artist: string; crowd: Crowd } };
+
+/**
+ * The write page (/write) and RemixQ (/remix/<id>, with `remixOf`): the brief or the remix form, the live run (the
+ * crowd and the agent's notes beside the steps), then the finished song with its side rail.
+ * `recent`: the Library strip under the brief, `examples`: songs for the budget notice (server-rendered slots).
+ * RemixQ: `start` runs the picks made on the song page on its own; `original`: the original's card, crowd and remixes
+ * beside the form.
+ */
+export function GhostQApp({
+  remixOf,
+  start,
+  recent,
+  examples,
+  original,
+}: {
+  remixOf?: SongSheet;
+  /** RemixQ picks made on the song page: the run starts on its own. */
+  start?: Omit<Remix, "of">;
+  recent?: ReactNode;
+  examples?: ReactNode;
+  original?: ReactNode;
+} = {}) {
   const [initial, setInitial] = useState<Brief | undefined>();
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<StepItem[]>([]);
   const [sheet, setSheet] = useState<SongSheet | null>(null);
-  // `budget`: a daily budget or rate limit was hit, so the message points to the Library, whose songs always play.
+  // `budget`: a daily budget or rate limit was hit, so the notice shows songs from the Library, which always play.
   const [error, setError] = useState<{ message: string; budget?: boolean } | null>(null);
   const [done, setDone] = useState<Extract<RunEvent, { type: "done" }> | null>(null);
   // CollabQ reads two crowds: A (the artist) and B (the "feat." artist).
-  const [crowds, setCrowds] = useState<{ A?: { artist: string; crowd: Crowd }; B?: { artist: string; crowd: Crowd } }>({});
+  const [crowds, setCrowds] = useState<Crowds>({});
   // The run stopped to ask (Qloo had no data); answering sends the same brief again with the answers.
   const [ask, setAsk] = useState<{ brief: Brief; event: Extract<RunEvent, { type: "ask" }> } | null>(null);
   const current = useRef<Brief | null>(null);
@@ -74,7 +96,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
   useEffect(() => {
     if (remixOf) return () => abort.current?.abort();
     const last = loadLastRun();
-    // A remix lives on its own page; the home page restores plain runs only (remixes saved before this fix too).
+    // A remix lives on its own page; the write page restores plain runs only (remixes saved before this fix too).
     if (last && !last.brief.remix) {
       // Restoring from this device's storage after hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -135,7 +157,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
   function newArtist() {
     abort.current?.abort();
     if (remixOf) {
-      router.push("/");
+      router.push("/write");
       return;
     }
     current.current = null;
@@ -198,39 +220,71 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
     }
   }
 
-  return (
-    <div className="grid gap-10">
-      {remixOf && !(folded && current.current) ? (
-        <RemixForm original={remixOf} busy={busy} onSubmit={remix} />
-      ) : folded && current.current ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card px-4 py-3 text-sm">
-          <span className="min-w-0">
-            {current.current.remix ? "Remixing" : "Writing for"} <strong>{current.current.remix ? remixOf?.title : current.current.artist}</strong>
-            {current.current.remix ? <span className="text-muted-foreground"> · for {describeRemix(current.current.remix)}</span> : null}
-            {current.current.feat ? (
-              <>
-                {" "}
-                feat. <strong>{current.current.feat.artist}</strong>
-              </>
-            ) : null}
-            {current.current.story ? <span className="text-muted-foreground"> · about: {current.current.story}</span> : null}
-          </span>
-          <Button type="button" variant="link" size="sm" className="ml-auto h-auto p-0" onClick={() => setFolded(false)} disabled={busy}>
-            <PenLine aria-hidden />
-            Edit
-          </Button>
-        </div>
-      ) : (
-        <BriefForm key={`${formKey}:${JSON.stringify(current.current ?? initial ?? null)}`} initial={current.current ?? initial} busy={busy} onSubmit={submit} />
-      )}
+  const brief = current.current;
+  const budget = error?.budget ? error : null;
+  const failed = error && !error.budget ? error : null;
+  const finished = Boolean(sheet) && !busy;
+  const inRun = items.length > 0 || busy || Boolean(failed);
+  const collab = Boolean(brief?.feat);
+  const compareSignals = items.flatMap((x) => (x.kind === "step" && x.tool === "compare_crowds" ? x.signals : []));
+  const steps = stepCount(items);
 
-      {(items.length > 0 || busy) && (
-        <section className="grid gap-4" aria-label="Live run">
-          <h2 className="text-lg font-semibold">Reading the crowd</h2>
-          {items.length === 0 && <StatusLine>Finding the artist on Qloo…</StatusLine>}
-          {crowds.A && <CrowdCard artist={crowds.A.artist} crowd={crowds.A.crowd} />}
-          {crowds.B && <CrowdCard artist={crowds.B.artist} crowd={crowds.B.crowd} featured />}
-          <RunSteps items={items} />
+  /** The crowd column: ONE crowd card (both crowds for a CollabQ), then the agent's notes. */
+  const crowdColumn = (
+    <div className="flex min-w-0 flex-col gap-3.5">
+      {ask ? (
+        <CrowdCard artist={ask.event.artist} loading heading="The crowd · waiting for your answers" />
+      ) : crowds.A ? (
+        <CrowdCard
+          artist={crowds.A.artist}
+          crowd={crowds.A.crowd}
+          partner={crowds.B}
+          shared={crowds.B && compareSignals.length ? sharedOf(crowds.A.crowd, crowds.B.crowd, compareSignals) : undefined}
+          heading={remixOf ? "The new crowd" : undefined}
+        />
+      ) : (
+        !failed && <CrowdCard artist={brief?.artist ?? ""} loading heading={remixOf ? "The new crowd" : collab ? "Two crowds" : "The crowd"} />
+      )}
+      {runNotes(items).map((x) => (
+        <AgentNote key={x.key}>{x.text}</AgentNote>
+      ))}
+    </div>
+  );
+
+  const failedAt = steps > 0 ? ` at step ${steps}` : "";
+  const runSection = inRun && (
+    <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-5" aria-label="Live run">
+      <div className="flex flex-col gap-0.5 border-t pt-6">
+        <h2 className="text-xl font-semibold tracking-[-0.02em]">
+          {failed
+            ? "The run stopped"
+            : ask
+              ? "The run needs you"
+              : finished
+                ? remixOf
+                  ? "How GhostQ researched this remix"
+                  : "How GhostQ researched this song"
+                : remixOf
+                  ? "Reading the new crowd"
+                  : collab
+                    ? "Reading both crowds"
+                    : "Reading the crowd"}
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          {ask
+            ? "Qloo has no data for this artist. Answer inline and the run carries on."
+            : finished && done
+              ? `${steps} steps · ${done.qlooCalls} Qloo calls · ${done.seconds} s`
+              : collab && brief?.feat
+                ? `CollabQ · ${brief.artist} feat. ${brief.feat.artist}`
+                : "Each step shows its source as it finishes"}
+        </p>
+      </div>
+      <div className="grid items-start gap-5 desk:grid-cols-[360px_minmax(0,1fr)]">
+        {crowdColumn}
+        <div className="flex min-w-0 flex-col gap-2.5">
+          {items.length === 0 && busy && <StatusLine>Finding the artist on Qloo…</StatusLine>}
+          <RunSteps items={items} notes={false} collapsed={finished} />
           {ask && (
             <AskCard
               fields={ask.event.fields}
@@ -239,63 +293,214 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
               onAnswer={(answers) => void run(withAnswers(ask.brief, ask.event.who, answers))}
             />
           )}
+          {failed && (
+            <Alert variant="destructive">
+              <CircleAlert aria-hidden />
+              <AlertTitle>The run stopped{failedAt}.</AlertTitle>
+              <AlertDescription>
+                <p>{failed.message}</p>
+                <div className="flex flex-wrap gap-2 pt-1.5">
+                  {brief && (
+                    <Button size="sm" onClick={() => (remixOf && brief.remix ? remix(brief.remix) : writeAnother())}>
+                      <RotateCcw aria-hidden />
+                      Try again
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={newArtist}>
+                    New artist
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
           {done && (
-            <p className="px-1 pixel-square text-sm">
-              {done.qlooCalls} Qloo calls{done.qlooCached ? ` (+${done.qlooCached} from cache)` : ""} · {done.seconds} s
+            <p className="px-0.5 py-1 pixel-square text-sm">
+              {done.qlooCalls} Qloo calls{done.qlooCached ? ` (+${done.qlooCached} from cache)` : ""} · {done.seconds} s{sheet ? ` · ${sheet.signals.length} signals` : ""}
             </p>
           )}
-        </section>
-      )}
-
-      {error && (
-        <Alert variant={error.budget ? "budget" : "destructive"}>
-          {error.budget ? <Clock aria-hidden /> : <CircleAlert aria-hidden />}
-          <AlertDescription>
-            <p>
-              {error.message}
-              {error.budget && (
-                <>
-                  {" "}
-                  <Link href="/library" className="font-medium underline">
-                    Listen to the songs in the Library
-                  </Link>
-                </>
-              )}
-            </p>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {sheet && remixOf && sheet.remixOf && <RemixCompare original={remixOf} remix={sheet} />}
-
-      {sheet && <SongSheetView key={sheet.id} sheet={sheet} onSheetChange={rewritten} />}
-
-      {sheet && !busy && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" size="lg" onClick={writeAnother}>
-            <Sparkles aria-hidden />
-            {remixOf ? "Remix again" : "Write another"}
-          </Button>
-          <Button type="button" size="lg" variant="outline" onClick={newArtist}>
-            <RotateCcw aria-hidden />
-            New artist
-          </Button>
-          {!remixOf && sheet.id && !sheet.featuring && (
-            <Button size="lg" variant="outline" asChild>
-              <Link href={`/remix/${sheet.id}`}>
-                <GitFork aria-hidden />
-                Remix for another crowd
-              </Link>
-            </Button>
-          )}
-          {remixOf && (
-            <Button type="button" size="lg" variant="outline" onClick={() => setFolded(false)}>
-              <PenLine aria-hidden />
-              Another crowd
-            </Button>
-          )}
-          <span className="text-sm text-muted-foreground">{remixOf ? "Remix again writes another take for the same crowd." : `Write another keeps ${sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song.`}</span>
         </div>
+      </div>
+    </section>
+  );
+
+  if (remixOf) {
+    const picked = brief?.remix;
+    const stage = budget ? "budget" : finished && sheet?.remixOf ? "result" : inRun || ask ? "running" : "form";
+    const [heading, sub] =
+      stage === "result" && picked
+        ? [`${remixOf.title}, remixed for ${remixHeading(picked)}`, "The original and the remix side by side. Each keeps its own receipts; rewritten lines are marked on both."]
+        : stage === "running" && picked
+          ? [`Remixing for ${remixHeading(picked)}`, "Live steps, like a write. About a minute."]
+          : stage === "budget"
+            ? [`Remix ${remixOf.title}`, "Remixes read a new crowd from Qloo, so they wait for the daily budget too."]
+            : [`Remix ${remixOf.title}`, "Pick a new city, up to three age bands, or both. GhostQ reads the new crowd and rewrites the verses and bridge. The title, key, tempo, sections and hook stay."];
+    return (
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-7 px-(--page-x) pt-7 pb-18">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button variant="ghost" size="xs" asChild className="-ml-1">
+            <Link href={`/song/${remixOf.id}`}>
+              <ChevronLeft aria-hidden />
+              {remixOf.title}
+            </Link>
+          </Button>
+          <span className="font-mono text-[11px] text-muted-foreground">RemixQ · the same song for another crowd</span>
+        </div>
+        <div className="flex max-w-[720px] flex-col gap-2">
+          <h1 className="text-[clamp(30px,4vw,44px)] leading-[1.02] font-semibold tracking-[-0.04em] text-pretty">{heading}</h1>
+          <p className="text-[15px] leading-normal text-pretty text-muted-foreground">{sub}</p>
+        </div>
+
+        {stage === "form" && (
+          <div className="grid items-start gap-5 desk:grid-cols-2">
+            <RemixForm original={remixOf} busy={busy} onSubmit={remix} />
+            <div className="flex min-w-0 flex-col gap-3">
+              <span className="font-mono text-[11px] tracking-[.06em] text-muted-foreground">THE ORIGINAL</span>
+              {original}
+            </div>
+          </div>
+        )}
+
+        {budget && (
+          <div className="w-full max-w-[720px]">
+            <BudgetNotice kind="qloo" message={budget.message} examples={examples} />
+          </div>
+        )}
+
+        {stage === "running" && runSection}
+
+        {stage === "result" && sheet && (
+          <>
+            <SongSheetView
+              key={sheet.id}
+              sheet={sheet}
+              compare={<RemixCompare original={remixOf} remix={sheet} />}
+              aside={
+                <>
+                  {remixOf.id && <RemixOfLink of={{ id: remixOf.id, title: remixOf.title, crowdText: describeCrowd(remixOf.crowd) }} />}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" onClick={writeAnother}>
+                      <Sparkles aria-hidden />
+                      Remix again
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setFolded(false)}>
+                      <PenLine aria-hidden />
+                      Another crowd
+                    </Button>
+                  </div>
+                  <span className="px-1 text-xs leading-normal text-muted-foreground">Remix again writes another take for the same crowd. Both versions are saved and linked.</span>
+                </>
+              }
+            />
+            <section className="flex flex-col gap-3 border-t pt-6">
+              <SectionCollapsible title="How GhostQ researched this remix" meta={done ? `${steps} steps · ${done.qlooCalls} Qloo calls · ${done.seconds} s` : `${steps} steps`} bare>
+                <div className="pt-3">
+                  <RunSteps items={items} grid />
+                </div>
+              </SectionCollapsible>
+            </section>
+          </>
+        )}
+
+        {stage === "result" && folded === false && (
+          <div className="grid items-start gap-5 desk:grid-cols-2">
+            <RemixForm original={remixOf} busy={busy} onSubmit={remix} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-14 px-(--page-x) pb-18">
+      <section className="mx-auto flex w-full max-w-[680px] flex-col gap-7 pt-9 sm:gap-9 sm:pt-18">
+        <div className="flex flex-col gap-2.5">
+          <h1 className="text-[clamp(32px,5vw,56px)] leading-none font-semibold tracking-[-0.045em] text-pretty">A song written for the crowd that loves an artist.</h1>
+          <p className="max-w-[560px] text-base leading-normal text-pretty text-muted-foreground">
+            Name an artist. GhostQ reads their crowd from Qloo, finds what that crowd loves, and writes an original draft for them, with receipts for every line. Add a
+            “feat.” artist and verse 2 goes to their crowd.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
+          {/* A budget refusal before any step leaves the brief open beside the notice, as the DS draws it. */}
+          {folded && brief && !(budget && items.length === 0) ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card px-4 py-3 text-sm">
+              <span className="min-w-0">
+                Writing for <strong>{brief.artist}</strong>
+                {brief.feat ? (
+                  <>
+                    {" "}
+                    feat. <strong>{brief.feat.artist}</strong>
+                  </>
+                ) : null}
+                {brief.story ? <span className="text-muted-foreground"> · about: {brief.story}</span> : null}
+              </span>
+              <Button type="button" variant="link" size="sm" className="ml-auto" onClick={() => setFolded(false)} disabled={busy}>
+                <PenLine aria-hidden />
+                Edit
+              </Button>
+            </div>
+          ) : (
+            <BriefForm
+              key={`${formKey}:${JSON.stringify(brief ?? initial ?? null)}`}
+              initial={brief ?? initial}
+              busy={busy}
+              onSubmit={submit}
+              note={budget ? "Writing is paused until the limit resets." : undefined}
+            />
+          )}
+          {budget && <BudgetNotice kind="qloo" message={budget.message} examples={examples} />}
+        </div>
+      </section>
+
+      {runSection}
+
+      {sheet && (
+        <SongSheetView
+          key={sheet.id}
+          sheet={sheet}
+          onSheetChange={rewritten}
+          sticky
+          aside={
+            !busy && (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" onClick={writeAnother}>
+                    <Sparkles aria-hidden />
+                    Write another
+                  </Button>
+                  <Button type="button" variant="outline" onClick={newArtist}>
+                    <RotateCcw aria-hidden />
+                    New artist
+                  </Button>
+                  {sheet.id && !sheet.featuring && (
+                    <Button variant="outline" asChild>
+                      <Link href={`/remix/${sheet.id}`}>
+                        <GitFork aria-hidden />
+                        Remix for another crowd
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+                <span className="px-1 text-xs leading-normal text-muted-foreground">
+                  Write another keeps {sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song. Saved to the public Library with its
+                  research. Anyone with the link can open it.
+                </span>
+              </>
+            )
+          }
+        />
+      )}
+
+      {!inRun && !budget && !sheet && recent && (
+        <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-3.5 border-t pt-7" aria-label="Recent from the Library">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[15px] font-semibold">Recent from the Library</h2>
+            <Link href="/library" className="text-[13px] font-semibold text-muted-foreground hover:text-foreground">
+              All songs
+            </Link>
+          </div>
+          {recent}
+        </section>
       )}
     </div>
   );

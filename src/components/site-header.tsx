@@ -11,18 +11,19 @@ import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuL
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const LINKS = [
-  { href: "/", label: "Write", match: (p: string) => p === "/" || p.startsWith("/remix") },
-  { href: "/library", label: "Library", match: (p: string) => p.startsWith("/library") },
+  { href: "/write", label: "Write", match: (p: string) => p.startsWith("/write") },
+  // A song's page and its remixes live in the Library.
+  { href: "/library", label: "Library", match: (p: string) => p.startsWith("/library") || p.startsWith("/song") || p.startsWith("/remix") },
   { href: "/how", label: "How it works", match: (p: string) => p.startsWith("/how") },
 ];
 
 const link = "rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent data-active:bg-muted data-active:font-semibold data-active:text-foreground data-active:hover:bg-muted data-active:focus:bg-muted";
 
-/** The DS header: the lockup on the left, Write · Library · How it works on the right (a Sheet menu on a phone). */
+/** The DS header: the lockup (home, the Landing) on the left, Write · Library · How it works on the right (a Sheet menu on a phone). */
 export function SiteHeader() {
   return (
     <header className="border-b bg-background text-foreground">
-      <div className="mx-auto flex h-15 max-w-4xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="flex h-15 items-center justify-between gap-4 px-(--page-x)">
         <Link href="/" className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring">
           <Wordmark />
         </Link>

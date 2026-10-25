@@ -12,7 +12,7 @@ const SOURCES: { name: string; use: string; qloo?: boolean }[] = [
 export function SiteFooter() {
   return (
     <footer className="border-t bg-background text-xs leading-normal text-muted-foreground">
-      <div className="mx-auto grid max-w-4xl gap-3.5 px-4 py-7 sm:px-6">
+      <div className="grid gap-3.5 px-(--page-x) py-7">
         <div className="flex flex-wrap items-center gap-x-[18px] gap-y-2">
           <span className="font-mono text-[10px] tracking-[.08em]">DATA</span>
           {SOURCES.map((s) => (

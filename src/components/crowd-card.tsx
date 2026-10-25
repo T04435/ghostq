@@ -4,9 +4,21 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AGE_BANDS, describeHome, normalizeCrowd, type Crowd } from "@/lib/brief";
 import { describePlace } from "@/lib/place";
-import type { Side } from "@/lib/signals";
+import type { Side, Signal } from "@/lib/signals";
 
 type Shared = { ages?: string; themes: string[]; note?: string };
+
+/**
+ * CollabQ's "what they share", for the one crowd card: the age bands both crowds have, and the first themes (then
+ * genres) from Qloo's compare step (its signals).
+ */
+export function sharedOf(a: Crowd, b: Crowd, compare: Signal[]): Shared {
+  const bands = new Set(b.ages.map((x) => x.age));
+  const both = a.ages.map((x) => x.age).filter((x) => bands.has(x));
+  const order = (s: Signal) => (s.kind === "theme" ? 0 : s.kind === "genre" ? 1 : 2);
+  const themes = [...new Set([...compare].sort((x, y) => order(x) - order(y)).map((s) => s.label))].slice(0, 5);
+  return { ages: both.length ? both.map((x) => AGE_BANDS[x]).join(" · ") : undefined, themes };
+}
 
 /**
  * The DS's CrowdCard: who the song is for (the crowd's city with its Qloo rank, the age skew bars, the language) and,
@@ -140,11 +152,11 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
         <NoData title="Worldwide.">Qloo has no location data for these fans.</NoData>
       )}
       {crowd.ages.length > 0 ? (
-        <div className="flex flex-col gap-1.5 text-xs">
+        <div className="grid grid-cols-[minmax(52px,max-content)_1fr_54px] items-center gap-x-2 gap-y-1.5 text-xs">
           {crowd.ages.map((a) => {
             const v = Math.abs(a.skew ?? 0);
             return (
-              <div key={a.age} className="grid grid-cols-[52px_1fr_54px] items-center gap-2">
+              <div key={a.age} className="contents">
                 <span className="pixel-circle text-sm whitespace-nowrap">{AGE_BANDS[a.age]}</span>
                 <span className="relative h-1.5 overflow-hidden rounded-[3px] bg-muted">
                   {qlooAges && a.skew !== null && <span className="absolute inset-y-0 left-0 rounded-[3px] bg-signal" style={{ width: `${Math.min(100, Math.round((v / 0.35) * 100))}%` }} />}
@@ -153,7 +165,7 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
               </div>
             );
           })}
-          {!qlooAges && <span className="text-muted-foreground">{crowd.from.ages === "remix" ? "Your pick for this remix" : "Your answer: Qloo had no age data"}</span>}
+          {!qlooAges && <span className="col-span-full text-muted-foreground">{crowd.from.ages === "remix" ? "Your pick for this remix" : "Your answer: Qloo had no age data"}</span>}
         </div>
       ) : (
         <NoData title="All ages.">Qloo has no age data for these fans.</NoData>

@@ -1,5 +1,6 @@
 import { Clock } from "lucide-react";
-import { SongCard, type SongCardSong } from "@/components/song-card";
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const TEXT = {
@@ -7,21 +8,32 @@ const TEXT = {
   sing: { title: "Today’s singing budget is used up.", body: "Sheets still write. Singing opens again at 00:00 UTC." },
 };
 
-/** The DS's BudgetNotice: the budget Alert and the example songs, which always play. Never a blank error. */
-export function BudgetNotice({ kind, examples = [] }: { kind: "qloo" | "sing"; examples?: SongCardSong[] }) {
+/**
+ * The DS's BudgetNotice: the budget Alert, then example songs from the Library, which always play. Never a blank error.
+ * `message`: the server's own words (when it comes back), which replace the fixed line; an hourly limit (also a budget
+ * refusal) gets its own title, since the daily budget isn't what ran out. `examples`: the song cards (a server-rendered
+ * slot); without them it links to the Library instead.
+ */
+export function BudgetNotice({ kind, message, examples }: { kind: "qloo" | "sing"; message?: string; examples?: ReactNode }) {
+  const hourly = Boolean(message && /hour/i.test(message));
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" role="region" aria-label="Budget notice">
       <Alert variant="budget">
         <Clock aria-hidden />
-        <AlertTitle>{TEXT[kind].title}</AlertTitle>
-        <AlertDescription>{TEXT[kind].body}</AlertDescription>
+        <AlertTitle>{hourly ? "This hour’s limit is reached." : TEXT[kind].title}</AlertTitle>
+        <AlertDescription>
+          <p>{message ?? TEXT[kind].body}</p>
+          {!examples && (
+            <Link href="/library" className="font-medium underline">
+              Listen to the songs in the Library
+            </Link>
+          )}
+        </AlertDescription>
       </Alert>
-      {examples.length > 0 && (
+      {examples && (
         <>
           <span className="text-[13px] font-semibold">Example songs · they always play, budget or not</span>
-          {examples.map((s) => (
-            <SongCard key={s.id} song={s} compact />
-          ))}
+          {examples}
         </>
       )}
     </div>

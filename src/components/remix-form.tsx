@@ -96,7 +96,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
             City <span className="font-normal text-muted-foreground">· Qloo city search</span>
           </Label>
           {place ? (
-            <div className="flex h-[46px] items-center gap-2.5 rounded-full border border-foreground bg-card pr-2 pl-4 sm:w-96">
+            <div className="flex h-[46px] items-center gap-2.5 rounded-full border border-foreground bg-card pr-2 pl-4 w-full max-w-96">
               <MapPin className="size-4 flex-none text-muted-foreground" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-[15px]">{describePlace(place)}</span>
               <Button type="button" variant="ghost" size="icon-xs" aria-label="Clear the city" onClick={() => setPlace(null)}>
@@ -105,7 +105,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
             </div>
           ) : (
             <>
-              <div className="relative sm:w-96">
+              <div className="relative w-full max-w-96">
                 <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                 <Input
                   id="remix-city"
@@ -139,7 +139,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
               {cities.status === "error" && <p className="text-sm text-destructive">{cities.message}</p>}
               {cities.status === "done" && cities.results.length === 0 && <p className="text-sm text-muted-foreground">No city called &quot;{query}&quot;.</p>}
               {cities.results.length > 0 && (
-                <div className="flex flex-col overflow-hidden rounded-xl border bg-popover sm:w-96" role="region" aria-label="City results">
+                <div className="flex flex-col overflow-hidden rounded-xl border bg-popover w-full max-w-96" role="region" aria-label="City results">
                   {cities.results.map((c) => (
                     <Item key={`${c.name}-${c.lat}-${c.lon}`} asChild size="sm" className="cursor-pointer gap-2.5 rounded-none border-0 border-b px-3.5 py-[9px] text-left last:border-b-0 hover:bg-muted focus-visible:bg-muted">
                       <button type="button" onClick={() => setPlace(c)}>
