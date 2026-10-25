@@ -230,9 +230,14 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
   // How they sing (Wikipedia, by Qloo's Wikidata id), read alongside the crowd; it lands as its own step below.
   const singing = vocalStyle(x.act?.wikidataId, languageFor(countryFromDescription(x.act?.description)?.countryCode ?? (x.homeFromTags ? countryCodeFor(x.homeFromTags) : null)));
-  const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
-  // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's, found by Qloo's id.
-  x.vocals = { ...profile.voices, source: `${profile.voices.source} (Qloo has no voice data)` };
+  const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null, { spotifyId: x.spotifyId, name: x.act?.name ?? x.name })]);
+  // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's. If MusicBrainz's
+  // country disagrees with Qloo's description of the act, it's another artist of the same name: don't use its voices.
+  const qlooCountry = countryFromDescription(x.act?.description)?.countryCode;
+  const sameArtist = !qlooCountry || !profile.home?.countryCode || profile.home.countryCode === qlooCountry;
+  x.vocals = sameArtist
+    ? { ...profile.voices, source: `${profile.voices.source} (Qloo has no voice data)` }
+    : { voices: [], source: `MusicBrainz's entry (from ${profile.home!.country}) isn't this artist, so the voice isn't known` };
   const home = homeFor(x, profile.home);
   // The language: the artist's home, the languages their own Qloo tags point to, and the crowd's city. When these
   // disagree (or there's no home and the tags point elsewhere), the run asks: one of them, or a mix of two.
