@@ -20,10 +20,21 @@ import {
  */
 export default function SongAudio({ src }: { src: string }) {
   return (
-    <AudioPlayer className="w-full">
+    // DS player colours: graphite progress on a muted track, the lime play button, Geist Pixel Square for the times.
+    <AudioPlayer
+      className="w-full rounded-full border bg-card px-1.5 py-1 [font-variation-settings:var(--px-square)]"
+      style={{
+        "--media-control-hover-background": "var(--color-muted)",
+        "--media-font": "var(--font-pixel)",
+        "--media-font-size": "13px",
+        "--media-range-bar-color": "var(--color-foreground)",
+        "--media-range-track-background": "var(--color-muted)",
+        "--media-primary-color": "var(--color-foreground)",
+      } as React.CSSProperties}
+    >
       <AudioPlayerElement src={src} />
       <AudioPlayerControlBar>
-        <AudioPlayerPlayButton />
+        <AudioPlayerPlayButton className="rounded-full border-0 bg-primary text-primary-foreground hover:opacity-88" />
         <AudioPlayerSeekBackwardButton seekOffset={10} />
         <AudioPlayerSeekForwardButton seekOffset={10} />
         <AudioPlayerTimeDisplay />

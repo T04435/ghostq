@@ -79,7 +79,7 @@ export function VocalLinePicker({ sheet, draft, onChange }: { sheet: SongSheet; 
               </SelectContent>
             </Select>
           ))}
-        {line && <span className="text-sm font-medium">{describeVoices(line)}</span>}
+        {line && <span className="rounded-full bg-muted px-2.5 py-[3px] text-[13px] font-semibold">{describeVoices(line)}</span>}
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="sing-genre">Genre</Label>
@@ -91,7 +91,7 @@ export function VocalLinePicker({ sheet, draft, onChange }: { sheet: SongSheet; 
           <Textarea id="sing-direction" rows={2} value={draft.direction} maxLength={MAX_DIRECTION} onChange={(e) => onChange({ ...draft, direction: e.target.value })} />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className={missing ? "self-start rounded-xl bg-warning px-2 py-[3px] text-xs text-warning-foreground" : "text-xs text-muted-foreground"}>
         {missing
           ? `${sheet.vocals.source}, so choose every voice before singing.`
           : `The genre and vocal direction come from Qloo's tags for ${songArtist(sheet)}; the voices are from ${sheet.vocals.source}.${changed ? " You changed them." : ""}`}
