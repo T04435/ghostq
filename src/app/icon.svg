@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 38 38">
+  <!-- GhostQ mark (DS logo): a 3×3 crowd of dots, the centre and a -45° tail in cell (3,3) lit lime. -->
+  <style>.dot{fill:#1f2329}.lit{fill:#dbec36}@media (prefers-color-scheme:dark){.dot{fill:#eef0f2}}</style>
+  <circle class="dot" cx="4.17" cy="4.17" r="4.17"/><circle class="dot" cx="16.00" cy="4.17" r="4.17"/><circle class="dot" cx="27.83" cy="4.17" r="4.17"/><circle class="dot" cx="4.17" cy="16.00" r="4.17"/><circle class="lit" cx="16.00" cy="16.00" r="4.17"/><circle class="dot" cx="27.83" cy="16.00" r="4.17"/><circle class="dot" cx="4.17" cy="27.83" r="4.17"/><circle class="dot" cx="16.00" cy="27.83" r="4.17"/>
+  <rect class="lit" x="23.67" y="21.17" width="8.33" height="13.33" rx="4.17" transform="rotate(-45 27.83 27.83)"/>
+</svg>

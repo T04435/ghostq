@@ -9,7 +9,7 @@ import { normalizeSheet, type SongSheet } from "@/lib/song-sheet";
 import type { SongSummary } from "@/lib/song-summary";
 import { toVocalLine, type VocalLine } from "@/lib/voice";
 import { env, providerStatus } from "@/server/env";
-import { getObject, putObject } from "./objects";
+import { getObject, getObjectStream, putObject } from "./objects";
 
 /**
  * Saved songs, for share links and the Library.
@@ -248,6 +248,22 @@ export async function saveAudio(id: string, vocals: VocalLine, audio: Buffer): P
 
 export async function getAudio(id: string): Promise<Buffer | null> {
   return isSongId(id) ? store().getAudio(id) : null;
+}
+
+/**
+ * A sung song's MP3 for playback, streamed, honouring a byte range. Neon's Object Storage can take tens of seconds to
+ * hand over a whole track (measured 25 Oct: 27-53 s for 2.9 MB), so the player must not wait for all of it.
+ */
+export async function getAudioStream(id: string, range: string | null): Promise<{ body: ReadableStream | Uint8Array; length?: number; contentRange?: string } | null> {
+  if (!isSongId(id)) return null;
+  if (providerStatus().database) return getObjectStream(`songs/${id}.mp3`, range);
+  const audio = await store().getAudio(id);
+  if (!audio) return null;
+  const m = range?.match(/^bytes=(\d*)-(\d*)$/);
+  if (!m || (!m[1] && !m[2])) return { body: new Uint8Array(audio), length: audio.length };
+  const start = m[1] ? Number(m[1]) : Math.max(0, audio.length - Number(m[2]));
+  const end = m[1] && m[2] ? Math.min(Number(m[2]), audio.length - 1) : audio.length - 1;
+  return { body: new Uint8Array(audio.subarray(start, end + 1)), length: end - start + 1, contentRange: `bytes ${start}-${end}/${audio.length}` };
 }
 
 /** Every visible song, newest first. */
