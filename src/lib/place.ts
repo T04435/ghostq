@@ -90,7 +90,8 @@ const DEMONYMS: Record<string, string> = {
  * Korean boy band"): the words after "is a/an", read as a country name or a demonym. Null when it names none.
  */
 export function countryFromDescription(text: string | null | undefined): { country: string; countryCode: string } | null {
-  const m = text?.match(/\b(?:is|are|was|were)\s+(?:an?|the)\s+((?:[A-Z][\p{L}'-]*\s+){1,3})/u);
+  // "Lorde is a New Zealand singer…", or a description that starts with it: "American rapper, songwriter…".
+  const m = text?.match(/\b(?:is|are|was|were)\s+(?:an?|the)\s+((?:[A-Z][\p{L}'-]*\s+){1,3})/u) ?? text?.match(/^((?:[A-Z][\p{L}'-]*\s+){1,3})/u);
   if (!m) return null;
   const words = m[1].trim().split(/\s+/);
   for (let n = Math.min(3, words.length); n >= 1; n--) {

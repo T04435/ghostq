@@ -58,15 +58,38 @@ async function getArtist(mbid: string, withMembers: boolean): Promise<MbArtist> 
 
 type Voices = Pick<VocalMatch, "voices" | "source">;
 
+const nameKey = (n: string) => n.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/** The MusicBrainz artist linked to a Spotify artist page (MusicBrainz keeps those URL relations). Null when none. */
+async function mbidForSpotify(spotifyId: string): Promise<string | null> {
+  const url = `${API}/url?resource=${encodeURIComponent(`https://open.spotify.com/artist/${spotifyId}`)}&inc=artist-rels&fmt=json`;
+  try {
+    await paced();
+    const res = await fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { relations?: { artist?: { id: string } }[] };
+    return data.relations?.find((r) => r.artist?.id)?.artist?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * What MusicBrainz knows about the artist: their voices (one call for a person, plus up to three members for a band)
  * and where they're from. A band lists a member once per role (Arctic Monkeys: Alex Turner three times), so members
  * are grouped by id. Never throws.
  */
-export async function artistProfile(mbid: string | null): Promise<{ voices: Voices; home: Home | null }> {
-  if (!mbid) return { voices: { voices: [], source: "Qloo has no MusicBrainz id for this artist" }, home: null };
+export async function artistProfile(qlooMbid: string | null, who: { spotifyId?: string; name: string }): Promise<{ voices: Voices; home: Home | null }> {
+  // The user's Spotify pick finds the artist on MusicBrainz first; Qloo's MusicBrainz id only counts when its name matches
+  // (Qloo's "Eminem" carried the id of a female singer from Türkiye, 25 Oct).
+  const viaSpotify = who.spotifyId ? await mbidForSpotify(who.spotifyId) : null;
+  const mbid = viaSpotify ?? qlooMbid;
+  if (!mbid) return { voices: { voices: [], source: "MusicBrainz has no entry for this artist" }, home: null };
   try {
     const artist = await getArtist(mbid, true);
+    if (!viaSpotify && artist.name && nameKey(artist.name) !== nameKey(who.name)) {
+      return { voices: { voices: [], source: `MusicBrainz's entry is someone else (${artist.name}), so the voice isn't known` }, home: null };
+    }
     const home = homeOf(artist);
     if (artist.type === "Person") return { voices: voicesFromMusicBrainz(artist), home };
     const current = new Map<string, boolean>();

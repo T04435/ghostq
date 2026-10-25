@@ -77,3 +77,11 @@ describe("languagesFromTags (the artist's own tags)", () => {
     expect(countryCodeFor("cuba")).toBe("CU");
   });
 });
+
+describe("countryFromDescription, description starting with the country", () => {
+  it("reads 'American rapper…'", async () => {
+    const { countryFromDescription } = await import("@/lib/place");
+    expect(countryFromDescription("American rapper, songwriter, and record producer known for his complex lyrics")).toMatchObject({ countryCode: "US" });
+    expect(countryFromDescription("Collaborative music duo known for blending rap")).toBeNull();
+  });
+});
