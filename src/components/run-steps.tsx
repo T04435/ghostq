@@ -153,17 +153,18 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
 /** The Ghost's pick (its ready_to_write call) as AI Elements' Plan: the angle, and the signals the song rests on. */
 function PickPlan({ n, item, pick }: { n: number; item: Step; pick: Pick }) {
   const streaming = item.status === "running";
+  const pickStatus: StepStatus = streaming ? "running" : item.status === "failed" ? "failed" : "done";
   const byId = new Map(item.signals.map((s) => [s.id, s]));
   const ids = [...new Set(pick.signalIds)];
   return (
     <Plan defaultOpen isStreaming={streaming} className="gap-3 py-3.5">
       <PlanHeader className="items-center px-4">
         <span className="inline-flex min-w-0 items-center gap-2.5">
-          <StepNumber n={n} running={streaming} />
+          <StepNumber n={n} status={pickStatus} />
           <PlanTitle className="text-sm font-semibold">{`Plan picked by ${AGENT_NAME_INLINE} · ${ids.length} signal${ids.length === 1 ? "" : "s"}`}</PlanTitle>
         </span>
         <span className="flex items-center gap-1">
-          <StatusPill status={streaming ? "running" : item.status === "failed" ? "failed" : "done"} label={streaming ? "Picking" : undefined} />
+          {pickStatus !== "done" && <StatusPill status={pickStatus} label={streaming ? "Picking" : undefined} />}
           <PlanTrigger aria-label="Show or hide the chosen signals" className="size-8 rounded-full" />
         </span>
       </PlanHeader>

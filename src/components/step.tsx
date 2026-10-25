@@ -35,13 +35,23 @@ export function StatusPill({ status, label, qloo = true }: { status: StepStatus;
 }
 
 /**
- * "01": a step's number, in Geist Pixel Square (agent work). While the step runs it is the Ghost's working mark
- * (GHOST_SIZES.step) in the number's place; the status pill beside it says "Running".
+ * "01": a step's number, in Geist Pixel Square (agent work), with the Ghost's mark before it for the finished states:
+ * rest (the full logo) when done, the empty crowd grid when it found nothing. These replace the Done and No data pills
+ * (the user's call, 25 Oct). While the step runs the working mark takes the number's place; the pill says "Running".
  */
-export function StepNumber({ n, running = false }: { n: number; running?: boolean }) {
-  if (running) return <GhostMark size={GHOST_SIZES.step} state="working" decorative />;
-  return <span className="flex-none pixel-square text-base leading-none">{String(n).padStart(2, "0")}</span>;
+export function StepNumber({ n, status = "pending" }: { n: number; status?: StepStatus }) {
+  if (status === "running") return <GhostMark size={GHOST_SIZES.step} state="working" decorative />;
+  const marked = status === "done" || status === "nodata";
+  return (
+    <span className="inline-flex flex-none items-center gap-2">
+      {marked && <GhostMark size={GHOST_SIZES.step} muted={status === "nodata"} label={status === "done" ? "Done" : "No data"} />}
+      <span className="pixel-square text-base leading-none">{String(n).padStart(2, "0")}</span>
+    </span>
+  );
 }
+
+/** The pill shows only the states the mark doesn't: running, failed, waiting. */
+export const hasPill = (status: StepStatus) => status !== "done" && status !== "nodata";
 
 export type StepCall = { key: string; who: string; side?: Signal["side"]; summary?: string; receipts: Signal[] };
 
@@ -78,7 +88,7 @@ export function StepCard({
     <div className={cn("flex flex-col gap-2.5 rounded-lg border bg-card px-4 py-3.5 text-foreground", status === "pending" && "opacity-60")}>
       <div className="flex items-center justify-between gap-2.5">
         <span className="inline-flex min-w-0 items-center gap-2.5">
-          <StepNumber n={n} running={status === "running"} />
+          <StepNumber n={n} status={status} />
           <span className="truncate text-sm font-semibold tracking-[-0.01em]">{title}</span>
           {grouped && (
             <span className="inline-flex flex-none items-baseline gap-1 text-xs whitespace-nowrap text-muted-foreground">
@@ -86,7 +96,7 @@ export function StepCard({
             </span>
           )}
         </span>
-        <StatusPill status={status} qloo={isQloo(source)} />
+        {hasPill(status) && <StatusPill status={status} qloo={isQloo(source)} />}
       </div>
       {status !== "pending" && !collapsed && (
         <>
