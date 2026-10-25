@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { useEffect, useState, type ReactNode } from "react";
 import { ShareText } from "@/components/share-text";
 import { SongPlayer, type SingState } from "@/components/song-player";
-import { SongSheet } from "@/components/song-sheet";
+import { SongBrief, SongSheet } from "@/components/song-sheet";
 import { draftFromSheet, lineFromDraft } from "@/components/vocal-line-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function SongSheetView({
   asideFirst = false,
   sticky = false,
   share = "inline",
+  brief = "rail",
   compare,
 }: {
   sheet: Sheet;
@@ -41,6 +42,8 @@ export function SongSheetView({
   asideFirst?: boolean;
   sticky?: boolean;
   share?: "inline" | "popover";
+  /** "rail": the brief card under the player and share text; "aside": the caller places SongBrief in `aside` itself. */
+  brief?: "rail" | "aside";
   compare?: ReactNode;
 }) {
   const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
@@ -174,6 +177,7 @@ export function SongSheetView({
       <div className={cn("flex min-w-0 flex-col gap-3.5", sticky && "desk:sticky desk:top-4", asideFirst && "-order-1 desk:order-none")}>
         {player}
         {shareCard}
+        {brief === "rail" && <SongBrief sheet={sheet} />}
         {aside}
       </div>
     </section>

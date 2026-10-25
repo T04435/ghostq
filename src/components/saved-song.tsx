@@ -7,6 +7,7 @@ import { AgentStatusLine } from "@/components/brand/agent-status-line";
 import { CrowdCard, sharedOf } from "@/components/crowd-card";
 import { RemixCard } from "@/components/remix-card";
 import { RemixList, RemixOfLink } from "@/components/remix-links";
+import { SongBrief } from "@/components/song-sheet";
 import { SectionCollapsible } from "@/components/section-collapsible";
 import { Button } from "@/components/ui/button";
 import { describeCrowd, type Crowd } from "@/lib/brief";
@@ -60,9 +61,11 @@ export function SavedSong({
         audioUrl={audioUrl}
         asideFirst
         share="popover"
+        brief="aside"
         aside={
           <>
             <CrowdCard artist={sheet.artist} crowd={sheet.crowd} partner={feat} shared={feat && compare.length ? sharedOf(sheet.crowd, feat.crowd, compare) : undefined} />
+            <SongBrief sheet={sheet} />
             {sheet.remixOf && <RemixOfLink of={{ id: sheet.remixOf.id, title: sheet.remixOf.title, crowdText: describeCrowd((original ?? sheet.remixOf).crowd) }} />}
             {!sheet.remixOf && !feat && <RemixList remixes={remixes} />}
             <RemixCard sheet={sheet} />
