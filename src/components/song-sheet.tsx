@@ -3,12 +3,14 @@
 import { GitFork, Info, TriangleAlert } from "lucide-react";
 import { cn } from "cn";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { InlineCitation, InlineCitationCard, InlineCitationCardBody, InlineCitationText } from "@/components/ai-elements/inline-citation";
 import { isQloo, KIND_LETTER, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark } from "@/components/brand/receipt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
+import { Sheet as SidePanel, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import { possessive } from "@/lib/possessive";
@@ -32,10 +34,10 @@ export function sideName(sheet: Sheet, side: NonNullable<Signal["side"]>): strin
 
 /**
  * ONE song sheet (the DS's SongSheet, hand-written ChordPro layout on shadcn Card): the header (title, credit, key and
- * tempo, the draft label, the feel), then chords over lyrics with a receipt chip on every line, and the receipts rail.
- * On a wide container (1040 px and up) the rail is a sticky second column; narrower, it follows the lyrics with a
- * legend of the glyphs on top, and a pinned chip opens its receipt under the line.
- * `compact` drops the brief and actions (RemixCompare); `changed` marks rewritten lines ("s:l" keys) for a diff.
+ * tempo, the draft label, the feel), then chords over lyrics with a receipt chip on every line under a legend of the
+ * glyphs. Clicking a chip (or "Receipts") opens the receipts in a side Sheet, one column, the clicked one highlighted
+ * and scrolled to (the user's call, 25 Oct); hover still previews a chip. The brief lives in the rail (SongBrief).
+ * `compact` drops the feel and actions (RemixCompare); `changed` marks rewritten lines ("s:l" keys) for a diff.
  */
 export function SongSheet({
   sheet,
@@ -69,7 +71,18 @@ export function SongSheet({
     items: sheet.signals.filter((s) => s.kind === kind).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })),
   })).filter((g) => g.items.length);
   const count = (side: NonNullable<Signal["side"]>) => sheet.signals.filter((s) => s.side === side).length;
+  const [open, setOpen] = useState(false);
   const pin = (id: string) => setPinned((p) => (p === id ? null : id));
+  const show = (id: string) => {
+    setPinned(id);
+    setOpen(true);
+  };
+  // The clicked receipt into view once the panel has opened.
+  useEffect(() => {
+    if (!open || !pinned) return;
+    const t = setTimeout(() => document.getElementById(`receipt-${pinned}`)?.scrollIntoView({ block: "center" }), 60);
+    return () => clearTimeout(t);
+  }, [open, pinned]);
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
@@ -92,6 +105,9 @@ export function SongSheet({
               <span className="rounded-full bg-muted px-[9px] py-[5px] font-mono text-[11px] whitespace-nowrap">{sheet.key}</span>
               <span className="rounded-full bg-muted px-[9px] py-[5px] font-mono text-[11px] whitespace-nowrap">{sheet.tempo} BPM</span>
               <span className="rounded-full bg-muted px-[9px] py-[5px] font-mono text-[11px] whitespace-nowrap">{sheet.language}</span>
+              <Button variant="outline" size="xs" className="rounded-full" onClick={() => setOpen(true)}>
+                Receipts <span className="pixel-square">{sheet.signals.length}</span>
+              </Button>
             </div>
           </div>
           <DraftLabel artist={sheet.artist} feat={sheet.featuring?.artist} />
@@ -127,9 +143,9 @@ export function SongSheet({
         )}
         {notice && <div className="mx-(--sheet-x) mt-4">{notice}</div>}
 
-        <div className="grid items-start @min-[1040px]/sheet:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
+        <div className="min-w-0">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 px-(--sheet-x) pt-3.5 text-[11px] text-muted-foreground @min-[1040px]/sheet:hidden" aria-hidden>
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 px-(--sheet-x) pt-3.5 text-[11px] text-muted-foreground" aria-hidden>
               {KIND_ORDER.filter((k) => k !== "home" && k !== "voice" ? true : groups.some((g) => g.kind === k)).map((k) => (
                 <span key={k} className="inline-flex items-center gap-1.5 whitespace-nowrap">
                   <KindGlyph kind={k} ink="var(--foreground)" dim={0.16} size={13} />
@@ -153,7 +169,6 @@ export function SongSheet({
                     {section.lines.map((line, li) => {
                       const isChanged = changed?.has(`${si}:${li}`) ?? false;
                       const ids = [...new Set(line.signalIds)];
-                      const card = pinned && ids.includes(pinned) ? byId.get(pinned) : undefined;
                       return (
                         <div
                           key={li}
@@ -182,9 +197,9 @@ export function SongSheet({
                                         signal={s}
                                         active={active === id}
                                         aria-label={`Receipt ${id}: ${KIND_NAME[s.kind]} ${s.label}`}
-                                        aria-pressed={pinned === id}
+                                        aria-haspopup="dialog"
                                         title=""
-                                        onClick={() => pin(id)}
+                                        onClick={() => show(id)}
                                         onMouseEnter={() => setHover(id)}
                                         onMouseLeave={() => setHover(null)}
                                       />
@@ -197,16 +212,6 @@ export function SongSheet({
                               })}
                             </span>
                           </InlineCitation>
-                          {card && (
-                            <div className="mt-2 flex max-w-[640px] flex-wrap items-center gap-2.5 rounded-md bg-foreground px-3 py-2 text-xs leading-[1.4] text-background @min-[1040px]/sheet:hidden">
-                              <span className="font-mono font-semibold">{card.id}</span>
-                              <span className="opacity-70">{KIND_NAME[card.kind]}</span>
-                              <span className="font-semibold">{card.label.trim()}</span>
-                              <span className="font-mono text-[10px] opacity-80">{card.source}</span>
-                              {card.side && <span className="opacity-80">· {sideName(sheet, card.side)}</span>}
-                              {card.value !== null && <span className="ml-auto font-mono">{card.value}</span>}
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -216,16 +221,23 @@ export function SongSheet({
             </div>
           </div>
 
-          <section
-            aria-label="Receipts"
-            className="flex flex-col gap-3.5 border-t px-(--sheet-x) py-5 @min-[1040px]/sheet:sticky @min-[1040px]/sheet:top-0 @min-[1040px]/sheet:max-h-screen @min-[1040px]/sheet:overflow-y-auto @min-[1040px]/sheet:border-t-0 @min-[1040px]/sheet:border-l @min-[1040px]/sheet:pt-[18px] @min-[1040px]/sheet:pb-6"
-          >
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h3 className="text-[15px] font-semibold">Receipts</h3>
-              <span className="text-xs text-muted-foreground">
+        </div>
+
+        {!compact && (
+          <>
+            {actions && <div className="flex flex-wrap gap-2 border-t px-(--sheet-x) py-3.5">{actions}</div>}
+          </>
+        )}
+      </Card>
+      <SidePanel open={open} onOpenChange={setOpen}>
+          <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md" aria-label="Receipts">
+            <SheetHeader className="border-b pr-12">
+              <SheetTitle className="text-[15px]">Receipts</SheetTitle>
+              <SheetDescription className="text-xs">
                 {collab ? `${sheet.signals.length} signals · ${count("A")} A · ${count("B")} B · ${count("shared")} shared` : `${sheet.signals.length} signals · from Qloo unless marked`}
-              </span>
-            </div>
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-col gap-3.5 px-4 py-4">
             {collab && (
               <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11px] text-muted-foreground">
                 {(["A", "B", "shared"] as const).map((side) => (
@@ -237,7 +249,7 @@ export function SongSheet({
                 ))}
               </div>
             )}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] items-start gap-x-7 gap-y-5 @min-[1040px]/sheet:grid-cols-1 @min-[1040px]/sheet:gap-[18px]">
+            <div className="flex flex-col gap-[18px]">
               {groups.map((g) => (
                 <div key={g.kind} className="flex min-w-0 flex-col">
                   <div className="flex items-center gap-2 px-2 pb-1">
@@ -251,10 +263,12 @@ export function SongSheet({
                       return (
                         <li
                           key={s.id}
+                          id={`receipt-${s.id}`}
+                          aria-current={pinned === s.id || undefined}
                           onClick={() => pin(s.id)}
                           onMouseEnter={() => setHover(s.id)}
                           onMouseLeave={() => setHover(null)}
-                          className="grid cursor-pointer grid-cols-[38px_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] hover:bg-muted"
+                          className={cn("grid cursor-pointer grid-cols-[38px_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] hover:bg-muted", pinned === s.id && "bg-muted")}
                         >
                           <span
                             className={cn(
@@ -284,28 +298,31 @@ export function SongSheet({
                 </div>
               ))}
             </div>
-          </section>
-        </div>
-
-        {!compact && (
-          <>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5 border-t px-(--sheet-x) py-5">
-              {[
-                ["Production brief", sheet.productionBrief],
-                [collab ? "Why it fits both crowds" : "Why it fits this crowd", sheet.angle],
-                ["Genre", sheet.genre],
-                ["Vocal direction", sheet.vocalDirection],
-              ].map(([title, body]) => (
-                <section key={title} className="flex flex-col gap-2">
-                  <h3 className="text-[15px] font-semibold">{title}</h3>
-                  <p className="text-sm leading-[1.55] text-pretty text-muted-foreground">{body}</p>
-                </section>
-              ))}
             </div>
-            {actions && <div className="flex flex-wrap gap-2 border-t px-(--sheet-x) py-3.5">{actions}</div>}
-          </>
-        )}
-      </Card>
+          </SheetContent>
+      </SidePanel>
     </div>
+  );
+}
+
+/**
+ * The song's brief as a rail card (the user's call, 25 Oct: on the song page between the crowd and the remixes, on the
+ * write page under the player): production brief, why it fits, genre, vocal direction, one column.
+ */
+export function SongBrief({ sheet }: { sheet: Sheet }) {
+  return (
+    <Card className="gap-4 p-[18px]" aria-label="The brief">
+      {[
+        ["Production brief", sheet.productionBrief],
+        [sheet.featuring ? "Why it fits both crowds" : "Why it fits this crowd", sheet.angle],
+        ["Genre", sheet.genre],
+        ["Vocal direction", sheet.vocalDirection],
+      ].map(([title, body]) => (
+        <section key={title} className="flex flex-col gap-1.5">
+          <h3 className="text-[15px] font-semibold">{title}</h3>
+          <p className="text-sm leading-[1.55] text-pretty text-muted-foreground">{body}</p>
+        </section>
+      ))}
+    </Card>
   );
 }
