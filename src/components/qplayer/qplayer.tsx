@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play, Shuffle, Volume2, VolumeX } from "lucide-react";
+import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { usePlayer } from "@/components/qplayer/player-context";
 import { draftLabel } from "@/lib/draft-label";
@@ -8,8 +8,9 @@ import { draftLabel } from "@/lib/draft-label";
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 /**
- * The DS's QPlayer, 1:1: a 48 px graphite bar under the header, sticky, on every page once a song plays. The lime play
- * button, Next random song, the title · credit over the draft label, then (wide, from 1024 px) a lime progress line, the
+ * The DS's QPlayer: a 48 px graphite bar under the header, sticky, on every page once a song plays. Previous, the lime
+ * play button and Next (the user's call, 26 Oct: next walks forward through what's been played, else picks a random sung
+ * song, and a song that ends goes on to it), the title · credit over the draft label, then (wide, from 1024 px) a lime progress line, the
  * time in Geist Pixel Square and Open song, and Mute. Dense (640 to 1023 px) drops the progress and time; compact (a
  * phone) keeps the short label.
  */
@@ -26,8 +27,11 @@ export function QPlayer() {
     <div
       role="region"
       aria-label="QPlayer"
-      className="sticky top-0 z-40 flex h-12 items-center gap-2 bg-foreground pr-2.5 pl-2 text-background sm:gap-3 sm:pr-(--page-x) sm:pl-[calc(var(--page-x)-6px)]"
+      className="sticky top-0 z-40 flex h-12 items-center gap-1 bg-foreground pr-2.5 pl-2 text-background sm:gap-3 sm:pr-(--page-x) sm:pl-[calc(var(--page-x)-6px)]"
     >
+      <button type="button" onClick={player.prev} title="Previous song" aria-label="Previous song" className={icon}>
+        <SkipBack className="size-3.5 fill-current" aria-hidden />
+      </button>
       <button
         type="button"
         onClick={player.toggle}
@@ -36,8 +40,8 @@ export function QPlayer() {
       >
         {playing ? <Pause className="size-[13px] fill-current" aria-hidden /> : <Play className="size-[13px] fill-current" aria-hidden />}
       </button>
-      <button type="button" onClick={() => void player.next()} title="Next random song" aria-label="Next random song" className={icon}>
-        <Shuffle className="size-3.5" aria-hidden />
+      <button type="button" onClick={() => void player.next()} title="Next song" aria-label="Next song" className={icon}>
+        <SkipForward className="size-3.5 fill-current" aria-hidden />
       </button>
       <Link href={`/song/${song.id}`} className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-[1.15] outline-none focus-visible:underline">
         <span className="truncate text-[13px] font-semibold">

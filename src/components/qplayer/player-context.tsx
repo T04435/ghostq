@@ -14,8 +14,10 @@ type Player = {
   /** Plays a song from the start, or toggles it when it's the one loaded. */
   play: (song: QSong) => void;
   toggle: () => void;
-  /** A random sung song from the Library (never the current one). */
+  /** The next song: forward through what's been played, else a random sung song from the Library. A song that ends goes on to it. */
   next: () => Promise<void>;
+  /** Back to the start of the song, or (in its first 3 seconds) the song played before it. */
+  prev: () => void;
   setMuted: (muted: boolean) => void;
   seek: (time: number) => void;
   /**
@@ -52,6 +54,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMutedState] = useState(false);
+  // What's been played this visit, and where in it the player is (prev and next walk it).
+  const history = useRef<QSong[]>([]);
+  const at = useRef(-1);
+  const nextRef = useRef<() => void>(() => {});
+
+  const remember = useCallback((s: QSong) => {
+    if (history.current[at.current]?.id === s.id) return;
+    history.current = [...history.current.slice(0, at.current + 1), s];
+    at.current = history.current.length - 1;
+  }, []);
+
+  // Loads a song on the shared audio and plays it from the start.
+  const load = useCallback((s: QSong) => {
+    const el = own.current;
+    if (!el) return;
+    if (active.current !== el) {
+      active.current?.pause();
+      active.current = el;
+    }
+    el.src = s.src;
+    el.currentTime = 0;
+    setSong(s);
+    setTime(0);
+    start(el);
+  }, []);
 
   // Follows whichever element is active: its time, length and play state.
   const follow = useCallback((el: HTMLAudioElement) => {
@@ -69,27 +96,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const el = own.current!;
     active.current = el;
-    return follow(el);
+    const ended = () => nextRef.current();
+    el.addEventListener("ended", ended);
+    const unfollow = follow(el);
+    return () => {
+      el.removeEventListener("ended", ended);
+      unfollow();
+    };
   }, [follow]);
 
-  const play = useCallback((next: QSong) => {
-    const el = own.current;
-    if (!el) return;
-    if (active.current !== el) {
-      active.current?.pause();
-      active.current = el;
-    }
-    if (song?.id === next.id && el.src.endsWith(next.src)) {
-      if (el.paused) start(el);
-      else el.pause();
-      return;
-    }
-    el.src = next.src;
-    el.currentTime = 0;
-    setSong(next);
-    setTime(0);
-    start(el);
-  }, [song]);
+  const play = useCallback(
+    (next: QSong) => {
+      const el = own.current;
+      if (el && active.current === el && song?.id === next.id && el.src.endsWith(next.src)) {
+        if (el.paused) start(el);
+        else el.pause();
+        return;
+      }
+      remember(next);
+      load(next);
+    },
+    [song, remember, load],
+  );
 
   const toggle = useCallback(() => {
     const el = active.current;
@@ -99,11 +127,34 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const next = useCallback(async () => {
+    if (at.current < history.current.length - 1) {
+      at.current++;
+      load(history.current[at.current]);
+      return;
+    }
     const res = await fetch(`/api/songs/random${song ? `?not=${song.id}` : ""}`);
     if (!res.ok) return;
     const s = (await res.json()) as { id: string; title: string; artist: string; featuring: string | null; audioVersion: string | null };
-    play({ id: s.id, title: s.title, artist: s.artist, featuring: s.featuring, src: audioSrc(s.id, s.audioVersion) });
-  }, [play, song]);
+    const q = { id: s.id, title: s.title, artist: s.artist, featuring: s.featuring, src: audioSrc(s.id, s.audioVersion) };
+    remember(q);
+    load(q);
+  }, [song, remember, load]);
+
+  useEffect(() => {
+    nextRef.current = () => void next();
+  }, [next]);
+
+  const prev = useCallback(() => {
+    const el = active.current;
+    if (el && el.currentTime > 3) {
+      el.currentTime = 0;
+      return;
+    }
+    if (at.current > 0) {
+      at.current--;
+      load(history.current[at.current]);
+    } else if (el) el.currentTime = 0;
+  }, [load]);
 
   const setMuted = useCallback((m: boolean) => {
     if (own.current) own.current.muted = m;
@@ -118,7 +169,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const attach = useCallback(
     (el: HTMLAudioElement, s: QSong) => {
       const unfollow = follow(el);
+      const ended = () => nextRef.current();
+      el.addEventListener("ended", ended);
       const onPlay = () => {
+        remember(s);
         if (active.current === el) return;
         active.current?.pause();
         active.current = el;
@@ -130,6 +184,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       el.addEventListener("play", onPlay);
       return () => {
         el.removeEventListener("play", onPlay);
+        el.removeEventListener("ended", ended);
         unfollow();
         if (active.current !== el) return;
         // The page is going: the shared audio picks the song up at the same second if it was playing.
@@ -144,12 +199,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         else setPlaying(false);
       };
     },
-    [follow],
+    [follow, remember],
   );
 
   const value = useMemo(
-    () => ({ song, playing, time, duration, muted, play, toggle, next, setMuted, seek, attach }),
-    [song, playing, time, duration, muted, play, toggle, next, setMuted, seek, attach],
+    () => ({ song, playing, time, duration, muted, play, toggle, next, prev, setMuted, seek, attach }),
+    [song, playing, time, duration, muted, play, toggle, next, prev, setMuted, seek, attach],
   );
 
   return (
