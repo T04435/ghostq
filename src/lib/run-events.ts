@@ -1,4 +1,4 @@
-import type { AskField, Crowd, QlooOption } from "./brief";
+import type { AskField, Crowd, QlooOption, Language } from "./brief";
 import type { Signal } from "./signals";
 import type { SongSheet } from "./song-sheet";
 
@@ -13,7 +13,7 @@ export type RunEvent =
   | { type: "crowd"; artist: string; crowd: Crowd; who?: "A" | "B" }
   /** The run stopped: Qloo has no data for these. The page asks, then sends the brief again with the answers. */
   /** `options`: Qloo's candidates when the Spotify pick has no exact match there (field "qlooArtist"). */
-  | { type: "ask"; fields: AskField[]; artist: string; message: string; who?: "A" | "B"; options?: QlooOption[] }
+  | { type: "ask"; fields: AskField[]; artist: string; message: string; who?: "A" | "B"; options?: QlooOption[]; languages?: Language[] }
   | { type: "writing"; signalCount: number }
   | { type: "sheet"; sheet: SongSheet }
   /** `budget`: a daily budget or a rate limit was hit; the page points to the Library, whose songs always play. */

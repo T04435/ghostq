@@ -171,7 +171,11 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
         <NoData title="All ages.">Qloo has no age data for these fans.</NoData>
       )}
       <div className="flex flex-col gap-2.5">
-        <Row label="Language" value={crowd.language} note={crowd.languageFrom === "home" ? "the artist's own" : "from the city"} />
+        <Row
+          label="Language"
+          value={crowd.mix ? `${crowd.language} and ${crowd.mix}` : crowd.language}
+          note={crowd.languageFrom === "you" ? "your pick" : crowd.languageFrom === "home" ? "the artist's own" : "from the city"}
+        />
         {/* GhostQ's addition (not in the DS): where the artist is from, which sets the voice. */}
         <Row
           label="Home (the voice)"

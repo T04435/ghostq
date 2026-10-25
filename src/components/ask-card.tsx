@@ -20,7 +20,7 @@ import {
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { Spinner } from "@/components/ui/spinner";
-import { AGE_BANDS, type AgeBand, type AskField, type Brief, type QlooOption } from "@/lib/brief";
+import { AGE_BANDS, type AgeBand, type AskField, type Brief, type QlooOption, type Language } from "@/lib/brief";
 import { describePlace, type Place } from "@/lib/place";
 
 type Answers = NonNullable<Brief["answers"]>;
@@ -36,6 +36,18 @@ const choiceRow =
 const choiceBand =
   "h-[34px] min-h-0 flex-row items-center gap-[5px] rounded-full border-border bg-card px-3 py-0 pixel-circle text-[13px] hover:border-foreground hover:bg-card data-checked:border-foreground data-checked:bg-foreground data-checked:text-background data-disabled:border-dashed data-disabled:text-muted-foreground data-disabled:opacity-100 dark:bg-card dark:data-checked:bg-foreground [&>[data-slot=questionnaire-choice-indicator]]:hidden";
 
+/** The language question's choices: each candidate, then a mix of the first with each of the others. */
+function languageChoices(langs: Language[]): { value: string; label: string }[] {
+  const [first, ...rest] = langs;
+  if (!first) return [];
+  return [...langs.map((l) => ({ value: l, label: l })), ...rest.map((l) => ({ value: `${first}+${l}`, label: `A mix of ${first} and ${l}` }))];
+}
+
+function languageAnswer(value: string): { primary: Language; mix?: Language } {
+  const [primary, mix] = value.split("+") as Language[];
+  return mix ? { primary, mix } : { primary };
+}
+
 /** The "none of these" choice when Qloo's candidates don't include the artist. */
 const NONE = "__none__";
 
@@ -46,6 +58,7 @@ export function AskCard({
   onAnswer,
   artist,
   options,
+  languages,
 }: {
   fields: AskField[];
   message: string;
@@ -53,6 +66,7 @@ export function AskCard({
   onAnswer: (answers: Answers) => void;
   artist?: string;
   options?: QlooOption[];
+  languages?: Language[];
 }) {
   // City search runs on Enter (or the button), against Qloo's locality search; its results are the question's choices.
   const [cityQuery, setCityQuery] = useState("");
@@ -78,8 +92,10 @@ export function AskCard({
     const data = new FormData(event.currentTarget);
     const sound = String(data.get("sound") ?? "").trim();
     const qloo = String(data.get("qlooArtist") ?? "");
+    const lang = String(data.get("language") ?? "");
     const place = cities.results[Number(data.get("place"))];
     onAnswer({
+      ...(fields.includes("language") && lang ? { language: languageAnswer(lang) } : {}),
       ...(fields.includes("qlooArtist") && qloo ? (qloo === NONE ? { noQloo: true as const } : { qlooId: qloo }) : {}),
       ...(fields.includes("sound") && sound.length >= 2 ? { sound } : {}),
       ...(fields.includes("place") && place ? { place } : {}),
@@ -131,6 +147,19 @@ export function AskCard({
               <QuestionnaireChoice value={NONE} className={choiceRow}>
                 <span className="text-sm font-semibold">None of these: carry on with {artist} from Spotify</span>
               </QuestionnaireChoice>
+            </QuestionnaireChoices>
+          </QuestionnaireItem>
+        )}
+        {fields.includes("language") && (
+          <QuestionnaireItem name="language" required className="gap-2.5 border-t pt-3.5">
+            <QuestionnaireTitle className="text-base font-semibold tracking-[-0.01em]">Which language?</QuestionnaireTitle>
+            <QuestionnaireDescription className="text-xs">The artist&apos;s home and Qloo tags point to one language and the crowd&apos;s city to another. Pick one, or a mix of two.</QuestionnaireDescription>
+            <QuestionnaireChoices className="gap-0 overflow-hidden rounded-xl border bg-popover">
+              {languageChoices(languages ?? []).map((c) => (
+                <QuestionnaireChoice key={c.value} value={c.value} className={choiceRow}>
+                  <span className="text-sm font-semibold">{c.label}</span>
+                </QuestionnaireChoice>
+              ))}
             </QuestionnaireChoices>
           </QuestionnaireItem>
         )}

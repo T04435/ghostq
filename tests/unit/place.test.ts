@@ -67,3 +67,13 @@ describe("countryFromDescription (Qloo first for home)", () => {
     expect(countryFromDescription(null)).toBeNull();
   });
 });
+
+describe("languagesFromTags (the artist's own tags)", () => {
+  it("reads the language the tags point to", async () => {
+    const { languagesFromTags, countryCodeFor } = await import("@/lib/place");
+    expect(languagesFromTags(["cuban", "cuba", "son cubano", "Afro-Cuban", "Latin Urban"])).toEqual(["Spanish"]);
+    expect(languagesFromTags(["K-Pop", "Dance Pop"])).toEqual(["Korean"]);
+    expect(languagesFromTags(["Indie Pop", "Art Pop"])).toEqual([]);
+    expect(countryCodeFor("cuba")).toBe("CU");
+  });
+});
