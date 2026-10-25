@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { useEffect, useState, type ReactNode } from "react";
 import { ShareText } from "@/components/share-text";
 import { SongPlayer, type SingState } from "@/components/song-player";
-import { SongBrief, SongSheet } from "@/components/song-sheet";
+import { ReceiptLink, SongBrief, SongSheet } from "@/components/song-sheet";
 import { draftFromSheet, lineFromDraft } from "@/components/vocal-line-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,8 @@ export function SongSheetView({
 }) {
   const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
   const [copied, setCopied] = useState(false);
+  // A receipt id clicked in the rail's brief, opened in the sheet's receipts panel.
+  const [receipt, setReceipt] = useState<{ id: string; at: number } | null>(null);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
   const [song, setSong] = useState<SingState>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
   // The vocals: matched to the artist from MusicBrainz and Qloo; where they don't know, the user must choose (no default).
@@ -133,53 +135,56 @@ export function SongSheetView({
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[1200px] items-start gap-5 desk:grid-cols-[minmax(0,1fr)_380px]" aria-label="The song">
-      <div className="min-w-0">
-        <SongSheet
-          sheet={sheet}
-          notice={
-            rewriting.error && (
-              <Alert variant="destructive">
-                <CircleAlert aria-hidden />
-                <AlertDescription>{rewriting.error}</AlertDescription>
-              </Alert>
-            )
-          }
-          sectionAction={
-            onSheetChange && sheet.id && song.status !== "done"
-              ? (si) => (
-                  <Button variant="ghost" size="xs" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
-                    {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
-                    {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
-                  </Button>
-                )
-              : undefined
-          }
-          actions={
-            <>
-              <Button variant="secondary" size="sm" onClick={copy}>
-                {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied ? "Copied" : "Copy sheet"}
-              </Button>
-              <Button variant="secondary" size="sm" onClick={download}>
-                <Download aria-hidden />
-                Download .md
-              </Button>
-              <Button variant="secondary" size="sm" onClick={downloadChordPro}>
-                <FileMusic aria-hidden />
-                ChordPro
-              </Button>
-              {sheet.id && share === "popover" && <ShareText sheet={sheet} path={`/song/${sheet.id}`} />}
-            </>
-          }
-        />
-      </div>
-      <div className={cn("flex min-w-0 flex-col gap-3.5", sticky && "desk:sticky desk:top-4", asideFirst && "-order-1 desk:order-none")}>
-        {player}
-        {shareCard}
-        {brief === "rail" && <SongBrief sheet={sheet} />}
-        {aside}
-      </div>
-    </section>
+    <ReceiptLink.Provider value={(id) => setReceipt({ id, at: Date.now() })}>
+      <section className="mx-auto grid w-full max-w-[1200px] items-start gap-5 desk:grid-cols-[minmax(0,1fr)_380px]" aria-label="The song">
+        <div className="min-w-0">
+          <SongSheet
+            sheet={sheet}
+            openReceipt={receipt}
+            notice={
+              rewriting.error && (
+                <Alert variant="destructive">
+                  <CircleAlert aria-hidden />
+                  <AlertDescription>{rewriting.error}</AlertDescription>
+                </Alert>
+              )
+            }
+            sectionAction={
+              onSheetChange && sheet.id && song.status !== "done"
+                ? (si) => (
+                    <Button variant="ghost" size="xs" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
+                      {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
+                      {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
+                    </Button>
+                  )
+                : undefined
+            }
+            actions={
+              <>
+                <Button variant="secondary" size="sm" onClick={copy}>
+                  {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+                  {copied ? "Copied" : "Copy sheet"}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={download}>
+                  <Download aria-hidden />
+                  Download .md
+                </Button>
+                <Button variant="secondary" size="sm" onClick={downloadChordPro}>
+                  <FileMusic aria-hidden />
+                  ChordPro
+                </Button>
+                {sheet.id && share === "popover" && <ShareText sheet={sheet} path={`/song/${sheet.id}`} />}
+              </>
+            }
+          />
+        </div>
+        <div className={cn("flex min-w-0 flex-col gap-3.5", sticky && "desk:sticky desk:top-4", asideFirst && "-order-1 desk:order-none")}>
+          {player}
+          {shareCard}
+          {brief === "rail" && <SongBrief sheet={sheet} />}
+          {aside}
+        </div>
+      </section>
+    </ReceiptLink.Provider>
   );
 }
