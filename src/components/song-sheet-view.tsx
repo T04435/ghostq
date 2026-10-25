@@ -42,7 +42,7 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
 };
 
 /**
- * readOnly: a shared song page (no singing); audioUrl: a saved sung version to play; onSheetChange: the write page's
+ * readOnly: no singing (a saved song that's already sung); audioUrl: a saved sung version to play; onSheetChange: the write page's
  * hook for a rewritten section (only the browser that wrote the song may rewrite it, and only before it's sung).
  */
 export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange }: { sheet: SongSheet; readOnly?: boolean; audioUrl?: string; onSheetChange?: (sheet: SongSheet) => void }) {
@@ -162,7 +162,7 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange
 
         </div>
         {!readOnly && (
-          <div className="grid gap-2 pt-2">
+          <div id="sing" className="grid scroll-mt-24 gap-2 pt-2">
             <VocalLinePicker sheet={sheet} draft={vocals} onChange={setVocals} />
             <div>
               <Button size="sm" onClick={sing} disabled={song.status === "singing" || !line}>

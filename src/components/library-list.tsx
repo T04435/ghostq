@@ -1,6 +1,6 @@
 "use client";
 
-import { Music, Pause, Play } from "lucide-react";
+import { Mic, Music, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -126,7 +126,12 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
             </ItemContent>
             {!s.sung && (
               <ItemActions>
-                <Badge variant="secondary">Not sung yet</Badge>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/song/${s.id}#sing`}>
+                    <Mic aria-hidden />
+                    Sing it
+                  </Link>
+                </Button>
               </ItemActions>
             )}
           </Item>

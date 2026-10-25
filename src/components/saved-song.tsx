@@ -34,7 +34,8 @@ export function SavedSong({
   return (
     <div className="grid gap-8">
       {original && <RemixCompare original={original} remix={sheet} />}
-      <SongSheetView sheet={sheet} readOnly audioUrl={audioUrl} />
+      {/* A song nobody has sung yet can be sung from its page (Lyria, with the usual limits); a sung one just plays. */}
+      <SongSheetView sheet={sheet} readOnly={Boolean(audioUrl)} audioUrl={audioUrl} />
       <RemixCard sheet={sheet} />
       {remixes.length > 0 && (
         <section className="grid gap-2" aria-label="Remixes of this song">
