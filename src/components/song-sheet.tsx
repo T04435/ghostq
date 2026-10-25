@@ -338,10 +338,19 @@ export function SongBrief({ sheet }: { sheet: Sheet }) {
   );
 }
 
-/** The brief's signal ids ("S1", "T8") as the same receipt chips as the lyrics; a click opens the receipt in the panel. */
+/**
+ * The brief's signal ids ("S1", "T8") as the same receipt chips as the lyrics, without the brackets around them; a click
+ * opens the receipt in the panel.
+ */
 function LinkedIds({ text, byId }: { text: string; byId: Map<string, Signal> }) {
   const open = useContext(ReceiptLink);
-  return text.split(/\b([A-Z]\d{1,2})\b/).map((part, i) => {
+  // "(S1, G4)" → "S1 G4": the chips mark the citation, so the brackets and commas go, and so do ids with no receipt.
+  // A group with none on this song stays as written.
+  const bare = text.replace(/\s*\(((?:[A-Z]\d{1,2})(?:\s*,\s*[A-Z]\d{1,2})*)\)/g, (group: string, ids: string) => {
+    const known = ids.split(/\s*,\s*/).filter((id) => byId.has(id));
+    return known.length ? ` ${known.join(" ")}` : group;
+  });
+  return bare.split(/\b([A-Z]\d{1,2})\b/).map((part, i) => {
     const s = i % 2 ? byId.get(part) : undefined;
     if (!s) return part;
     const chip = "mx-px -my-1 align-middle";
