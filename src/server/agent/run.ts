@@ -159,7 +159,16 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const sfx = x.key === "B" ? "-B" : "";
   const findLabel = state.collab ? `Find ${x.name} on Qloo` : TOOL_LABELS.find_artist;
   emit({ type: "step-start", id: `find-artist${sfx}`, tool: "find_artist", label: findLabel, input: { name: x.name, spotifyId: x.spotifyId ?? null }, ...whose(state, x.key, x.name) });
-  const match = pickArtist(await searchArtist(x.name, state.onCall), x.name, x.spotifyId);
+  const results = await searchArtist(x.name, state.onCall);
+  // The user's pick among Qloo's candidates (asked below when there's no exact match), else the Spotify id or exact name.
+  const match = (answers?.qlooId ? results.find((r) => r.id === answers.qlooId) : undefined) ?? (answers?.noQloo ? undefined : pickArtist(results, x.name, x.spotifyId));
+  if (!match && !answers?.noQloo && !answers?.qlooId && results.length) {
+    // Qloo knows artists by this name but none is this Spotify pick: let the user choose, or go on with Spotify's.
+    const options = results.slice(0, 5).map((r) => ({ id: r.id, name: r.name, description: r.description?.slice(0, 160) ?? null }));
+    emit({ type: "step-end", id: `find-artist${sfx}`, ok: false, summary: `Qloo has no exact match for ${x.name}. ${options.length} similar artist${options.length === 1 ? "" : "s"} found.`, signals: [], raw: null });
+    emit({ type: "ask", fields: ["qlooArtist"], artist: x.name, message: `Qloo has no exact match for ${x.name}. Is it one of these, or carry on with the Spotify artist?`, options, ...(state.collab ? { who: x.key } : {}) });
+    return false;
+  }
   if (match) {
     x.act = match;
     state.artistNames.add(match.name);
@@ -278,7 +287,7 @@ async function readWhatTheyShare(state: RunState, emit: Emit): Promise<void> {
 }
 
 function askMessage(artist: string, fields: AskField[]): string {
-  const parts = fields.map((f) => ({ sound: `describe ${artist}'s sound in a few words`, place: "find the city of the crowd you're writing for", ages: "pick up to three age bands" })[f]);
+  const parts = fields.map((f) => ({ qlooArtist: "pick the right artist", sound: `describe ${artist}'s sound in a few words`, place: "find the city of the crowd you're writing for", ages: "pick up to three age bands" })[f]);
   const lead = fields.includes("sound") ? `Qloo doesn't know ${artist} yet.` : `Qloo has no data on part of ${artist}'s crowd.`;
   return `${lead} To carry on, ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}.`;
 }

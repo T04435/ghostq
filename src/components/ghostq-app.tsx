@@ -289,6 +289,8 @@ export function GhostQApp({
             <AskCard
               fields={ask.event.fields}
               message={ask.event.message}
+              artist={ask.event.artist}
+              options={ask.event.options}
               busy={busy}
               onAnswer={(answers) => void run(withAnswers(ask.brief, ask.event.who, answers))}
             />

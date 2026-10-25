@@ -20,7 +20,7 @@ import {
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { Spinner } from "@/components/ui/spinner";
-import { AGE_BANDS, type AgeBand, type AskField, type Brief } from "@/lib/brief";
+import { AGE_BANDS, type AgeBand, type AskField, type Brief, type QlooOption } from "@/lib/brief";
 import { describePlace, type Place } from "@/lib/place";
 
 type Answers = NonNullable<Brief["answers"]>;
@@ -36,7 +36,24 @@ const choiceRow =
 const choiceBand =
   "h-[34px] min-h-0 flex-row items-center gap-[5px] rounded-full border-border bg-card px-3 py-0 pixel-circle text-[13px] hover:border-foreground hover:bg-card data-checked:border-foreground data-checked:bg-foreground data-checked:text-background data-disabled:border-dashed data-disabled:text-muted-foreground data-disabled:opacity-100 dark:bg-card dark:data-checked:bg-foreground [&>[data-slot=questionnaire-choice-indicator]]:hidden";
 
-export function AskCard({ fields, message, busy, onAnswer }: { fields: AskField[]; message: string; busy: boolean; onAnswer: (answers: Answers) => void }) {
+/** The "none of these" choice when Qloo's candidates don't include the artist. */
+const NONE = "__none__";
+
+export function AskCard({
+  fields,
+  message,
+  busy,
+  onAnswer,
+  artist,
+  options,
+}: {
+  fields: AskField[];
+  message: string;
+  busy: boolean;
+  onAnswer: (answers: Answers) => void;
+  artist?: string;
+  options?: QlooOption[];
+}) {
   // City search runs on Enter (or the button), against Qloo's locality search; its results are the question's choices.
   const [cityQuery, setCityQuery] = useState("");
   const [cities, setCities] = useState<{ status: "idle" | "searching" | "done" | "error"; results: Place[]; message?: string }>({ status: "idle", results: [] });
@@ -60,8 +77,10 @@ export function AskCard({ fields, message, busy, onAnswer }: { fields: AskField[
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const sound = String(data.get("sound") ?? "").trim();
+    const qloo = String(data.get("qlooArtist") ?? "");
     const place = cities.results[Number(data.get("place"))];
     onAnswer({
+      ...(fields.includes("qlooArtist") && qloo ? (qloo === NONE ? { noQloo: true as const } : { qlooId: qloo }) : {}),
       ...(fields.includes("sound") && sound.length >= 2 ? { sound } : {}),
       ...(fields.includes("place") && place ? { place } : {}),
       ...(fields.includes("ages") && ages.length ? { ages } : {}),
@@ -96,6 +115,25 @@ export function AskCard({ fields, message, busy, onAnswer }: { fields: AskField[
             />
           )}
         </div>
+        {fields.includes("qlooArtist") && (
+          <QuestionnaireItem name="qlooArtist" required className="gap-2.5 border-t pt-3.5">
+            <QuestionnaireTitle className="text-base font-semibold tracking-[-0.01em]">Which artist on Qloo?</QuestionnaireTitle>
+            <QuestionnaireDescription className="text-xs">Qloo&apos;s taste data is per artist, so pick the one you mean. If none is, GhostQ goes on with the Spotify artist and asks for their sound.</QuestionnaireDescription>
+            <QuestionnaireChoices className="gap-0 overflow-hidden rounded-xl border bg-popover">
+              {(options ?? []).map((o) => (
+                <QuestionnaireChoice key={o.id} value={o.id} className={choiceRow}>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-semibold">{o.name}</span>
+                    {o.description && <span className="line-clamp-2 text-xs text-muted-foreground">{o.description}</span>}
+                  </span>
+                </QuestionnaireChoice>
+              ))}
+              <QuestionnaireChoice value={NONE} className={choiceRow}>
+                <span className="text-sm font-semibold">None of these: carry on with {artist} from Spotify</span>
+              </QuestionnaireChoice>
+            </QuestionnaireChoices>
+          </QuestionnaireItem>
+        )}
         {fields.includes("sound") && (
           <QuestionnaireItem name="sound" required className="gap-2.5 border-t pt-3.5">
             <QuestionnaireTitle className="text-base font-semibold tracking-[-0.01em]">Their sound, in a few words</QuestionnaireTitle>
