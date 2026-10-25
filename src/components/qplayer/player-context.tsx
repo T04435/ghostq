@@ -20,6 +20,8 @@ type Player = {
   prev: () => void;
   setMuted: (muted: boolean) => void;
   seek: (time: number) => void;
+  /** Plays a song from a given second (a tapped line or section): on the song page's own player when it's there. */
+  playAt: (song: QSong, time: number) => void;
   /**
    * The song page's own player hands its audio element over while it plays, so the bar shows and steers it; when the
    * page goes away mid-song the shared audio carries on from the same second. Returns the release.
@@ -49,6 +51,8 @@ export function audioSrc(id: string, version?: string | null): string {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const own = useRef<HTMLAudioElement | null>(null);
   const active = useRef<HTMLAudioElement | null>(null);
+  // The song pages' players on screen, by song id.
+  const pages = useRef(new Map<string, HTMLAudioElement>());
   const [song, setSong] = useState<QSong | null>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
@@ -166,8 +170,35 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (active.current) active.current.currentTime = Math.max(0, t);
   }, []);
 
+  const playAt = useCallback(
+    (s: QSong, t: number) => {
+      const page = pages.current.get(s.id);
+      if (page) {
+        page.currentTime = Math.max(0, t);
+        if (page.paused) start(page);
+        return;
+      }
+      const el = own.current;
+      if (!el) return;
+      if (active.current !== el) {
+        active.current?.pause();
+        active.current = el;
+      }
+      if (song?.id !== s.id || !el.src.endsWith(s.src)) {
+        remember(s);
+        el.src = s.src;
+        setSong(s);
+      }
+      el.currentTime = Math.max(0, t);
+      setTime(t);
+      start(el);
+    },
+    [song, remember],
+  );
+
   const attach = useCallback(
     (el: HTMLAudioElement, s: QSong) => {
+      pages.current.set(s.id, el);
       const unfollow = follow(el);
       const ended = () => nextRef.current();
       el.addEventListener("ended", ended);
@@ -183,6 +214,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
       el.addEventListener("play", onPlay);
       return () => {
+        if (pages.current.get(s.id) === el) pages.current.delete(s.id);
         el.removeEventListener("play", onPlay);
         el.removeEventListener("ended", ended);
         unfollow();
@@ -203,8 +235,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ song, playing, time, duration, muted, play, toggle, next, prev, setMuted, seek, attach }),
-    [song, playing, time, duration, muted, play, toggle, next, prev, setMuted, seek, attach],
+    () => ({ song, playing, time, duration, muted, play, toggle, next, prev, setMuted, seek, playAt, attach }),
+    [song, playing, time, duration, muted, play, toggle, next, prev, setMuted, seek, playAt, attach],
   );
 
   return (

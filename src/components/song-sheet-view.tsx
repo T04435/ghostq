@@ -3,7 +3,10 @@
 import { Check, CircleAlert, Copy, Download, FileMusic, RefreshCw } from "lucide-react";
 import { cn } from "cn";
 import { useEffect, useState, type ReactNode } from "react";
+import { audioSrc } from "@/components/qplayer/player-context";
 import { ShareText } from "@/components/share-text";
+import { SingAlongPanel } from "@/components/sing-along/sing-along-panel";
+import { useSingAlong } from "@/components/sing-along/use-sing-along";
 import { SongPlayer, type SingState } from "@/components/song-player";
 import { ReceiptLink, SongBrief, SongSheet } from "@/components/song-sheet";
 import { draftFromSheet, lineFromDraft } from "@/components/vocal-line-picker";
@@ -55,6 +58,9 @@ export function SongSheetView({
   // The vocals: matched to the artist from MusicBrainz and Qloo; where they don't know, the user must choose (no default).
   const [vocals, setVocals] = useState(() => draftFromSheet(sheet));
   const line = lineFromDraft(vocals);
+  // Sung and saved: the sheet follows the audio (a fresh sing plays a blob; the shared player uses the saved address).
+  const sung = song.status === "done" && song.url && sheet.id ? song.url : undefined;
+  const along = useSingAlong(sheet, sung && sheet.id ? { id: sheet.id, title: sheet.title, artist: sheet.artist, featuring: sheet.featuring?.artist, src: sung.startsWith("blob:") ? audioSrc(sheet.id) : sung } : undefined);
   useEffect(() => () => {
     if (song.url?.startsWith("blob:")) URL.revokeObjectURL(song.url);
   }, [song.url]);
@@ -141,6 +147,7 @@ export function SongSheetView({
           <SongSheet
             sheet={sheet}
             openReceipt={receipt}
+          sing={along}
             notice={
               rewriting.error && (
                 <Alert variant="destructive">
@@ -180,6 +187,7 @@ export function SongSheetView({
         </div>
         <div className={cn("flex min-w-0 flex-col gap-3.5", sticky && "desk:sticky desk:top-4", asideFirst && "-order-1 desk:order-none")}>
           {player}
+          {along && <SingAlongPanel sheet={sheet} sing={along} />}
           {shareCard}
           {brief === "rail" && <SongBrief sheet={sheet} />}
           {aside}
