@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { audioSrc } from "@/components/qplayer/player-context";
 import { ShareText } from "@/components/share-text";
 import { SingAlongPanel } from "@/components/sing-along/sing-along-panel";
-import { useSingAlong } from "@/components/sing-along/use-sing-along";
+import { useSingAlong, useSungTiming } from "@/components/sing-along/use-sing-along";
 import { SongPlayer, type SingState } from "@/components/song-player";
 import { ReceiptLink, SongBrief, SongSheet } from "@/components/song-sheet";
 import { draftFromSheet, lineFromDraft } from "@/components/vocal-line-picker";
@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { toChordPro } from "@/lib/chords";
+import type { SungTiming } from "@/lib/lyric-align";
 import { sheetToMarkdown, type SongSheet as Sheet } from "@/lib/song-sheet";
 
 /**
@@ -35,6 +36,7 @@ export function SongSheetView({
   sticky = false,
   share = "inline",
   brief = "rail",
+  timing,
   compare,
 }: {
   sheet: Sheet;
@@ -47,6 +49,8 @@ export function SongSheetView({
   share?: "inline" | "popover";
   /** "rail": the brief card under the player and share text; "aside": the caller places SongBrief in `aside` itself. */
   brief?: "rail" | "aside";
+  /** When each line is sung in the saved audio (Whisper). A fresh sing is timed after it lands, so the page asks for it. */
+  timing?: SungTiming | null;
   compare?: ReactNode;
 }) {
   const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
@@ -60,7 +64,8 @@ export function SongSheetView({
   const line = lineFromDraft(vocals);
   // Sung and saved: the sheet follows the audio (a fresh sing plays a blob; the shared player uses the saved address).
   const sung = song.status === "done" && song.url && sheet.id ? song.url : undefined;
-  const along = useSingAlong(sheet, sung && sheet.id ? { id: sheet.id, title: sheet.title, artist: sheet.artist, featuring: sheet.featuring?.artist, src: sung.startsWith("blob:") ? audioSrc(sheet.id) : sung } : undefined);
+  const heard = useSungTiming(sheet.id, sung, timing);
+  const along = useSingAlong(sheet, sung && sheet.id ? { id: sheet.id, title: sheet.title, artist: sheet.artist, featuring: sheet.featuring?.artist, src: sung.startsWith("blob:") ? audioSrc(sheet.id) : sung } : undefined, heard);
   useEffect(() => () => {
     if (song.url?.startsWith("blob:")) URL.revokeObjectURL(song.url);
   }, [song.url]);

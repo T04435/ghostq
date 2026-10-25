@@ -7,11 +7,16 @@ const generateSong = vi.hoisted(() => vi.fn(async () => ({ audio: Buffer.from("m
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/env", () => ({ providerStatus: () => ({ gemini: true, database: false }), env: {} }));
 vi.mock("@/server/lyria", () => ({ generateSong, LyriaError: class extends Error {} }));
+// Timing runs after the response (Whisper): here it's only recorded, never called.
+const after = vi.hoisted(() => vi.fn());
+vi.mock("next/server", () => ({ after }));
+vi.mock("@/server/lyric-timing", () => ({ timeSung: vi.fn() }));
 vi.mock("@/server/limits", () => ({ perVisitor: async () => null, takeLyria: async () => null, refusalResponse: () => new Response(null, { status: 429 }) }));
 vi.mock("@/server/store/songs", () => ({
   isSongId: (id: string) => /^[a-z0-9-]{6,48}$/.test(id),
   getSong: async () => ({ id: "abcdef1234", sheet: saved.sheet }),
   saveAudio: async () => {},
+  saveTiming: async () => {},
   recordSingBlock: async () => ({ blocks: 1, hidden: false }),
   SING_BLOCKS_TO_HIDE: 3,
 }));
