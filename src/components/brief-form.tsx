@@ -30,6 +30,15 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
       setError("Give an artist.");
       return;
     }
+    // A typed name isn't enough: the Spotify pick pins the artist on Qloo, so the run reads the right crowd.
+    if (!brief.spotifyId) {
+      setError(`Pick "${artist}" from the Spotify results first: press Enter in the Artist field to search.`);
+      return;
+    }
+    if (featArtist && !feat.spotifyId) {
+      setError(`Pick "${featArtist}" from the Spotify results for feat. first, or clear the field.`);
+      return;
+    }
     if (featArtist && featArtist.toLowerCase() === artist.toLowerCase()) {
       setError("Pick a different artist for the feat., or leave it empty.");
       return;

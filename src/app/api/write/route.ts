@@ -11,6 +11,11 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   const parsed = briefSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid brief" }, { status: 400 });
+  // A new song needs the artist picked on Spotify (and the feat. artist too): a typed name could match anyone on Qloo.
+  // A remix takes its artist from the saved song.
+  if (!parsed.data.remix && (!parsed.data.spotifyId || (parsed.data.feat && !parsed.data.feat.spotifyId))) {
+    return Response.json({ error: "Pick the artist from the Spotify results first." }, { status: 400 });
+  }
   const status = providerStatus();
   if (!status.qloo || !status.aiGateway) {
     console.error("GhostQ not configured", { qloo: status.qloo, aiGateway: status.aiGateway });
