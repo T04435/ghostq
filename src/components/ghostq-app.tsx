@@ -4,6 +4,8 @@ import { ChevronLeft, CircleAlert, GitFork, PenLine, RotateCcw, Sparkles } from 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AgentLockup } from "@/components/brand/agent-lockup";
+import { AgentStatusLine, agentStatusText, type AgentState } from "@/components/brand/agent-status-line";
 import { BriefForm } from "@/components/brief-form";
 import { BudgetNotice } from "@/components/budget-notice";
 import { applyStepEvent, runNotes, RunSteps, stepCount, type StepItem } from "@/components/run-steps";
@@ -251,34 +253,53 @@ export function GhostQApp({
     </div>
   );
 
-  const failedAt = steps > 0 ? ` at step ${steps}` : "";
+  // What the Ghost is doing, for the header's status line (third person). A failed run says so once, in the alert.
+  const writing = items.find((x): x is Extract<StepItem, { kind: "writing" }> => x.kind === "writing");
+  const agent: AgentState | null = failed
+    ? null
+    : ask
+      ? { state: "asking" }
+      : finished && done
+        ? { state: "done", qlooCalls: done.qlooCalls }
+        : writing && !writing.done
+          ? { state: "writing", signals: writing.signalCount }
+          : busy
+            ? { state: "researching", artist: crowds.A?.artist ?? brief?.artist, city: crowds.A?.crowd.place?.name }
+            : null;
   const runSection = inRun && (
     <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-5" aria-label="Live run">
-      <div className="flex flex-col gap-0.5 border-t pt-6">
-        <h2 className="text-xl font-semibold tracking-[-0.02em]">
-          {failed
-            ? "The run stopped"
-            : ask
-              ? "The run needs you"
-              : finished
-                ? remixOf
-                  ? "How GhostQ researched this remix"
-                  : "How GhostQ researched this song"
-                : remixOf
-                  ? "Reading the new crowd"
-                  : collab
-                    ? "Reading both crowds"
-                    : "Reading the crowd"}
-        </h2>
-        <p className="text-[13px] text-muted-foreground">
-          {ask
-            ? "Qloo has no data for this artist. Answer inline and the run carries on."
-            : finished && done
-              ? `${steps} steps · ${done.qlooCalls} Qloo calls · ${done.seconds} s`
-              : collab && brief?.feat
-                ? `CollabQ · ${brief.artist} feat. ${brief.feat.artist}`
-                : "Each step shows its source as it finishes"}
-        </p>
+      <div className="flex flex-col gap-3 border-t pt-6">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-xl font-semibold tracking-[-0.02em]">
+            {failed
+              ? "The run stopped"
+              : ask
+                ? "The run needs you"
+                : finished
+                  ? remixOf
+                    ? "How GhostQ researched this remix"
+                    : "How GhostQ researched this song"
+                  : remixOf
+                    ? "Reading the new crowd"
+                    : collab
+                      ? "Reading both crowds"
+                      : "Reading the crowd"}
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            {ask
+              ? "Qloo has no data for this artist. Answer inline and the run carries on."
+              : finished && done
+                ? `${steps} steps · ${done.qlooCalls} Qloo calls · ${done.seconds} s`
+                : collab && brief?.feat
+                  ? `CollabQ · ${brief.artist} feat. ${brief.feat.artist}`
+                  : "Each step shows its source as it finishes"}
+          </p>
+        </div>
+        {/* The Ghost: its mark works while the run streams and rests when it's done; the status line sits under its name. */}
+        <div className="flex flex-col gap-1.5">
+          <AgentLockup live={busy && !ask} />
+          {agent && <AgentStatusLine status={agent} mark={false} className="pl-[38px]" />}
+        </div>
       </div>
       <div className="grid items-start gap-5 desk:grid-cols-[360px_minmax(0,1fr)]">
         {crowdColumn}
@@ -299,9 +320,8 @@ export function GhostQApp({
           {failed && (
             <Alert variant="destructive">
               <CircleAlert aria-hidden />
-              <AlertTitle>The run stopped{failedAt}.</AlertTitle>
+              <AlertTitle>{agentStatusText({ state: "failed", step: steps, reason: failed.message })}</AlertTitle>
               <AlertDescription>
-                <p>{failed.message}</p>
                 <div className="flex flex-wrap gap-2 pt-1.5">
                   {brief && (
                     <Button size="sm" onClick={() => (remixOf && brief.remix ? remix(brief.remix) : writeAnother())}>

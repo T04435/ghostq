@@ -3,6 +3,8 @@
 import { Check, ChevronRight, Clock, LoaderCircle, Minus, X } from "lucide-react";
 import { cn } from "cn";
 import type { ReactNode } from "react";
+import { AgentTag } from "@/components/brand/agent-tag";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { isQloo, ReceiptChip, SideMark, SourceTag } from "@/components/brand/receipt";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -32,8 +34,12 @@ export function StatusPill({ status, label, qloo = true }: { status: StepStatus;
   );
 }
 
-/** "01": a step's number, in Geist Pixel Square (agent work). */
-export function StepNumber({ n }: { n: number }) {
+/**
+ * "01": a step's number, in Geist Pixel Square (agent work). While the step runs it is the Ghost's working mark
+ * (GHOST_SIZES.step) in the number's place; the status pill beside it says "Running".
+ */
+export function StepNumber({ n, running = false }: { n: number; running?: boolean }) {
+  if (running) return <GhostMark size={GHOST_SIZES.step} state="working" decorative />;
   return <span className="flex-none pixel-square text-base leading-none">{String(n).padStart(2, "0")}</span>;
 }
 
@@ -72,7 +78,7 @@ export function StepCard({
     <div className={cn("flex flex-col gap-2.5 rounded-lg border bg-card px-4 py-3.5 text-foreground", status === "pending" && "opacity-60")}>
       <div className="flex items-center justify-between gap-2.5">
         <span className="inline-flex min-w-0 items-center gap-2.5">
-          <StepNumber n={n} />
+          <StepNumber n={n} running={status === "running"} />
           <span className="truncate text-sm font-semibold tracking-[-0.01em]">{title}</span>
           {grouped && (
             <span className="inline-flex flex-none items-baseline gap-1 text-xs whitespace-nowrap text-muted-foreground">
@@ -139,17 +145,13 @@ export function StepCard({
   );
 }
 
-/** The agent's own words between steps (the DS's AgentNote on AI Elements Message, compact). */
+/** The Ghost's own words between steps (the DS's AgentNote, compact), tagged with its mark and name. */
 export function AgentNote({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2.5 px-1 text-sm leading-normal text-muted-foreground">
-      <span aria-hidden className="mt-0.5 inline-flex size-[18px] flex-none items-center justify-center rounded-full bg-foreground">
-        <span className="size-1.5 rounded-full bg-background" />
-      </span>
-      <span className="min-w-0 whitespace-pre-line">
-        <span className="font-semibold text-foreground">Agent · </span>
-        {children}
-      </span>
+    <div className="px-1 text-sm leading-normal whitespace-pre-line text-muted-foreground">
+      <AgentTag className="align-[-2px]" />
+      <span className="font-semibold text-foreground"> · </span>
+      {children}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { ChevronLeft, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
+import { AgentStatusLine } from "@/components/brand/agent-status-line";
 import { CrowdCard, sharedOf } from "@/components/crowd-card";
 import { RemixCard } from "@/components/remix-card";
 import { RemixList, RemixOfLink } from "@/components/remix-links";
@@ -76,7 +77,8 @@ export function SavedSong({
       />
       <section className="flex flex-col gap-3 border-t pt-6">
         <SectionCollapsible title="How GhostQ researched this song" meta={`${stepCount(steps)} steps · ${qlooCalls} Qloo calls`} bare>
-          <div className="pt-3">
+          <div className="flex flex-col gap-3 pt-3">
+            <AgentStatusLine status={{ state: "replayed" }} />
             <RunSteps items={steps} grid />
           </div>
         </SectionCollapsible>

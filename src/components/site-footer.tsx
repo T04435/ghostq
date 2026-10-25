@@ -1,4 +1,6 @@
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { VersionBadge } from "@/components/version-badge";
+import { AGENT_NAME_INLINE } from "@/lib/agent-persona";
 
 const SOURCES: { name: string; use: string; qloo?: boolean }[] = [
   { name: "Qloo", use: "taste, crowds, compare", qloo: true },
@@ -22,6 +24,10 @@ export function SiteFooter() {
             </span>
           ))}
         </div>
+        <p className="inline-flex items-center gap-1.5 text-foreground">
+          <GhostMark size={GHOST_SIZES.tag} decorative />
+          Written by {AGENT_NAME_INLINE} from Qloo taste data
+        </p>
         <p className="max-w-[680px] text-pretty">
           Taste data from Qloo. Place names © <a href="https://www.openstreetmap.org/copyright" className="underline">OpenStreetMap contributors</a>. Every song is an AI-generated GhostQ
           draft, not affiliated with the artist it&apos;s written for; GhostQ never names or imitates a real artist.
