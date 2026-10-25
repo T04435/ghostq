@@ -69,7 +69,7 @@ async function Remix({ params, searchParams }: { params: PageProps<"/remix/[id]"
       original={
         <>
           <SongCard
-            song={{ id: saved.id, title: sheet.title, artist: sheet.artist, featuring: null, remixOf: sheet.remixOf?.title ?? null, crowd: sheet.crowd, language: sheet.language, sung: Boolean(saved.audio) }}
+            song={{ id: saved.id, title: sheet.title, artist: sheet.artist, featuring: null, remixOf: sheet.remixOf?.title ?? null, crowd: sheet.crowd, language: sheet.language, sung: Boolean(saved.audio), audioVersion: saved.audio?.createdAt ?? null }}
           />
           <CrowdCard artist={sheet.artist} crowd={sheet.crowd} />
           <RemixList remixes={remixes} />

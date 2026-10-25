@@ -4,19 +4,23 @@ import { BookOpen, GitFork, Mic, Pause, Play } from "lucide-react";
 import { cn } from "cn";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { audioSrc, usePlayer } from "@/components/qplayer/player-context";
 import { Button } from "@/components/ui/button";
 import { AGE_BANDS } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { SongSummary } from "@/lib/song-summary";
 
-export type SongCardSong = Pick<SongSummary, "id" | "title" | "artist" | "featuring" | "remixOf" | "crowd" | "language" | "sung"> & { remixCount?: number };
+export type SongCardSong = Pick<SongSummary, "id" | "title" | "artist" | "featuring" | "remixOf" | "crowd" | "language" | "sung" | "audioVersion"> & { remixCount?: number };
 
 /**
  * ONE song card (the DS's LibrarySongCard on shadcn Item), for Library rows and the recent and example strips: play
  * (or a sheet icon when it isn't sung), the title with REMIX and SUNG/SHEET, the artist, the draft label (always), and
- * the crowd chips. `onToggle` makes the round button play in place; unsung songs offer Sing it on their page.
+ * the crowd chips. A sung song's round button plays it in the QPlayer (one audio for the site); `actions` adds Sing it
+ * on unsung songs (the Library).
  */
-export function SongCard({ song, compact = false, playing = false, onToggle }: { song: SongCardSong; compact?: boolean; playing?: boolean; onToggle?: (song: SongCardSong) => void }) {
+export function SongCard({ song, compact = false, actions = false }: { song: SongCardSong; compact?: boolean; actions?: boolean }) {
+  const player = usePlayer();
+  const playing = Boolean(player?.playing && player.song?.id === song.id);
   const band = song.crowd.ages[0] ? AGE_BANDS[song.crowd.ages[0].age] : "all ages";
   return (
     <div
@@ -25,14 +29,14 @@ export function SongCard({ song, compact = false, playing = false, onToggle }: {
         compact ? "gap-3 px-3.5 py-3" : "gap-3.5 px-4 py-3.5",
       )}
     >
-      {onToggle ? (
+      {player ? (
         <Button
           type="button"
           size="icon"
           disabled={!song.sung}
           className={cn("size-9 rounded-full disabled:opacity-100", playing ? "bg-primary text-primary-foreground" : song.sung ? "bg-foreground text-card" : "bg-muted text-muted-foreground")}
           aria-label={song.sung ? (playing ? `Pause ${song.title}` : `Play ${song.title}`) : `${song.title} hasn't been sung yet`}
-          onClick={() => onToggle(song)}
+          onClick={() => player.play({ id: song.id, title: song.title, artist: song.artist, featuring: song.featuring, src: audioSrc(song.id, song.audioVersion) })}
         >
           {playing ? <Pause className="size-3.5 fill-current" aria-hidden /> : song.sung ? <Play className="size-3.5 fill-current" aria-hidden /> : <BookOpen className="size-3.5" aria-hidden />}
         </Button>
@@ -73,7 +77,7 @@ export function SongCard({ song, compact = false, playing = false, onToggle }: {
               <span className="pixel-square text-[13px] text-foreground">{song.remixCount}</span> remixes
             </span>
           )}
-          {!song.sung && onToggle && (
+          {!song.sung && actions && (
             <Button variant="outline" size="xs" asChild className="ml-auto">
               <Link href={`/song/${song.id}#sing`}>
                 <Mic aria-hidden />

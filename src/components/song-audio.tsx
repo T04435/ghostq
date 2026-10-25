@@ -2,16 +2,26 @@
 
 import { Download } from "lucide-react";
 import { MediaDurationDisplay, MediaPlayButton, MediaTimeDisplay, MediaTimeRange } from "media-chrome/react";
+import { useEffect, useRef } from "react";
 import { AudioPlayer, AudioPlayerElement } from "@/components/ai-elements/audio-player";
+import { usePlayer, type QSong } from "@/components/qplayer/player-context";
 import { Button } from "@/components/ui/button";
 
 /**
  * The DS player's ready row, on AI Elements' Audio Player (media-chrome): a 44 px lime play button, a 6 px lime
  * progress bar on a muted track with the times in Geist Pixel Circle under it and the voice between them, and the
  * download button. Its media-chrome elements render declarative shadow DOM on the server, which never matches on
- * hydration, so the player loads this in the browser only (next/dynamic, ssr: false).
+ * hydration, so the player loads this in the browser only (next/dynamic, ssr: false). `song`: while this plays, the
+ * QPlayer shows and steers it, and carries it on from the same second when the page goes.
  */
-export default function SongAudio({ src, voice, fileName }: { src: string; voice: string; fileName: string }) {
+export default function SongAudio({ src, voice, fileName, song }: { src: string; voice: string; fileName: string; song?: QSong }) {
+  const media = useRef<HTMLAudioElement | null>(null);
+  const attach = usePlayer()?.attach;
+  const { id, title, artist, featuring, src: shared } = song ?? {};
+  useEffect(() => {
+    if (!attach || !media.current || !id || !shared) return;
+    return attach(media.current, { id, title: title!, artist: artist!, featuring, src: shared });
+  }, [attach, id, title, artist, featuring, shared]);
   return (
     <AudioPlayer
       className="block w-full"
@@ -40,7 +50,7 @@ export default function SongAudio({ src, voice, fileName }: { src: string; voice
         } as React.CSSProperties
       }
     >
-      <AudioPlayerElement src={src} preload="metadata" />
+      <AudioPlayerElement ref={media} src={src} preload="metadata" />
       {/* One slotted row: media-controller stacks its direct children, so the DS layout lives in this wrapper. */}
       <div className="flex w-full items-center gap-3">
         <MediaPlayButton

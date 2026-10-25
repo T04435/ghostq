@@ -110,7 +110,7 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 
 ## Brand (ported 25 Oct)
 
-- Built: the GhostQ Design System (direction 1b, graphite and lime) ported 1:1 from its Claude Design source: tokens, fonts (Hanken Grotesk, Red Hat Mono, Geist Pixel), the crowd-grid logo and receipt glyphs, every component, and every screen at 390/768/1440 in light and dark. New Landing at /, Write moved to /write. Not built: Sing Along (designed, a feature of its own) and the sticky QPlayer.
+- Built: the GhostQ Design System (direction 1b, graphite and lime) ported 1:1 from its Claude Design source: tokens, fonts (Hanken Grotesk, Red Hat Mono, Geist Pixel), the crowd-grid logo and receipt glyphs, every component, and every screen at 390/768/1440 in light and dark. New Landing at /, Write moved to /write. Not built at the port: Sing Along (designed, a feature of its own) and the sticky QPlayer (built 26 Oct: one audio for the site, a sticky bar under the header that plays across pages, shuffle to a random sung song, mute; the song page hands its player over when you leave).
 
 
 - Port the finished GhostQ brand into the app 1:1 from its design-system source: tokens first, then each component, then each screen (Write, the live run and its questions, the song sheet, the song page, Library, How it works).

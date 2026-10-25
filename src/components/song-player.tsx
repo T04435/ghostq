@@ -3,6 +3,7 @@
 import { CircleAlert, Clock, Info, LoaderCircle, Mic } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { audioSrc } from "@/components/qplayer/player-context";
 import { leadLabel, VocalLinePicker, type VocalDraft } from "@/components/vocal-line-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -81,7 +82,13 @@ export function SongPlayer({
 
       {ready && (
         <div className="flex flex-col gap-3">
-          <SongAudio src={song.url!} voice={voice.toUpperCase()} fileName={fileName} />
+          <SongAudio
+            src={song.url!}
+            voice={voice.toUpperCase()}
+            fileName={fileName}
+            // The QPlayer carries a saved song across pages by its address (a fresh sing plays from a blob URL that dies with the page).
+            song={sheet.id ? { id: sheet.id, title: sheet.title, artist: sheet.artist, featuring: sheet.featuring?.artist, src: song.url!.startsWith("blob:") ? audioSrc(sheet.id) : song.url! } : undefined}
+          />
           {!readOnly && (
             <div className="flex flex-wrap items-center justify-end gap-2.5">
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
