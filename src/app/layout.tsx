@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist_Pixel, Hanken_Grotesk, Red_Hat_Mono } from "next/font/google";
-import Script from "next/script";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,19 +18,14 @@ export const metadata: Metadata = {
   other: { "app-version": versionText() },
 };
 
-// Dark mode follows the system: .dark on <html> while prefers-color-scheme is dark, set before the first paint.
-const followSystemTheme = `(()=>{const m=matchMedia("(prefers-color-scheme: dark)");const s=()=>document.documentElement.classList.toggle("dark",m.matches);s();m.addEventListener("change",s)})()`;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${hanken.variable} ${redHatMono.variable} ${geistPixel.variable} h-full antialiased`}>
+    <html lang="en" className={`${hanken.variable} ${redHatMono.variable} ${geistPixel.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <Script id="follow-system-theme" strategy="beforeInteractive">
-          {followSystemTheme}
-        </Script>
         <TooltipProvider>
           <SiteHeader />
-          <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">{children}</main>
+          {/* Dark mode follows the system through CSS alone (globals.css). Each page lays out its own frame. */}
+          <main className="flex w-full flex-1 flex-col">{children}</main>
           <SiteFooter />
         </TooltipProvider>
       </body>

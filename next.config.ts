@@ -17,6 +17,8 @@ const sha = process.env.APP_SHA || process.env.VERCEL_GIT_COMMIT_SHA || git("git
 const dirty = !process.env.VERCEL && git("git status --porcelain") !== "";
 
 const nextConfig: NextConfig = {
+  // A second build or dev server (checks, QA) can run beside `pnpm dev` in its own folder: NEXT_DIST_DIR=.next-check.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
     NEXT_PUBLIC_APP_SHA: sha,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +23,13 @@ export async function generateMetadata({ params }: PageProps<"/song/[id]">): Pro
 /** A shared song: read-only, no login. The song is read per request, so it streams in behind a placeholder. */
 export default function SongPage({ params }: PageProps<"/song/[id]">) {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-[1200px] px-(--page-x) pt-7 pb-18">
+          <Skeleton className="h-96 w-full" />
+        </div>
+      }
+    >
       <Song params={params} />
     </Suspense>
   );
@@ -37,21 +43,15 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   const song = publicSong(saved);
   // RemixQ: a remix shows next to its original; any song lists its remixes.
   const [original, remixes] = await Promise.all([song.sheet.remixOf ? getSong(song.sheet.remixOf.id) : null, remixesOf(id)]);
+  const host = (await headers()).get("host") ?? "";
   return (
-    <div className="grid gap-6">
-      <p className="text-sm text-muted-foreground">
-        Written by GhostQ for {song.sheet.featuring ? `${possessive(song.sheet.artist)} and ${possessive(song.sheet.featuring.artist)} crowds` : `${possessive(song.sheet.artist)} crowd`}{song.brief.story ? `, about "${song.brief.story}"` : ""}.{" "}
-        <Link href="/" className="underline">
-          Write your own
-        </Link>
-      </p>
-      <SavedSong
-        sheet={{ ...song.sheet, id }}
-        original={original ? { ...original.sheet, id: original.id } : undefined}
-        remixes={remixes}
-        research={song.research}
-        audioUrl={song.audio ? `/api/songs/${id}/audio?v=${encodeURIComponent(song.audio.createdAt)}` : undefined}
-      />
-    </div>
+    <SavedSong
+      sheet={{ ...song.sheet, id }}
+      original={original ? { ...original.sheet, id: original.id } : undefined}
+      remixes={remixes}
+      research={song.research}
+      audioUrl={song.audio ? `/api/songs/${id}/audio?v=${encodeURIComponent(song.audio.createdAt)}` : undefined}
+      link={`${host}/song/${id}`}
+    />
   );
 }

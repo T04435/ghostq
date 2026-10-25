@@ -2,11 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Dark mode follows the system (no script, no class): the dark tokens and dark: utilities sit under the media query. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 /*
  * GhostQ brand theme, direction 1b (cool graphite and lime), copied 1:1 from the design system's gq-tokens.css:
- * light under :root (.gq-light), dark under .dark (.gq-dark). The fonts come from next/font in layout.tsx
+ * light under :root (.gq-light), dark under prefers-color-scheme: dark (.gq-dark). The fonts come from next/font in layout.tsx
  * (--font-hanken, --font-red-hat-mono, --font-geist-pixel).
  */
 @theme inline {
@@ -59,6 +60,8 @@
   --radius-2xl: calc(var(--radius) * 1.5);
   --radius-3xl: calc(var(--radius) * 2);
   --radius-4xl: calc(var(--radius) * 2.5);
+  /* The DS frames: phone under 640 (sm), tablet 640–1099, desktop from 1100 (desk). */
+  --breakpoint-desk: 68.75rem;
 }
 
 :root {
@@ -92,6 +95,8 @@
   --chart-4: oklch(0.75 0.1 115);
   --chart-5: oklch(0.8 0.006 250);
   --radius: 12px;
+  /* The page gutter: 16 on a phone, 32 on a tablet, 48 on a desktop. */
+  --page-x: 16px;
   --font-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
   --font-mono: var(--font-red-hat-mono), "Red Hat Mono", ui-monospace, monospace;
   --font-pixel: var(--font-geist-pixel), "Geist Pixel", var(--font-red-hat-mono), "Red Hat Mono", ui-monospace, monospace;
@@ -110,37 +115,39 @@
   color-scheme: light;
 }
 
-.dark {
-  --background: oklch(0.15 0.01 250);
-  --foreground: oklch(0.95 0.004 250);
-  --card: oklch(0.2 0.01 250);
-  --card-foreground: oklch(0.95 0.004 250);
-  --popover: oklch(0.22 0.01 250);
-  --popover-foreground: oklch(0.95 0.004 250);
-  --primary: oklch(0.9 0.19 115);
-  --primary-foreground: oklch(0.18 0.03 115);
-  --secondary: oklch(0.95 0.004 250);
-  --secondary-foreground: oklch(0.15 0.01 250);
-  --muted: oklch(0.26 0.01 250);
-  --muted-foreground: oklch(0.7 0.01 250);
-  --accent: oklch(0.32 0.07 115);
-  --accent-foreground: oklch(0.9 0.19 115);
-  --signal: oklch(0.9 0.19 115);
-  --signal-foreground: oklch(0.18 0.03 115);
-  --destructive: oklch(0.7 0.17 25);
-  --destructive-foreground: oklch(0.15 0.03 25);
-  --destructive-soft: oklch(0.26 0.04 25);
-  --warning: oklch(0.35 0.07 80);
-  --warning-foreground: oklch(0.9 0.12 90);
-  --border: oklch(0.3 0.01 250);
-  --input: oklch(0.3 0.01 250);
-  --ring: oklch(0.9 0.19 115);
-  --chart-1: oklch(0.9 0.19 115);
-  --chart-2: oklch(0.95 0.004 250);
-  --chart-3: oklch(0.6 0.012 250);
-  --chart-4: oklch(0.6 0.1 115);
-  --chart-5: oklch(0.35 0.01 250);
-  color-scheme: dark;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.15 0.01 250);
+    --foreground: oklch(0.95 0.004 250);
+    --card: oklch(0.2 0.01 250);
+    --card-foreground: oklch(0.95 0.004 250);
+    --popover: oklch(0.22 0.01 250);
+    --popover-foreground: oklch(0.95 0.004 250);
+    --primary: oklch(0.9 0.19 115);
+    --primary-foreground: oklch(0.18 0.03 115);
+    --secondary: oklch(0.95 0.004 250);
+    --secondary-foreground: oklch(0.15 0.01 250);
+    --muted: oklch(0.26 0.01 250);
+    --muted-foreground: oklch(0.7 0.01 250);
+    --accent: oklch(0.32 0.07 115);
+    --accent-foreground: oklch(0.9 0.19 115);
+    --signal: oklch(0.9 0.19 115);
+    --signal-foreground: oklch(0.18 0.03 115);
+    --destructive: oklch(0.7 0.17 25);
+    --destructive-foreground: oklch(0.15 0.03 25);
+    --destructive-soft: oklch(0.26 0.04 25);
+    --warning: oklch(0.35 0.07 80);
+    --warning-foreground: oklch(0.9 0.12 90);
+    --border: oklch(0.3 0.01 250);
+    --input: oklch(0.3 0.01 250);
+    --ring: oklch(0.9 0.19 115);
+    --chart-1: oklch(0.9 0.19 115);
+    --chart-2: oklch(0.95 0.004 250);
+    --chart-3: oklch(0.6 0.012 250);
+    --chart-4: oklch(0.6 0.1 115);
+    --chart-5: oklch(0.35 0.01 250);
+    color-scheme: dark;
+  }
 }
 
 /* Geist Pixel, for standalone readouts only (13 px and up; Grid at 20 px and up): Circle = Qloo data, Square = agent
@@ -169,4 +176,25 @@
   html {
     @apply font-sans;
   }
+}
+
+@media (min-width: 640px) {
+  :root {
+    --page-x: 32px;
+  }
+}
+@media (min-width: 1100px) {
+  :root {
+    --page-x: 48px;
+  }
+}
+
+/*
+ * Keyboard focus: the DS ring is lime, which on the light page (and on a lime button) is too faint to see (about
+ * 1.2:1). Every focused control also gets a 2 px outline in the text colour, offset from it, so focus reads at well
+ * over 3:1 in both themes. Unlayered, so it beats the outline-none utilities on the shadcn parts.
+ */
+:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
 }

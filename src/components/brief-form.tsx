@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EXAMPLE_BRIEFS, type Brief } from "@/lib/brief";
 
-type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void };
+type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void; /** The line beside Write the song. */ note?: string };
 
 const EMPTY: Brief = { artist: "", story: "" };
 
@@ -17,7 +17,7 @@ const EMPTY: Brief = { artist: "", story: "" };
  * The only inputs before a run: the artist, an optional "feat." artist (CollabQ) and an optional "what it's about".
  * GhostQ reads each crowd from Qloo during the run.
  */
-export function BriefForm({ initial, busy, onSubmit }: Props) {
+export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The crowd and every step show as they happen." }: Props) {
   const [brief, setBrief] = useState<Brief>({ ...EMPTY, ...initial });
   const [feat, setFeat] = useState<{ artist: string; spotifyId?: string }>({ artist: initial?.feat?.artist ?? "", spotifyId: initial?.feat?.spotifyId });
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">Try:</span>
         {EXAMPLE_BRIEFS.map((example) => (
@@ -73,8 +73,10 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
         ))}
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="artist">Artist</Label>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="artist" className="text-[13px] font-semibold">
+          Artist
+        </Label>
         <ArtistSearch
           id="artist"
           placeholder="e.g. Teenage Joans, then Enter"
@@ -84,8 +86,10 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="feat">feat. (optional, CollabQ)</Label>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="feat" className="gap-[5px] text-[13px] font-semibold">
+          feat. <span className="font-normal text-muted-foreground">optional · CollabQ</span>
+        </Label>
         <ArtistSearch
           id="feat"
           placeholder="A second artist, then Enter"
@@ -102,15 +106,30 @@ export function BriefForm({ initial, busy, onSubmit }: Props) {
         </Alert>
       )}
 
-      <div className="grid gap-2">
-        <Label htmlFor="story">What&apos;s it about? (optional)</Label>
-        <Textarea id="story" placeholder="e.g. a last tram home after a house party" value={brief.story ?? ""} maxLength={280} rows={2} onChange={(e) => setBrief((b) => ({ ...b, story: e.target.value }))} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="story" className="flex items-baseline justify-between gap-2.5 text-[13px] font-semibold">
+          <span className="inline-flex items-baseline gap-[5px]">
+            Story seed <span className="font-normal text-muted-foreground">optional</span>
+          </span>
+          <span className="font-mono text-[11px] font-normal text-muted-foreground">
+            {(brief.story ?? "").length}/280
+          </span>
+        </Label>
+        <Textarea
+          id="story"
+          placeholder="One line about the story, if you have one"
+          value={brief.story ?? ""}
+          maxLength={280}
+          rows={2}
+          onChange={(e) => setBrief((b) => ({ ...b, story: e.target.value }))}
+        />
       </div>
 
-      <div>
-        <Button type="submit" size="lg" disabled={busy}>
+      <div className="flex flex-wrap items-center gap-3.5 pt-1">
+        <Button type="submit" disabled={busy}>
           {busy ? "Writing…" : "Write the song"}
         </Button>
+        <span className="min-w-[200px] flex-1 text-xs leading-[1.45] text-muted-foreground">{note}</span>
       </div>
     </form>
   );

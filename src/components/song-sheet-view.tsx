@@ -1,7 +1,9 @@
 "use client";
 
-import { Check, CircleAlert, Copy, Download, FileMusic, Link2, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, CircleAlert, Copy, Download, FileMusic, RefreshCw } from "lucide-react";
+import { cn } from "cn";
+import { useEffect, useState, type ReactNode } from "react";
+import { ShareText } from "@/components/share-text";
 import { SongPlayer, type SingState } from "@/components/song-player";
 import { SongSheet } from "@/components/song-sheet";
 import { draftFromSheet, lineFromDraft } from "@/components/vocal-line-picker";
@@ -12,28 +14,45 @@ import { toChordPro } from "@/lib/chords";
 import { sheetToMarkdown, type SongSheet as Sheet } from "@/lib/song-sheet";
 
 /**
- * readOnly: no singing (a saved song that's already sung); audioUrl: a saved sung version to play; onSheetChange: the write page's
- * hook for a rewritten section (only the browser that wrote the song may rewrite it, and only before it's sung).
+ * A finished song as the DS lays it out: the sheet, with a side rail (the player, the share text, then `aside`) that
+ * is a 380 px column from 1100 px and follows the sheet below that (`asideFirst` puts it above: the song page).
+ * `sticky` keeps the rail in view on a desktop. `compare`: RemixQ's result, the original and the remix side by side in
+ * place of the sheet, then the player beside the share text and `aside`.
+ * readOnly: no singing (a saved song that's already sung); audioUrl: a saved sung version to play; onSheetChange: the write
+ * page's hook for a rewritten section (only the browser that wrote the song may rewrite it, and only before it's sung).
+ * `share`: the share text inline in the rail, or as a popover in the sheet's actions.
  */
-export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange }: { sheet: Sheet; readOnly?: boolean; audioUrl?: string; onSheetChange?: (sheet: Sheet) => void }) {
+export function SongSheetView({
+  sheet,
+  readOnly = false,
+  audioUrl,
+  onSheetChange,
+  aside,
+  asideFirst = false,
+  sticky = false,
+  share = "inline",
+  compare,
+}: {
+  sheet: Sheet;
+  readOnly?: boolean;
+  audioUrl?: string;
+  onSheetChange?: (sheet: Sheet) => void;
+  aside?: ReactNode;
+  asideFirst?: boolean;
+  sticky?: boolean;
+  share?: "inline" | "popover";
+  compare?: ReactNode;
+}) {
   const [rewriting, setRewriting] = useState<{ section: number | null; error?: string }>({ section: null });
   const [copied, setCopied] = useState(false);
   // Singing: one Lyria call per click (about US$0.08), kept as an object URL for this page view.
   const [song, setSong] = useState<SingState>(audioUrl ? { status: "done", url: audioUrl } : { status: "idle" });
-  const [linkCopied, setLinkCopied] = useState(false);
   // The vocals: matched to the artist from MusicBrainz and Qloo; where they don't know, the user must choose (no default).
   const [vocals, setVocals] = useState(() => draftFromSheet(sheet));
   const line = lineFromDraft(vocals);
   useEffect(() => () => {
     if (song.url?.startsWith("blob:")) URL.revokeObjectURL(song.url);
   }, [song.url]);
-
-  async function copyLink() {
-    if (!sheet.id) return;
-    await navigator.clipboard.writeText(`${location.origin}/song/${sheet.id}`);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 1500);
-  }
 
   async function sing() {
     if (!line) return;
@@ -90,54 +109,73 @@ export function SongSheetView({ sheet, readOnly = false, audioUrl, onSheetChange
     URL.revokeObjectURL(url);
   }
 
+  const player = (!readOnly || (song.status === "done" && song.url)) && (
+    <SongPlayer sheet={sheet} song={song} draft={vocals} onDraft={setVocals} canSing={Boolean(line)} readOnly={readOnly} onSing={() => void sing()} />
+  );
+  const shareCard = sheet.id && share === "inline" && <ShareText sheet={sheet} path={`/song/${sheet.id}`} inline />;
+
+  if (compare) {
+    return (
+      <div className="flex flex-col gap-7">
+        {compare}
+        <div className="grid items-start gap-5 desk:grid-cols-2">
+          {player || <div />}
+          <div className="flex min-w-0 flex-col gap-3">
+            {shareCard}
+            {aside}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-6">
-      <SongSheet
-        sheet={sheet}
-        notice={
-          rewriting.error && (
-            <Alert variant="destructive">
-              <CircleAlert aria-hidden />
-              <AlertDescription>{rewriting.error}</AlertDescription>
-            </Alert>
-          )
-        }
-        sectionAction={
-          onSheetChange && sheet.id && song.status !== "done"
-            ? (si) => (
-                <Button variant="ghost" size="xs" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
-                  {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
-                  {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
-                </Button>
-              )
-            : undefined
-        }
-        actions={
-          <>
-            <Button variant="secondary" size="sm" onClick={copy}>
-              {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={download}>
-              <Download aria-hidden />
-              Download .md
-            </Button>
-            <Button variant="secondary" size="sm" onClick={downloadChordPro}>
-              <FileMusic aria-hidden />
-              ChordPro
-            </Button>
-            {sheet.id && (
-              <Button variant="secondary" size="sm" onClick={copyLink}>
-                {linkCopied ? <Check aria-hidden /> : <Link2 aria-hidden />}
-                {linkCopied ? "Link copied" : "Copy share link"}
+    <section className="mx-auto grid w-full max-w-[1200px] items-start gap-5 desk:grid-cols-[minmax(0,1fr)_380px]" aria-label="The song">
+      <div className="min-w-0">
+        <SongSheet
+          sheet={sheet}
+          notice={
+            rewriting.error && (
+              <Alert variant="destructive">
+                <CircleAlert aria-hidden />
+                <AlertDescription>{rewriting.error}</AlertDescription>
+              </Alert>
+            )
+          }
+          sectionAction={
+            onSheetChange && sheet.id && song.status !== "done"
+              ? (si) => (
+                  <Button variant="ghost" size="xs" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
+                    {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
+                    {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
+                  </Button>
+                )
+              : undefined
+          }
+          actions={
+            <>
+              <Button variant="secondary" size="sm" onClick={copy}>
+                {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+                {copied ? "Copied" : "Copy sheet"}
               </Button>
-            )}
-          </>
-        }
-      />
-      {(!readOnly || (song.status === "done" && song.url)) && (
-        <SongPlayer sheet={sheet} song={song} draft={vocals} onDraft={setVocals} canSing={Boolean(line)} readOnly={readOnly} onSing={() => void sing()} />
-      )}
-    </div>
+              <Button variant="secondary" size="sm" onClick={download}>
+                <Download aria-hidden />
+                Download .md
+              </Button>
+              <Button variant="secondary" size="sm" onClick={downloadChordPro}>
+                <FileMusic aria-hidden />
+                ChordPro
+              </Button>
+              {sheet.id && share === "popover" && <ShareText sheet={sheet} path={`/song/${sheet.id}`} />}
+            </>
+          }
+        />
+      </div>
+      <div className={cn("flex min-w-0 flex-col gap-3.5", sticky && "desk:sticky desk:top-4", asideFirst && "-order-1 desk:order-none")}>
+        {player}
+        {shareCard}
+        {aside}
+      </div>
+    </section>
   );
 }

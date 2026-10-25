@@ -6,6 +6,7 @@ import { AgentNote, StatusLine, StatusPill, StepCard, StepNumber, type StepStatu
 import { Trace } from "@/components/ui/trace";
 import type { RunEvent } from "@/lib/run-events";
 import type { Signal } from "@/lib/signals";
+import { cn } from "cn";
 
 /** The agent's pick, from its ready_to_write call: the angle and the signals the song is built on. */
 type Pick = { angle: string; signalIds: string[] };
@@ -75,19 +76,31 @@ const STATUS: Record<Step["status"], StepStatus> = { running: "running", ok: "do
 /** Where a step's data came from: Qloo, except GhostQ's own craft pass and Wikipedia's "How they sing". */
 const sourceOf = (tool: string) => (tool === "craft_pass" ? "GhostQ" : tool === "vocal_style" ? "Wikipedia" : "Qloo");
 
+/** How many steps a run shows (calls to one tool between two notes count once), for "8 steps · 7 Qloo calls". */
+export function stepCount(items: StepItem[]): number {
+  return groupSteps(items).filter((r) => r.kind === "step" || r.kind === "group").length;
+}
+
+/** The agent's notes from a run, for pages that show them beside the steps (the crowd column). */
+export function runNotes(items: StepItem[]): Extract<StepItem, { kind: "note" }>[] {
+  return items.filter((x): x is Extract<StepItem, { kind: "note" }> => x.kind === "note");
+}
+
 /**
  * The run's research as a list of step cards (shadcn Trace holds the list): the agent's notes between them, calls to
  * one tool folded into one step, the agent's pick as AI Elements' Plan, and the writing status last.
+ * `notes={false}` leaves the notes out (the page shows them in the crowd column); `collapsed` shows finished steps as
+ * their header only; `grid` lays the steps out as cards in columns (a saved song's research), without notes.
  */
-export function RunSteps({ items }: { items: StepItem[] }) {
+export function RunSteps({ items, notes = true, collapsed = false, grid = false }: { items: StepItem[]; notes?: boolean; collapsed?: boolean; grid?: boolean }) {
   const rows = groupSteps(items);
   // Steps are numbered in order; notes and the writing status aren't steps.
   const numbers = rows.reduce<number[]>((ns, r) => [...ns, (ns.at(-1) ?? 0) + (r.kind === "step" || r.kind === "group" ? 1 : 0)], []);
   return (
-    <Trace aria-live="polite" className="gap-3">
+    <Trace aria-live="polite" className={cn("gap-3", grid && "grid items-start gap-2.5 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]")}>
       {rows.map((item, i) => {
         const n = numbers[i];
-        if (item.kind === "note") return <AgentNote key={item.key}>{item.text}</AgentNote>;
+        if (item.kind === "note") return notes && !grid ? <AgentNote key={item.key}>{item.text}</AgentNote> : null;
         if (item.kind === "writing") {
           return (
             <StatusLine key={item.key} done={item.done}>
@@ -106,11 +119,23 @@ export function RunSteps({ items }: { items: StepItem[] }) {
               status={STATUS[status]}
               source={sourceOf(item.tool)}
               calls={item.steps.map((x) => ({ key: x.key, who: x.artist ?? x.label, summary: x.summary, receipts: x.signals, side: x.signals.find((s) => s.side)?.side }))}
+              collapsed={collapsed && status !== "running"}
             />
           );
         }
         if (item.pick) return <PickPlan key={item.key} n={n} item={item} pick={item.pick} />;
-        return <StepCard key={item.key} n={n} title={item.label} status={STATUS[item.status]} summary={item.summary} source={sourceOf(item.tool)} receipts={item.signals} />;
+        return (
+          <StepCard
+            key={item.key}
+            n={n}
+            title={item.label}
+            status={STATUS[item.status]}
+            summary={item.summary}
+            source={sourceOf(item.tool)}
+            receipts={item.signals}
+            collapsed={collapsed && item.status !== "running"}
+          />
+        );
       })}
     </Trace>
   );

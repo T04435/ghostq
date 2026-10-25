@@ -2,28 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CrowdCard } from "@/components/crowd-card";
 import { GhostQApp } from "@/components/ghostq-app";
+import { RecentSongs, RecentSongsSkeleton } from "@/components/recent-songs";
+import { RemixList } from "@/components/remix-links";
+import { SongCard } from "@/components/song-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { remixSchema, type Remix as RemixPicks } from "@/lib/brief";
-import { getSong } from "@/server/store/songs";
+import { getSong, remixesOf } from "@/server/store/songs";
 
 export const metadata: Metadata = { title: "RemixQ · GhostQ", description: "Rewrite a GhostQ song for another crowd: a new city, new ages, or both." };
 
 /** RemixQ: the same song for another crowd. The original is read per request, so it streams in behind a placeholder. */
 export default function RemixPage({ params, searchParams }: PageProps<"/remix/[id]">) {
   return (
-    <div className="grid gap-8">
-      <div className="grid gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">RemixQ: the same song for another crowd</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Pick a new city or new ages. GhostQ reads that crowd from Qloo and rewrites the lines it calls for, keeping the song&apos;s structure and hook. Both versions are
-          saved and linked.
-        </p>
-      </div>
-      <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-        <Remix params={params} searchParams={searchParams} />
-      </Suspense>
-    </div>
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-[1200px] px-(--page-x) pt-7 pb-18">
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
+      <Remix params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -48,14 +49,37 @@ async function Remix({ params, searchParams }: { params: PageProps<"/remix/[id]"
   if (!saved) notFound();
   if (saved.sheet.featuring) {
     return (
-      <p className="text-sm text-muted-foreground">
-        CollabQ songs can&apos;t be remixed yet.{" "}
-        <Link href={`/song/${saved.id}`} className="underline">
-          Back to the song
-        </Link>
-      </p>
+      <div className="mx-auto w-full max-w-[1200px] px-(--page-x) pt-7 pb-18">
+        <p className="text-sm text-muted-foreground">
+          CollabQ songs can&apos;t be remixed yet.{" "}
+          <Link href={`/song/${saved.id}`} className="underline">
+            Back to the song
+          </Link>
+        </p>
+      </div>
     );
   }
+  const { sheet } = saved;
+  const remixes = await remixesOf(saved.id);
   // Only the sheet reaches the browser (no brief answers, no raw Qloo data); the server reads the rest by id.
-  return <GhostQApp remixOf={{ ...saved.sheet, id: saved.id }} start={start} />;
+  return (
+    <GhostQApp
+      remixOf={{ ...sheet, id: saved.id }}
+      start={start}
+      original={
+        <>
+          <SongCard
+            song={{ id: saved.id, title: sheet.title, artist: sheet.artist, featuring: null, remixOf: sheet.remixOf?.title ?? null, crowd: sheet.crowd, language: sheet.language, sung: Boolean(saved.audio) }}
+          />
+          <CrowdCard artist={sheet.artist} crowd={sheet.crowd} />
+          <RemixList remixes={remixes} />
+        </>
+      }
+      examples={
+        <Suspense fallback={<RecentSongsSkeleton count={3} />}>
+          <RecentSongs limit={3} />
+        </Suspense>
+      }
+    />
+  );
 }
