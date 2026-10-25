@@ -1,101 +1,58 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SongSheet } from "@/components/song-sheet";
 import { describeCrowd } from "@/lib/brief";
 import { changedLines } from "@/lib/remix";
-import type { SongSheet } from "@/lib/song-sheet";
+import type { SongSheet as Sheet } from "@/lib/song-sheet";
 
 /**
- * RemixQ: the original and the remix side by side (stacked on a phone), each with its own receipts. Lines the remix
- * changed for the new crowd are marked.
+ * RemixQ (the DS's RemixCompare): a head with the count of changed lines, then the original and the remix as two
+ * compact SongSheets side by side (stacked under 940 px), each with its own receipts. Rewritten lines are marked on
+ * both sides.
  */
-export function RemixCompare({ original, remix }: { original: SongSheet; remix: SongSheet }) {
+export function RemixCompare({ original, remix }: { original: Sheet; remix: Sheet }) {
   const changed = useMemo(() => changedLines(original, remix), [original, remix]);
   const total = remix.sections.reduce((n, s) => n + s.lines.length, 0);
   return (
-    <section className="grid gap-3" aria-label="Original and remix side by side">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="text-lg font-semibold">Original and remix</h2>
-        <p className="text-sm text-muted-foreground">
-          {changed.size} of {total} lines changed for the new crowd (marked).
-        </p>
+    <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,460px),1fr))] items-start gap-4" aria-label="Original and remix side by side">
+      <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 rounded-lg border bg-card px-4 py-3.5">
+        <h2 className="inline-flex items-baseline gap-1.5 text-base font-semibold">
+          <span className="sr-only">Original and remix: </span>
+          <span className="pixel-square text-[22px]">{changed.size}</span>of<span className="pixel-square text-[22px]">{total}</span>lines changed
+        </h2>
+        <span className="text-[13px] text-muted-foreground">Kept: title, key, tempo, sections, hook</span>
+        <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+          <span aria-hidden className="h-4 w-[3px] rounded-[2px] bg-foreground" />
+          <span className="rounded-full border border-foreground px-1.5 py-0.5 font-mono text-[9px] tracking-[.06em] text-foreground">CHANGED</span>
+          marks a rewritten line on both sides
+        </span>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Version label="Original" sheet={original} />
-        <Version label="Remix" sheet={remix} changed={changed} />
-      </div>
+      <Version label="ORIGINAL" sheet={original} changed={changed} />
+      <Version label="REMIX" sheet={remix} changed={changed} />
     </section>
   );
 }
 
-function Version({ label, sheet, changed }: { label: string; sheet: SongSheet; changed?: Set<string> }) {
-  const byId = new Map(sheet.signals.map((s) => [s.id, s]));
-  const cited = [...new Set(sheet.sections.flatMap((s) => s.lines.flatMap((l) => l.signalIds)))].map((id) => byId.get(id)).filter((s) => s !== undefined);
+function Version({ label, sheet, changed }: { label: string; sheet: Sheet; changed: Set<string> }) {
   return (
-    <Card size="sm">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Badge variant={changed ? "default" : "secondary"}>{label}</Badge>
+    <SongSheet
+      sheet={sheet}
+      compact
+      changed={changed}
+      caption={
+        <span className="flex flex-wrap items-baseline justify-between gap-2">
+          <span>
+            {label} · {describeCrowd(sheet.crowd).toUpperCase()}
+          </span>
           {sheet.id && (
-            <Link href={`/song/${sheet.id}`} className="text-xs text-muted-foreground underline">
+            <Link href={`/song/${sheet.id}`} className="font-sans text-xs tracking-normal underline underline-offset-3">
               Open its page
             </Link>
           )}
-        </div>
-        <CardTitle>{sheet.title}</CardTitle>
-        <CardDescription>For {describeCrowd(sheet.crowd)}.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {sheet.sections.map((section, s) => (
-          <div key={`${section.name}-${s}`} className="grid gap-1">
-            <h3 className="text-sm font-semibold">{section.name}</h3>
-            {section.lines.map((line, l) => {
-              const isChanged = changed?.has(`${s}:${l}`);
-              return (
-                <p key={l} className={`flex flex-wrap items-baseline gap-x-2 rounded px-2 py-0.5 text-sm ${isChanged ? "border-l-2 border-primary bg-accent" : ""}`}>
-                  <span>{line.text}</span>
-                  {isChanged && <span className="sr-only">(changed)</span>}
-                  <span className="flex flex-wrap gap-1">
-                    {[...new Set(line.signalIds)].map((id) => (
-                      <Tooltip key={id}>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className="font-mono" tabIndex={0}>
-                            {id}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>{byId.get(id)?.label ?? "Unknown signal"}</TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </span>
-                </p>
-              );
-            })}
-          </div>
-        ))}
-        <Collapsible>
-          <CollapsibleTrigger className="group/receipts flex cursor-pointer items-center gap-1 rounded-md text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-            <ChevronRight className="size-4 transition-transform group-aria-expanded/receipts:rotate-90" aria-hidden />
-            Receipts ({cited.length} Qloo signals)
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <ul className="mt-2 grid gap-1 text-sm">
-              {cited.map((x) => (
-                <li key={x.id} className="flex flex-wrap gap-x-2">
-                  <span className="font-mono font-medium">{x.id}</span>
-                  <strong>{x.label}</strong>
-                  <span className="text-muted-foreground">{x.source}</span>
-                </li>
-              ))}
-            </ul>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+        </span>
+      }
+    />
   );
 }

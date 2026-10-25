@@ -1,11 +1,12 @@
 "use client";
 
-import { CircleAlert, PenLine, RotateCcw, Shuffle, Sparkles } from "lucide-react";
+import { CircleAlert, Clock, GitFork, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BriefForm } from "@/components/brief-form";
 import { applyStepEvent, RunSteps, type StepItem } from "@/components/run-steps";
+import { StatusLine } from "@/components/step";
 import { SongSheetView } from "@/components/song-sheet-view";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -202,7 +203,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
       {remixOf && !(folded && current.current) ? (
         <RemixForm original={remixOf} busy={busy} onSubmit={remix} />
       ) : folded && current.current ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-4 py-3 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card px-4 py-3 text-sm">
           <span className="min-w-0">
             {current.current.remix ? "Remixing" : "Writing for"} <strong>{current.current.remix ? remixOf?.title : current.current.artist}</strong>
             {current.current.remix ? <span className="text-muted-foreground"> · for {describeRemix(current.current.remix)}</span> : null}
@@ -226,7 +227,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
       {(items.length > 0 || busy) && (
         <section className="grid gap-4" aria-label="Live run">
           <h2 className="text-lg font-semibold">Reading the crowd</h2>
-          {items.length === 0 && <p className="text-sm text-muted-foreground">Finding the artist on Qloo…</p>}
+          {items.length === 0 && <StatusLine>Finding the artist on Qloo…</StatusLine>}
           {crowds.A && <CrowdCard artist={crowds.A.artist} crowd={crowds.A.crowd} />}
           {crowds.B && <CrowdCard artist={crowds.B.artist} crowd={crowds.B.crowd} featured />}
           <RunSteps items={items} />
@@ -239,7 +240,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
             />
           )}
           {done && (
-            <p className="text-sm text-muted-foreground">
+            <p className="px-1 pixel-square text-sm">
               {done.qlooCalls} Qloo calls{done.qlooCached ? ` (+${done.qlooCached} from cache)` : ""} · {done.seconds} s
             </p>
           )}
@@ -247,8 +248,8 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
       )}
 
       {error && (
-        <Alert variant="destructive">
-          <CircleAlert aria-hidden />
+        <Alert variant={error.budget ? "budget" : "destructive"}>
+          {error.budget ? <Clock aria-hidden /> : <CircleAlert aria-hidden />}
           <AlertDescription>
             <p>
               {error.message}
@@ -282,7 +283,7 @@ export function GhostQApp({ remixOf, start }: { remixOf?: SongSheet; /** RemixQ 
           {!remixOf && sheet.id && !sheet.featuring && (
             <Button size="lg" variant="outline" asChild>
               <Link href={`/remix/${sheet.id}`}>
-                <Shuffle aria-hidden />
+                <GitFork aria-hidden />
                 Remix for another crowd
               </Link>
             </Button>
