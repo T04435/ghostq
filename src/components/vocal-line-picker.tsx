@@ -30,6 +30,26 @@ export function lineFromDraft(draft: VocalDraft): VocalLine | null {
   return voices.length === draft.voices.length ? { kind: "vocals", voices, genre: draft.genre, direction: draft.direction } : null;
 }
 
+/** Sentences of a direction that cast the voices ("Voice A takes verse 1", "both voices stack"): they change with the lead. */
+const CASTING = /\b(voice [abc]|voices|both|duet|lead [ab]|leads|together|trade|takes? (the )?(verse|chorus|bridge)|call[- ]and[- ]answer|harmon\w*)\b/i;
+
+/**
+ * The vocal direction for a lead the user picked: the writer's own when the voices are the data's, else the writer's
+ * delivery sentences without the old casting, plus who sings what now. So "Male lead" never keeps "Voice B takes verse 2".
+ */
+export function directionFor(start: VocalDraft, voices: Gender[]): string {
+  if (voices.join() === start.voices.join()) return start.direction;
+  const kept = start.direction
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => s.trim() && !CASTING.test(s))
+    .join(" ");
+  const cast =
+    voices.length === 1
+      ? `One ${voices[0]} lead sings every part.`
+      : `${voices.length} leads (${voices.join(", ")}): voice A takes verse 1, voice B verse 2, and they sing the chorus together.`;
+  return [kept, cast].filter(Boolean).join(" ");
+}
+
 /** The DS's four leads. A duet keeps the data's voices when it has two or more, else one female and one male. */
 type Lead = "male" | "female" | "duet" | "instrumental";
 const LEADS: { value: Lead; label: string }[] = [
@@ -68,11 +88,9 @@ export function VocalLinePicker({ sheet, draft, onChange }: { sheet: SongSheet; 
     if (!value) return;
     const v = value as Lead;
     if (v === "instrumental") return onChange({ ...draft, instrumental: true });
-    if (v === "duet") {
-      const known = start.voices.filter((g): g is Gender => g !== null);
-      return onChange({ ...draft, instrumental: false, voices: known.length > 1 ? known : ["female", "male"] });
-    }
-    onChange({ ...draft, instrumental: false, voices: [v] });
+    const known = start.voices.filter((g): g is Gender => g !== null);
+    const voices: Gender[] = v === "duet" ? (known.length > 1 ? known : ["female", "male"]) : [v];
+    onChange({ ...draft, instrumental: false, voices, direction: directionFor(start, voices) });
   }
 
   const heading = collab ? "Lead voices" : unknown ? "Pick a voice before singing" : "Lead voice";
