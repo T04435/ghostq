@@ -9,6 +9,8 @@ import { isQloo, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip,
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LiveChords, LiveWords } from "@/components/sing-along/live-line";
+import type { SingAlong } from "@/components/sing-along/use-sing-along";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
 import { Sheet as SidePanel, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { describeCrowd } from "@/lib/brief";
@@ -51,6 +53,7 @@ export function SongSheet({
   sectionAction,
   actions,
   openReceipt,
+  sing,
 }: {
   sheet: Sheet;
   compact?: boolean;
@@ -64,6 +67,8 @@ export function SongSheet({
   actions?: ReactNode;
   /** A receipt to open from outside the sheet (a linked id in the brief); `at` makes a repeat click open it again. */
   openReceipt?: { id: string; at: number } | null;
+  /** A sung song's sing-along: the line being sung lights up word by word with its chord, and a tapped line jumps there. */
+  sing?: SingAlong | null;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
@@ -79,6 +84,8 @@ export function SongSheet({
   const count = (side: NonNullable<Signal["side"]>) => sheet.signals.filter((s) => s.side === side).length;
   const [open, setOpen] = useState(false);
   const pin = (id: string) => setPinned((p) => (p === id ? null : id));
+  // Each sung line's place on the sing-along timeline, by "section:line".
+  const timed = new Map(sing?.timing.lines.map((l, i) => [`${l.section}:${l.line}`, i]));
   const show = (id: string) => {
     setPinned(id);
     setOpen(true);
@@ -175,16 +182,31 @@ export function SongSheet({
                     {section.lines.map((line, li) => {
                       const isChanged = changed?.has(`${si}:${li}`) ?? false;
                       const ids = [...new Set(line.signalIds)];
+                      const ti = timed.get(`${si}:${li}`);
+                      const at = sing && ti !== undefined ? sing.timing.lines[ti] : undefined;
+                      const now = Boolean(at && sing!.position.line === ti);
                       return (
                         <div
                           key={li}
-                          className={cn("min-w-0 rounded-md px-2.5 py-1.5", diff && "border-l-[3px] border-transparent", isChanged && "border-foreground bg-muted")}
+                          data-singing={now || undefined}
+                          onClick={at ? (e) => !(e.target as HTMLElement).closest("button") && sing!.seek(Math.max(0, at.start - 0.4)) : undefined}
+                          title={at ? "Play from this line" : undefined}
+                          className={cn("min-w-0 rounded-md px-2.5 py-1.5", diff && "border-l-[3px] border-transparent", isChanged && "border-foreground bg-muted", at && "cursor-pointer hover:bg-muted/60")}
                         >
                           {/* Every line's receipts as AI Elements' Inline Citation: hover or focus a chip for its signal, click to pin it. */}
                           <InlineCitation className="flex flex-wrap items-end gap-x-4 gap-y-1.5">
                             <InlineCitationText className="flex min-w-0 flex-col gap-0.5 group-hover:bg-transparent">
-                              <span className="min-h-3.5 pr-2 font-mono text-[13px] leading-[1.1] font-semibold whitespace-pre-wrap">{line.chords}</span>
-                              <span className="text-[17px] leading-[1.35] font-medium">{line.text}</span>
+                              {now ? (
+                                <>
+                                  <LiveChords chords={line.chords} text={line.text} line={at} time={sing!.time} className="min-h-3.5 pr-2 font-mono text-[13px] leading-[1.1] font-semibold" />
+                                  <LiveWords text={line.text} line={at} time={sing!.time} className="text-[17px] leading-[1.35] font-medium" />
+                                </>
+                              ) : (
+                                <>
+                                  <span className="min-h-3.5 pr-2 font-mono text-[13px] leading-[1.1] font-semibold whitespace-pre-wrap">{line.chords}</span>
+                                  <span className="text-[17px] leading-[1.35] font-medium">{line.text}</span>
+                                </>
+                              )}
                             </InlineCitationText>
                             <span className="flex flex-none flex-wrap items-center gap-1 pb-[3px]">
                               {isChanged && (

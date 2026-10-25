@@ -1,9 +1,17 @@
 "use client";
 
-import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { ChevronUp, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, type MouseEvent } from "react";
 import { usePlayer } from "@/components/qplayer/player-context";
+import { FullScreenSingAlong } from "@/components/sing-along/full-screen";
+import { CountIn, gapLabel, LiveWords } from "@/components/sing-along/live-line";
+import { useSavedSheet, useSingAlong } from "@/components/sing-along/use-sing-along";
 import { draftLabel } from "@/lib/draft-label";
+
+const NO_SHEET = { tempo: 90, sections: [] };
+const phone = () => window.matchMedia("(max-width: 639px)").matches;
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -12,15 +20,30 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
  * play button and Next (the user's call, 26 Oct: next walks forward through what's been played, else picks a random sung
  * song, and a song that ends goes on to it), the title · credit over the draft label, then (wide, from 1024 px) a lime progress line, the
  * time in Geist Pixel Square and Open song, and Mute. Dense (640 to 1023 px) drops the progress and time; compact (a
- * phone) keeps the short label.
+ * phone) keeps the short label. Sing-along: while a line is sung its words light up in place of the label (the bar then
+ * says "GhostQ draft" after the credit), with the count-in between lines; the expand button, or the title on a phone,
+ * opens the full-screen sing-along on a phone and the song's page on anything wider.
  */
 export function QPlayer() {
   const player = usePlayer();
+  const router = useRouter();
+  const [full, setFull] = useState(false);
+  const sheet = useSavedSheet(player?.song?.id);
+  const sing = useSingAlong(sheet ?? NO_SHEET, sheet ? (player?.song ?? undefined) : undefined);
   if (!player?.song) return null;
   const { song, playing, time, duration, muted } = player;
   const label = draftLabel(song.artist, song.featuring ?? undefined);
   const credit = song.featuring ? `${song.artist} feat. ${song.featuring}` : song.artist;
   const pct = duration ? Math.min(100, (time / duration) * 100) : 0;
+  const live = sing && sheet ? sing.position : null;
+  const lineText = live && live.line >= 0 ? sheet!.sections[sing!.timing.lines[live.line].section]?.lines[sing!.timing.lines[live.line].line]?.text : undefined;
+  const between = Boolean(live && live.line < 0 && live.next >= 0 && sing!.time > 0);
+  const expand = (e?: MouseEvent) => {
+    if (sheet && sing && phone()) {
+      e?.preventDefault();
+      setFull(true);
+    } else if (!e) router.push(`/song/${song.id}`);
+  };
   const icon = "inline-flex size-[30px] flex-none cursor-pointer items-center justify-center rounded-full opacity-80 outline-none hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ring";
 
   return (
@@ -43,15 +66,28 @@ export function QPlayer() {
       <button type="button" onClick={() => void player.next()} title="Next song" aria-label="Next song" className={icon}>
         <SkipForward className="size-3.5 fill-current" aria-hidden />
       </button>
-      <Link href={`/song/${song.id}`} className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-[1.15] outline-none focus-visible:underline">
+      <Link href={`/song/${song.id}`} onClick={expand} className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-[1.15] outline-none focus-visible:underline">
         <span className="truncate text-[13px] font-semibold">
           {song.title}
-          <span className="font-normal opacity-75"> · {credit}</span>
+          <span className="font-normal opacity-75">
+            {" "}
+            · {credit}
+            {(lineText || between) && " · GhostQ draft"}
+          </span>
         </span>
-        <span title={label} className="truncate text-[10.5px] opacity-80">
-          <span className="sm:hidden">GhostQ draft · AI-generated · not affiliated</span>
-          <span className="hidden sm:inline">{label}</span>
-        </span>
+        {lineText ? (
+          <LiveWords text={lineText} line={sing!.timing.lines[live!.line]} time={sing!.time} className="flex-nowrap overflow-hidden text-xs leading-[1.2] font-medium whitespace-nowrap" />
+        ) : between ? (
+          <span className="flex items-center gap-2 text-xs opacity-80">
+            {gapLabel(sing!.timing, sing!.time, live!.section)}
+            <CountIn timing={sing!.timing} time={sing!.time} size={7} />
+          </span>
+        ) : (
+          <span title={label} className="truncate text-[10.5px] opacity-80">
+            <span className="sm:hidden">GhostQ draft · AI-generated · not affiliated</span>
+            <span className="hidden sm:inline">{label}</span>
+          </span>
+        )}
       </Link>
       <span
         role="progressbar"
@@ -69,9 +105,15 @@ export function QPlayer() {
       <Link href={`/song/${song.id}`} className="hidden flex-none text-xs font-semibold whitespace-nowrap underline underline-offset-3 lg:inline">
         Open song
       </Link>
+      {sheet && (
+        <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={icon}>
+          <ChevronUp className="size-4" aria-hidden />
+        </button>
+      )}
       <button type="button" onClick={() => player.setMuted(!muted)} title={muted ? "Unmute" : "Mute"} aria-label={muted ? "Unmute" : "Mute"} aria-pressed={muted} className={icon}>
         {muted ? <VolumeX className="size-3.5" aria-hidden /> : <Volume2 className="size-3.5" aria-hidden />}
       </button>
+      {sheet && sing && <FullScreenSingAlong open={full} onOpenChange={setFull} sheet={sheet} sing={sing} />}
     </div>
   );
 }

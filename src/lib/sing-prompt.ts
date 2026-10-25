@@ -1,5 +1,6 @@
 import { namesForIds, withoutArtistNames } from "./signal-text";
 import type { SongSheet } from "./song-sheet";
+import { planTiming, timingForPrompt } from "./song-timing";
 import { VOICE_NAMES, type Gender, type VocalLine } from "./voice";
 
 /** Two or three voices of the same gender need telling apart: the probe of 22 Oct used these and got distinct voices. */
@@ -29,7 +30,8 @@ function sectionTag(name: string, given: string | undefined, verse: number, voic
 
 /**
  * The prompt for Lyria: genre, voices and vocal direction first, then the style, then the lyrics with section tags
- * (the format in Google's music-generation guide, 1 Oct 2026). Signal ids become their Qloo names; real artists are
+ * (the format in Google's music-generation guide, 1 Oct 2026), after the planned timing as the guide's timestamp lines
+ * ("[0:08 - 0:30] Verse 1"): the sing-along follows the same plan, so the sheet keeps pace with the voice. Signal ids become their Qloo names; real artists are
  * removed (the model refuses them, and GhostQ never imitates an artist). `vocals.genre` and `vocals.direction` are the
  * writer's, as the user left them before singing.
  */
@@ -55,6 +57,9 @@ export function buildSingPrompt(sheet: SongSheet, vocals: VocalLine): string {
     `Performed by ${performers(vocals.voices)}.`,
     direction ? `Vocals: ${direction}` : "",
     ...style,
+    "",
+    "Structure and timing:",
+    timingForPrompt(planTiming(sheet)),
     "",
     "Lyrics:",
     lyrics,
