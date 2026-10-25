@@ -10,8 +10,11 @@ export const GENDERS = ["male", "female"] as const;
 export type Gender = (typeof GENDERS)[number];
 
 export const MAX_VOICES = 3;
-/** Long enough for a sentence or two; Lyria takes the whole prompt as free text. */
-export const MAX_DIRECTION = 400;
+/**
+ * Room for the writer's direction, which now opens with how the artist sings (a 440-character one was refused at 400,
+ * 25 Oct); Lyria takes the whole prompt as free text.
+ */
+export const MAX_DIRECTION = 1000;
 
 export const vocalLineSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("instrumental"), genre: z.string().trim().max(MAX_DIRECTION).default("") }),
