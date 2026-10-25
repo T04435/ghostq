@@ -3,7 +3,7 @@
 import { GitFork, Info, TriangleAlert } from "lucide-react";
 import { cn } from "cn";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { InlineCitation, InlineCitationCard, InlineCitationCardBody, InlineCitationText } from "@/components/ai-elements/inline-citation";
 import { isQloo, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark } from "@/components/brand/receipt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,6 +27,9 @@ export function DraftLabel({ artist, feat, className }: { artist: string; feat?:
   );
 }
 
+/** Opens the receipts panel on one signal; SongSheetView provides it so the rail's brief can link its ids. */
+export const ReceiptLink = createContext<((id: string) => void) | null>(null);
+
 /** CollabQ: whose crowd a signal came from, in words. */
 export function sideName(sheet: Sheet, side: NonNullable<Signal["side"]>): string {
   return side === "shared" ? "Shared, from Qloo compare" : `${possessive(side === "A" ? sheet.artist : (sheet.featuring?.artist ?? "B"))} crowd`;
@@ -47,6 +50,7 @@ export function SongSheet({
   notice,
   sectionAction,
   actions,
+  openReceipt,
 }: {
   sheet: Sheet;
   compact?: boolean;
@@ -58,6 +62,8 @@ export function SongSheet({
   sectionAction?: (section: number) => ReactNode;
   /** The action bar at the foot of a full sheet. */
   actions?: ReactNode;
+  /** A receipt to open from outside the sheet (a linked id in the brief); `at` makes a repeat click open it again. */
+  openReceipt?: { id: string; at: number } | null;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
@@ -77,6 +83,15 @@ export function SongSheet({
     setPinned(id);
     setOpen(true);
   };
+  // A new request from outside opens the panel on it (state adjusted during render, no effect).
+  const [request, setRequest] = useState(openReceipt);
+  if (openReceipt !== request) {
+    setRequest(openReceipt);
+    if (openReceipt) {
+      setPinned(openReceipt.id);
+      setOpen(true);
+    }
+  }
   // The clicked receipt into view once the panel has opened.
   useEffect(() => {
     if (!open || !pinned) return;
@@ -303,6 +318,7 @@ export function SongSheet({
  * write page under the player): production brief, why it fits, genre, vocal direction, one column.
  */
 export function SongBrief({ sheet }: { sheet: Sheet }) {
+  const ids = new Set(sheet.signals.map((s) => s.id));
   return (
     <Card className="gap-4 p-[18px]" aria-label="The brief">
       {[
@@ -313,9 +329,32 @@ export function SongBrief({ sheet }: { sheet: Sheet }) {
       ].map(([title, body]) => (
         <section key={title} className="flex flex-col gap-1.5">
           <h3 className="text-[15px] font-semibold">{title}</h3>
-          <p className="text-sm leading-[1.55] text-pretty text-muted-foreground">{body}</p>
+          <p className="text-sm leading-[1.55] text-pretty text-muted-foreground">
+            <LinkedIds text={body} ids={ids} />
+          </p>
         </section>
       ))}
     </Card>
   );
+}
+
+/** The brief's signal ids ("S1", "T8") as links that open their receipt, bold text where no panel is on the page. */
+function LinkedIds({ text, ids }: { text: string; ids: Set<string> }) {
+  const open = useContext(ReceiptLink);
+  return text.split(/\b([A-Z]\d{1,2})\b/).map((part, i) => {
+    if (i % 2 === 0 || !ids.has(part)) return part;
+    if (!open) return <strong key={i} className="font-semibold text-foreground">{part}</strong>;
+    return (
+      <button
+        key={i}
+        type="button"
+        onClick={() => open(part)}
+        aria-label={`Receipt ${part}`}
+        aria-haspopup="dialog"
+        className="cursor-pointer rounded-sm font-semibold text-foreground underline decoration-dotted underline-offset-2 outline-none hover:decoration-solid focus-visible:ring-3 focus-visible:ring-ring"
+      >
+        {part}
+      </button>
+    );
+  });
 }
