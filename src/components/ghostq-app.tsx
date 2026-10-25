@@ -291,6 +291,7 @@ export function GhostQApp({
               message={ask.event.message}
               artist={ask.event.artist}
               options={ask.event.options}
+              languages={ask.event.languages}
               busy={busy}
               onAnswer={(answers) => void run(withAnswers(ask.brief, ask.event.who, answers))}
             />

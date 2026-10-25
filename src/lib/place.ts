@@ -57,6 +57,24 @@ export function countryCodeFor(name: string): string | null {
   return regionNames.get(name.trim().toLowerCase()) ?? null;
 }
 
+/** Words in an artist's own Qloo tags that point to the language they sing in ("Cubaton", "K-Pop", "MPB"). */
+const TAG_LANGUAGE: [RegExp, Language][] = [
+  [/\b(latin|latino|reggaet[oó]n|cubat[oó]n|cuban|salsa|bachata|cumbia|flamenco|urbano|mexican|regional mexican|corridos?|banda|merengue|trap latino|tango|bolero|son cubano|timba|spanish)\b/i, "Spanish"],
+  [/\b(brazil\w*|mpb|sertanejo|funk carioca|bossa nova|samba|forr[oó]|pagode|portuguese|fado)\b/i, "Portuguese"],
+  [/\b(french|chanson|fran[cç]aise?|rap fran[cç]ais)\b/i, "French"],
+  [/\b(german|deutsch\w*|schlager|neue deutsche)\b/i, "German"],
+  [/\b(k-?pop|korean|k-?hip ?hop|k-?r&b)\b/i, "Korean"],
+  [/\b(j-?pop|j-?rock|japanese|anime|city pop|enka|vocaloid)\b/i, "Japanese"],
+  [/\b(bollywood|hindi|filmi|desi|punjabi)\b/i, "Hindi"],
+];
+
+/** The languages an artist's own Qloo tags point to, strongest first (each once). */
+export function languagesFromTags(tags: string[]): Language[] {
+  const out: Language[] = [];
+  for (const t of tags) for (const [re, lang] of TAG_LANGUAGE) if (re.test(t) && !out.includes(lang)) out.push(lang);
+  return out;
+}
+
 /** Demonyms that aren't a country's own name ("New Zealand singer" already is), for reading Qloo's descriptions. */
 const DEMONYMS: Record<string, string> = {
   american: "US", australian: "AU", british: "GB", english: "GB", scottish: "GB", welsh: "GB", irish: "IE", canadian: "CA", "new zealander": "NZ",

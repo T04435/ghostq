@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { describePlace, placeSchema, toPlace, type Home, type Language, type Place } from "./place";
+import { describePlace, LANGUAGES, placeSchema, toPlace, type Home, type Language, type Place } from "./place";
 
 export { LANGUAGES, type Home, type Language, type Place } from "./place";
 
@@ -18,6 +18,8 @@ const answersSchema = z.object({
   /** Qloo had no exact match for the Spotify pick: the Qloo artist the user chose from its candidates, or none. */
   qlooId: z.string().trim().min(1).max(120).optional(),
   noQloo: z.literal(true).optional(),
+  /** When the artist's home, tags and crowd city point to different languages: the one to write in, or two to mix. */
+  language: z.object({ primary: z.enum(LANGUAGES), mix: z.enum(LANGUAGES).optional() }).optional(),
   /** The artist's sound in the user's words, when Qloo doesn't know the artist. */
   sound: z.string().trim().min(2).max(160).optional(),
   /** A city picked from Qloo's locality search. */
@@ -66,7 +68,7 @@ export const remixSchema = z
   })
   .refine((r) => r.place || r.ages, "Pick a city or ages for the remix");
 export type Remix = z.infer<typeof remixSchema>;
-export type AskField = "qlooArtist" | "sound" | "place" | "ages";
+export type AskField = "qlooArtist" | "sound" | "place" | "ages" | "language";
 
 /** A Qloo candidate offered when the Spotify pick has no exact match on Qloo. */
 export type QlooOption = { id: string; name: string; description: string | null };
@@ -92,7 +94,9 @@ export type Crowd = {
   home: Home | null;
   language: Language;
   /** The language follows the artist's home when known, else the crowd's city. */
-  languageFrom: "home" | "city";
+  languageFrom: "home" | "city" | "you";
+  /** A bilingual song: the second language, mixed with `language` (the user's pick when sources disagreed). */
+  mix?: Language;
 };
 
 /** A crowd as stored. Songs saved before 22 Oct kept a city id and no home: read them into today's shape. */
@@ -107,6 +111,7 @@ export function normalizeCrowd(raw: unknown): Crowd {
     home: c.home ?? null,
     language: c.language ?? "English",
     languageFrom: c.languageFrom ?? "city",
+    ...(c.mix ? { mix: c.mix } : {}),
   };
 }
 
@@ -135,7 +140,9 @@ export function describeBrief(b: Brief, crowd: Crowd): string {
     `Artist: ${b.artist}.`,
     crowd.home ? `The artist is from ${describeHome(crowd.home)}: write in their voice, with the slang, places and images of home.` : null,
     `Crowd (read from Qloo's data on the artist's fans): ${describeCrowd(crowd)}. Write about what this crowd cares about.`,
-    `Language: ${crowd.language}${crowd.languageFrom === "home" ? " (the artist's own)" : ""}.`,
+    crowd.mix
+      ? `Language: bilingual, ${crowd.language} and ${crowd.mix}, mixed as this artist and crowd would (code-switching inside verses and the chorus, not one language per half).`
+      : `Language: ${crowd.language}${crowd.languageFrom === "home" ? " (the artist's own)" : crowd.languageFrom === "you" ? " (chosen by the user)" : ""}.`,
     b.story ? `What it's about: "${b.story}".` : null,
   ]
     .filter(Boolean)
