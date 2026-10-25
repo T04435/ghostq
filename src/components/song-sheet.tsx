@@ -318,7 +318,7 @@ export function SongSheet({
  * write page under the player): production brief, why it fits, genre, vocal direction, one column.
  */
 export function SongBrief({ sheet }: { sheet: Sheet }) {
-  const ids = new Set(sheet.signals.map((s) => s.id));
+  const byId = new Map(sheet.signals.map((s) => [s.id, s]));
   return (
     <Card className="gap-4 p-[18px]" aria-label="The brief">
       {[
@@ -329,8 +329,8 @@ export function SongBrief({ sheet }: { sheet: Sheet }) {
       ].map(([title, body]) => (
         <section key={title} className="flex flex-col gap-1.5">
           <h3 className="text-[15px] font-semibold">{title}</h3>
-          <p className="text-sm leading-[1.55] text-pretty text-muted-foreground">
-            <LinkedIds text={body} ids={ids} />
+          <p className="text-sm leading-[1.9] text-pretty text-muted-foreground">
+            <LinkedIds text={body} byId={byId} />
           </p>
         </section>
       ))}
@@ -338,23 +338,14 @@ export function SongBrief({ sheet }: { sheet: Sheet }) {
   );
 }
 
-/** The brief's signal ids ("S1", "T8") as links that open their receipt, bold text where no panel is on the page. */
-function LinkedIds({ text, ids }: { text: string; ids: Set<string> }) {
+/** The brief's signal ids ("S1", "T8") as the same receipt chips as the lyrics; a click opens the receipt in the panel. */
+function LinkedIds({ text, byId }: { text: string; byId: Map<string, Signal> }) {
   const open = useContext(ReceiptLink);
   return text.split(/\b([A-Z]\d{1,2})\b/).map((part, i) => {
-    if (i % 2 === 0 || !ids.has(part)) return part;
-    if (!open) return <strong key={i} className="font-semibold text-foreground">{part}</strong>;
-    return (
-      <button
-        key={i}
-        type="button"
-        onClick={() => open(part)}
-        aria-label={`Receipt ${part}`}
-        aria-haspopup="dialog"
-        className="cursor-pointer rounded-sm font-semibold text-foreground underline decoration-dotted underline-offset-2 outline-none hover:decoration-solid focus-visible:ring-3 focus-visible:ring-ring"
-      >
-        {part}
-      </button>
-    );
+    const s = i % 2 ? byId.get(part) : undefined;
+    if (!s) return part;
+    const chip = "mx-px -my-1 align-middle";
+    if (!open) return <ReceiptChip key={i} signal={s} className={chip} />;
+    return <ReceiptChip key={i} as="button" signal={s} className={chip} aria-label={`Receipt ${s.id}: ${KIND_NAME[s.kind]} ${s.label}`} aria-haspopup="dialog" onClick={() => open(s.id)} />;
   });
 }
