@@ -1,10 +1,9 @@
 "use client";
 
-import { CircleAlert, CircleCheck, MessageSquareText, PenLine } from "lucide-react";
-import { Plan, PlanContent, PlanDescription, PlanHeader, PlanTitle, PlanTrigger } from "@/components/ai-elements/plan";
-import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { Trace, TraceCollapsible, TraceCollapsibleContent, TraceCollapsibleTrigger, TraceDescription, TraceIcon, TraceLine, TraceTitle } from "@/components/ui/trace";
+import { Plan, PlanContent, PlanDescription, PlanFooter, PlanHeader, PlanTitle, PlanTrigger } from "@/components/ai-elements/plan";
+import { ReceiptChip } from "@/components/brand/receipt";
+import { AgentNote, StatusLine, StatusPill, StepCard, StepNumber, type StepStatus } from "@/components/step";
+import { Trace } from "@/components/ui/trace";
 import type { RunEvent } from "@/lib/run-events";
 import type { Signal } from "@/lib/signals";
 
@@ -71,110 +70,81 @@ function groupSteps(items: StepItem[]): Row[] {
   return rows;
 }
 
-function StepIcon({ status }: { status: Step["status"] }) {
-  return <TraceIcon>{status === "running" ? <Spinner /> : status === "failed" ? <CircleAlert /> : <CircleCheck className="text-emerald-600" />}</TraceIcon>;
-}
+const STATUS: Record<Step["status"], StepStatus> = { running: "running", ok: "done", failed: "failed" };
 
-const lineStatus = (status: Step["status"]) => (status === "running" ? "running" : status === "failed" ? "error" : undefined);
+/** Where a step's data came from: Qloo, except GhostQ's own craft pass and Wikipedia's "How they sing". */
+const sourceOf = (tool: string) => (tool === "craft_pass" ? "GhostQ" : tool === "vocal_style" ? "Wikipedia" : "Qloo");
 
-/** The run's research as shadcn's Trace: one row per Qloo step (expand it for what came back), the agent's notes between. */
+/**
+ * The run's research as a list of step cards (shadcn Trace holds the list): the agent's notes between them, calls to
+ * one tool folded into one step, the agent's pick as AI Elements' Plan, and the writing status last.
+ */
 export function RunSteps({ items }: { items: StepItem[] }) {
+  const rows = groupSteps(items);
+  // Steps are numbered in order; notes and the writing status aren't steps.
+  const numbers = rows.reduce<number[]>((ns, r) => [...ns, (ns.at(-1) ?? 0) + (r.kind === "step" || r.kind === "group" ? 1 : 0)], []);
   return (
-    <Trace aria-live="polite">
-      {groupSteps(items).map((item) => {
-        if (item.kind === "note") {
-          return (
-            <TraceLine key={item.key}>
-              <TraceIcon>
-                <MessageSquareText />
-              </TraceIcon>
-              <span className="min-w-0 whitespace-pre-line">{item.text}</span>
-            </TraceLine>
-          );
-        }
+    <Trace aria-live="polite" className="gap-3">
+      {rows.map((item, i) => {
+        const n = numbers[i];
+        if (item.kind === "note") return <AgentNote key={item.key}>{item.text}</AgentNote>;
         if (item.kind === "writing") {
           return (
-            <TraceLine key={item.key} status={item.done ? undefined : "running"}>
-              <TraceIcon>{item.done ? <CircleCheck className="text-emerald-600" /> : <PenLine />}</TraceIcon>
-              <TraceTitle>{item.done ? `Written from ${item.signalCount} Qloo signals.` : `Writing the song from ${item.signalCount} Qloo signals…`}</TraceTitle>
-            </TraceLine>
+            <StatusLine key={item.key} done={item.done}>
+              {item.done ? `Written from ${item.signalCount} Qloo signals.` : `Writing the song from ${item.signalCount} Qloo signals…`}
+            </StatusLine>
           );
         }
         if (item.kind === "group") {
           // Running while any call runs; failed only when every call failed (each call shows its own result inside).
           const status: Step["status"] = item.steps.some((x) => x.status === "running") ? "running" : item.steps.every((x) => x.status === "failed") ? "failed" : "ok";
           return (
-            <TraceCollapsible key={item.key}>
-              <TraceCollapsibleTrigger>
-                <TraceLine status={lineStatus(status)}>
-                  <StepIcon status={status} />
-                  <TraceTitle>{GROUP_LABELS[item.tool] ?? item.steps[0].label}</TraceTitle>
-                  <TraceDescription>Qloo · {item.steps.length} calls</TraceDescription>
-                </TraceLine>
-              </TraceCollapsibleTrigger>
-              <TraceCollapsibleContent>
-                <Trace>{item.steps.map((x) => <StepRow key={x.key} item={x} title={x.artist ?? x.label} />)}</Trace>
-              </TraceCollapsibleContent>
-            </TraceCollapsible>
+            <StepCard
+              key={item.key}
+              n={n}
+              title={GROUP_LABELS[item.tool] ?? item.steps[0].label}
+              status={STATUS[status]}
+              source={sourceOf(item.tool)}
+              calls={item.steps.map((x) => ({ key: x.key, who: x.artist ?? x.label, summary: x.summary, receipts: x.signals, side: x.signals.find((s) => s.side)?.side }))}
+            />
           );
         }
-        return <StepRow key={item.key} item={item} title={item.label} />;
+        if (item.pick) return <PickPlan key={item.key} n={n} item={item} pick={item.pick} />;
+        return <StepCard key={item.key} n={n} title={item.label} status={STATUS[item.status]} summary={item.summary} source={sourceOf(item.tool)} receipts={item.signals} />;
       })}
     </Trace>
   );
 }
 
-/** One Qloo call: expand it for what came back. */
-function StepRow({ item, title }: { item: Step; title: string }) {
+/** The agent's pick (its ready_to_write call) as AI Elements' Plan: the angle, and the signals the song rests on. */
+function PickPlan({ n, item, pick }: { n: number; item: Step; pick: Pick }) {
+  const streaming = item.status === "running";
+  const byId = new Map(item.signals.map((s) => [s.id, s]));
+  const ids = [...new Set(pick.signalIds)];
   return (
-    <TraceCollapsible>
-      <TraceCollapsibleTrigger>
-        <TraceLine status={lineStatus(item.status)}>
-          <StepIcon status={item.status} />
-          <TraceTitle>{title}</TraceTitle>
-          <TraceDescription>{item.tool === "craft_pass" ? "GhostQ" : item.tool === "vocal_style" ? "Wikipedia" : "Qloo"}</TraceDescription>
-        </TraceLine>
-      </TraceCollapsibleTrigger>
-      <TraceCollapsibleContent>
-        <div className="grid gap-2 py-2 pl-6">
-          {item.summary && <p className="text-sm text-muted-foreground">{item.summary}</p>}
-          {item.pick && (
-            <Plan defaultOpen isStreaming={item.status === "running"}>
-              <PlanHeader>
-                <div className="grid gap-1">
-                  <PlanTitle>The song&apos;s plan</PlanTitle>
-                  <PlanDescription>{item.pick.angle}</PlanDescription>
-                </div>
-                <PlanTrigger aria-label="Show or hide the chosen signals" />
-              </PlanHeader>
-              <PlanContent>
-                <ul className="flex flex-wrap gap-1" aria-label="Chosen signals">
-                  {[...new Set(item.pick.signalIds)].map((id) => (
-                    <li key={id}>
-                      <Badge variant="outline" className="font-mono">
-                        {id}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </PlanContent>
-            </Plan>
-          )}
-          {item.signals.length > 0 && (
-            <ul className="flex flex-wrap gap-1" aria-label="Signals from this step">
-              {/* A step can return the same Qloo tag twice (the registry gives it one id): show it once. */}
-              {[...new Map(item.signals.map((s) => [s.id, s])).values()].map((s) => (
-                <li key={s.id}>
-                  <Badge variant="secondary">
-                    <span className="font-mono">{s.id}</span> {s.label.trim()}
-                    {s.value !== null ? ` · ${s.value}` : ""}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </TraceCollapsibleContent>
-    </TraceCollapsible>
+    <Plan defaultOpen isStreaming={streaming} className="gap-3 py-3.5">
+      <PlanHeader className="items-center px-4">
+        <span className="inline-flex min-w-0 items-center gap-2.5">
+          <StepNumber n={n} />
+          <PlanTitle className="text-sm font-semibold">The agent&apos;s pick</PlanTitle>
+        </span>
+        <span className="flex items-center gap-1">
+          <StatusPill status={streaming ? "running" : item.status === "failed" ? "failed" : "done"} label={streaming ? "Picking" : undefined} />
+          <PlanTrigger aria-label="Show or hide the chosen signals" className="size-8 rounded-full" />
+        </span>
+      </PlanHeader>
+      <PlanDescription className="px-4 text-sm leading-[1.45] text-foreground">{streaming ? "Choosing signals for the song…" : pick.angle}</PlanDescription>
+      <PlanContent className="px-4">
+        <ul className="flex flex-wrap gap-1 border-t pt-2.5" aria-label="Chosen signals">
+          {ids.map((id) => {
+            const s = byId.get(id);
+            return <li key={id}>{s ? <ReceiptChip signal={s} /> : <span className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 font-mono text-[11px] font-semibold">{id}</span>}</li>;
+          })}
+        </ul>
+      </PlanContent>
+      <PlanFooter className="border-t px-4 pt-2 pb-0">
+        <span className="font-mono text-[10px] tracking-[.04em] text-muted-foreground">AGENT</span>
+      </PlanFooter>
+    </Plan>
   );
 }
