@@ -17,7 +17,10 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   // The vocals are required: Lyria picking its own voice put a female voice on a male artist's song (user, 21 Oct).
   const body = z.object({ songId: z.string().refine(isSongId), vocals: vocalLineSchema }).safeParse(await request.json().catch(() => null));
-  if (!body.success) return Response.json({ error: "Choose the vocals before singing" }, { status: 400 });
+  if (!body.success) {
+    const tooLong = body.error.issues.some((i) => i.code === "too_big" && (i.path.includes("direction") || i.path.includes("genre")));
+    return Response.json({ error: tooLong ? "The genre or vocal direction is too long. Shorten it under “Genre and vocal direction”." : "Choose the vocals before singing" }, { status: 400 });
+  }
   if (!providerStatus().gemini) return Response.json({ error: "Singing isn't available right now." }, { status: 503 });
   const { songId, vocals } = body.data;
   const song = await getSong(songId);
