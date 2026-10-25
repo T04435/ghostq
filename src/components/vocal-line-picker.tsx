@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { namesForIds } from "@/lib/signal-text";
 import { type SongSheet } from "@/lib/song-sheet";
-import { MAX_DIRECTION, MAX_VOICES, type Gender, type VocalLine } from "@/lib/voice";
+import { MAX_DIRECTION, MAX_VOICES, VOICE_NAMES, type Gender, type VocalLine } from "@/lib/voice";
 
 /** The vocals being edited: a voice whose gender isn't known yet is null, and singing waits until every voice has one. */
 export type VocalDraft = { instrumental: boolean; voices: (Gender | null)[]; genre: string; direction: string };
@@ -31,7 +32,8 @@ export function lineFromDraft(draft: VocalDraft): VocalLine | null {
 }
 
 /** Sentences of a direction that cast the voices ("Voice A takes verse 1", "both voices stack"): they change with the lead. */
-const CASTING = /\b(voice [abc]|voices|both|duet|lead [ab]|leads|together|trade|takes? (the )?(verse|chorus|bridge)|call[- ]and[- ]answer|harmon\w*)\b/i;
+const CASTING =
+  /\b(voice [abc]|voices|both|duet|lead [ab]|leads|together|trade|takes? (the )?(verse|chorus|bridge)|call[- ]and[- ]answer|harmon\w*|voz|voces|dueto|ambas|ambos|juntos|juntas|armon\w*|vozes|ambas as)\b/i;
 
 /**
  * The vocal direction for a lead the user picked: the writer's own when the voices are the data's, else the writer's
@@ -46,7 +48,7 @@ export function directionFor(start: VocalDraft, voices: Gender[]): string {
   const cast =
     voices.length === 1
       ? `One ${voices[0]} lead sings every part.`
-      : `${voices.length} leads (${voices.join(", ")}): voice A takes verse 1, voice B verse 2, and they sing the chorus together.`;
+      : `${voices.length} leads (${voices.join(", ")}): voice A takes verse 1, voice B verse 2${voices.length > 2 ? ", voice C the bridge" : ""}, and they sing the chorus together.`;
   return [kept, cast].filter(Boolean).join(" ");
 }
 
@@ -133,6 +135,8 @@ export function VocalLinePicker({ sheet, draft, onChange }: { sheet: SongSheet; 
         </ToggleGroup>
       )}
 
+      {!collab && !draft.instrumental && draft.voices.length > 1 && <DuetVoices start={start} draft={draft} onChange={onChange} />}
+
       <Collapsible>
         <CollapsibleTrigger className="group/sing inline-flex cursor-pointer items-center gap-1 rounded-md text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
           <ChevronRight className="size-3.5 transition-transform group-aria-expanded/sing:rotate-90" aria-hidden />
@@ -184,6 +188,57 @@ function CollabLeads({ sheet, draft, onChange }: { sheet: SongSheet; draft: Voca
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * A duet's voices, in order: voice A takes verse 1, voice B verse 2 (C the bridge), all on the chorus. Each one's gender,
+ * and a third voice. Not in the DS (its player has the four leads only): the app kept this from before the brand.
+ */
+function DuetVoices({ start, draft, onChange }: { start: VocalDraft; draft: VocalDraft; onChange: (draft: VocalDraft) => void }) {
+  const set = (voices: (Gender | null)[]) => {
+    const known = voices.every((v): v is Gender => v !== null);
+    onChange({ ...draft, voices, ...(known ? { direction: directionFor(start, voices as Gender[]) } : {}) });
+  };
+  const parts = ["verse 1", "verse 2", "the bridge"];
+  return (
+    <div className="flex flex-col" role="group" aria-label="Duet voices">
+      {draft.voices.map((v, i) => (
+        <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-t py-2 text-[13px]">
+          <span className="min-w-0">
+            <span className="font-semibold">Voice {VOICE_NAMES[i]}</span> <span className="text-muted-foreground">· {parts[i]} and the chorus</span>
+          </span>
+          <ToggleGroup
+            type="single"
+            size="sm"
+            variant="outline"
+            value={v ?? ""}
+            aria-label={`Voice ${VOICE_NAMES[i]}`}
+            onValueChange={(g) => g && set(draft.voices.map((x, j) => (j === i ? (g as Gender) : x)))}
+          >
+            <ToggleGroupItem value="female" className="rounded-l-full px-3 data-[state=on]:bg-foreground data-[state=on]:text-background">
+              Female
+            </ToggleGroupItem>
+            <ToggleGroupItem value="male" className="rounded-r-full px-3 data-[state=on]:bg-foreground data-[state=on]:text-background">
+              Male
+            </ToggleGroupItem>
+          </ToggleGroup>
+          {i >= 2 ? (
+            <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label={`Remove voice ${VOICE_NAMES[i]}`} onClick={() => set(draft.voices.filter((_, j) => j !== i))}>
+              <X aria-hidden />
+            </Button>
+          ) : (
+            <span className="size-8" aria-hidden />
+          )}
+        </div>
+      ))}
+      {draft.voices.length < MAX_VOICES && (
+        <Button variant="ghost" size="sm" className="self-start rounded-full px-2 text-xs text-muted-foreground" onClick={() => set([...draft.voices, null])}>
+          <Plus aria-hidden />
+          Add a third voice
+        </Button>
+      )}
     </div>
   );
 }
