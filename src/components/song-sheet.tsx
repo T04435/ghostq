@@ -229,8 +229,10 @@ export function SongSheet({
           </>
         )}
       </Card>
-      <SidePanel open={open} onOpenChange={setOpen}>
-          <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md" aria-label="Receipts">
+      {/* Not modal: no overlay or blur, and the page still scrolls, so the lines using a receipt stay in view beside it.
+          Clicks on the page (another tag) keep it open; the close button or Escape shuts it. */}
+      <SidePanel open={open} onOpenChange={setOpen} modal={false}>
+          <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md" aria-label="Receipts" onInteractOutside={(e) => e.preventDefault()} onOpenAutoFocus={(e) => e.preventDefault()}>
             <SheetHeader className="border-b pr-12">
               <SheetTitle className="text-[15px]">Receipts</SheetTitle>
               <SheetDescription className="text-xs">
