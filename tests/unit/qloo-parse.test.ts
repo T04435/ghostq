@@ -17,7 +17,7 @@ describe("parseSearch", () => {
       ],
     };
     expect(parseSearch(json)).toEqual([
-      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, description: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
+      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, description: null, wikidataId: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
     ]);
   });
 

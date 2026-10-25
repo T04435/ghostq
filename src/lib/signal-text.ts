@@ -14,7 +14,8 @@ const ARTIST_PHRASE = new RegExp(String.raw`\s*,?\s*\b${POINTER}\s+(?:A\d+(?:\s*
  */
 export function namesForIds(text: string, signals: Signal[]): string {
   const byId = new Map(signals.map((s) => [s.id, s]));
-  const isArtist = (id: string) => byId.get(id)?.kind === "artist";
+  // Artist ids are dropped (never named to the singer); voice ids too, since the sentence already says how they sing.
+  const isArtist = (id: string) => byId.get(id)?.kind === "artist" || byId.get(id)?.kind === "voice";
   const name = (id: string) => byId.get(id)?.label.trim() ?? id;
   return text
     .replace(ARTIST_PHRASE, (m) => (m.match(/A\d+/g) ?? []).every((id) => byId.has(id) ? isArtist(id) : true) ? "" : m)

@@ -59,7 +59,7 @@ export function SavedSong({
       <Collapsible className="rounded-lg border p-4">
         <CollapsibleTrigger className="group/research flex w-full cursor-pointer items-center gap-2 rounded-md text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <ChevronRight className="size-4 transition-transform group-aria-expanded/research:rotate-90" aria-hidden />
-          How GhostQ researched this song ({steps.filter((s) => s.kind === "step" && s.tool !== "craft_pass").length} Qloo steps)
+          How GhostQ researched this song ({steps.filter((s) => s.kind === "step" && s.tool !== "craft_pass" && s.tool !== "vocal_style").length} Qloo steps)
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-4">
           <RunSteps items={steps} />

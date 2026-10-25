@@ -43,4 +43,5 @@ export const TOOL_LABELS: Record<string, string> = {
   fan_audiences: "Your fans' lifestyles",
   ready_to_write: "Pick the signals for the song",
   craft_pass: "Craft pass: hook, syllables, rhyme, filler",
+  vocal_style: "How they sing",
 };

@@ -6,7 +6,7 @@ import { z } from "zod";
 const tagRef = z.object({ id: z.string().optional(), tag_id: z.string().optional(), name: z.string().optional(), type: z.string().optional() });
 
 /** Spotify id: under properties.external on /search, top-level external on insights. Its shape varies (an object, a list, other fields), so it's read leniently. */
-const external = z.object({ spotify: z.unknown(), musicbrainz: z.unknown() }).partial();
+const external = z.object({ spotify: z.unknown(), musicbrainz: z.unknown(), wikidata: z.unknown() }).partial();
 
 function idsOf(value: unknown): string[] {
   const items = Array.isArray(value) ? value : [value];
@@ -34,6 +34,8 @@ export type QlooEntity = {
   musicbrainzId: string | null;
   /** Qloo's one-line description ("Lorde is a New Zealand singer-songwriter…"): where the artist is from, for now. */
   description?: string | null;
+  /** Wikidata id (Q…): the artist's Wikipedia article, for how they sing (server/vocal-style.ts). */
+  wikidataId?: string | null;
 };
 
 function toEntity(e: z.infer<typeof entity>): QlooEntity {
@@ -45,6 +47,8 @@ function toEntity(e: z.infer<typeof entity>): QlooEntity {
     spotifyIds: [...idsOf(e.properties?.external?.spotify), ...idsOf(e.external?.spotify)],
     musicbrainzId: [...idsOf(e.properties?.external?.musicbrainz), ...idsOf(e.external?.musicbrainz)][0] ?? null,
     description: e.properties?.short_description ?? null,
+    // Qloo writes it in lower case ("q13476175"); Wikidata's ids are "Q…".
+    wikidataId: [...idsOf(e.properties?.external?.wikidata), ...idsOf(e.external?.wikidata)][0]?.toUpperCase() ?? null,
     tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
   };
 }

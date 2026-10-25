@@ -56,3 +56,14 @@ describe("withoutArtistNames", () => {
     expect(withoutArtistNames("Sung softly, like Metronomy.", ["Metronomy", "The xx"])).toBe("Sung softly.");
   });
 });
+
+describe("namesForIds with a voice signal", () => {
+  it("drops the voice id instead of pasting its whole note", async () => {
+    const { namesForIds } = await import("@/lib/signal-text");
+    const signals = [
+      { id: "V1", kind: "voice" as const, label: "Contralto register with a smoky, restrained timbre", source: "Wikipedia", value: null },
+      { id: "S1", kind: "style" as const, label: "Art Pop", source: "Qloo", value: null },
+    ];
+    expect(namesForIds("Sing it in a smoky contralto (V1), close and layered (S1).", signals)).toBe("Sing it in a smoky contralto, close and layered (Art Pop).");
+  });
+});

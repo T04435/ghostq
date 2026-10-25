@@ -39,6 +39,7 @@ const KIND_LABEL: Record<Signal["kind"], string> = {
   audience: "Lifestyle",
   crowd: "Crowd",
   home: "Home (voice)",
+  voice: "How they sing",
 };
 
 /**

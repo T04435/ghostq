@@ -1,5 +1,5 @@
 /** A piece of Qloo taste data the song may cite. Ids are short ("T3") so the writer can quote them. */
-export type SignalKind = "theme" | "style" | "genre" | "artist" | "movie" | "book" | "audience" | "crowd" | "home";
+export type SignalKind = "theme" | "style" | "genre" | "artist" | "movie" | "book" | "audience" | "crowd" | "home" | "voice";
 
 export type Signal = {
   id: string;
@@ -25,6 +25,7 @@ const PREFIX: Record<SignalKind, string> = {
   audience: "H",
   crowd: "C",
   home: "O",
+  voice: "V",
 };
 
 /** Collects signals across tool calls. One per kind and label: a repeat keeps the first id. */
