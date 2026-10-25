@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { FilterSelect, SearchField } from "@/components/search-filter";
 import { SongCard } from "@/components/song-card";
@@ -17,15 +17,13 @@ const TYPES: [string, string][] = [
 ];
 const typeOf = (s: SongSummary) => (s.remixOf ? "remix" : s.featuring ? "collab" : "original");
 
-/** The public Library: every saved song, with search, filters and play in place. */
+/** The public Library: every saved song, with search and filters; a sung song plays in the QPlayer. */
 export function LibraryList({ songs }: { songs: SongSummary[] }) {
   const [query, setQuery] = useState("");
   const [artist, setArtist] = useState(ALL);
   const [city, setCity] = useState(ALL);
   const [language, setLanguage] = useState(ALL);
   const [type, setType] = useState(ALL);
-  const [playing, setPlaying] = useState<string | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
 
   const options = useMemo(
     () => ({
@@ -48,19 +46,6 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
     );
   }, [songs, query, artist, city, language, type]);
 
-  function toggle(song: SongSummary) {
-    const el = audio.current;
-    if (!el) return;
-    if (playing === song.id) {
-      el.pause();
-      setPlaying(null);
-      return;
-    }
-    el.src = `/api/songs/${song.id}/audio?v=${encodeURIComponent(song.audioVersion ?? "")}`;
-    void el.play();
-    setPlaying(song.id);
-  }
-
   if (!songs.length) {
     return (
       <EmptyState
@@ -74,10 +59,6 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* One shared player, so only one song plays at a time. */}
-      <audio ref={audio} onEnded={() => setPlaying(null)} className="hidden">
-        <track kind="captions" />
-      </audio>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <Label htmlFor="lib-search" className="sr-only">
@@ -101,7 +82,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
       </div>
       <div className="flex flex-col gap-2">
         {shown.map((s) => (
-          <SongCard key={s.id} song={s} playing={playing === s.id} onToggle={() => toggle(s)} />
+          <SongCard key={s.id} song={s} actions />
         ))}
       </div>
       {shown.length === 0 && <EmptyState title="No songs match" body="Clear a filter or the search." />}

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Pixel, Hanken_Grotesk, Red_Hat_Mono } from "next/font/google";
+import { PlayerProvider } from "@/components/qplayer/player-context";
+import { QPlayer } from "@/components/qplayer/qplayer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,10 +25,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${hanken.variable} ${redHatMono.variable} ${geistPixel.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <TooltipProvider>
-          <SiteHeader />
-          {/* Dark mode follows the system through CSS alone (ghostq-theme.css). Each page lays out its own frame. */}
-          <main className="flex w-full flex-1 flex-col">{children}</main>
-          <SiteFooter />
+          {/* One audio element for the site: a song keeps playing in the QPlayer from page to page. */}
+          <PlayerProvider>
+            <SiteHeader />
+            <QPlayer />
+            {/* Dark mode follows the system through CSS alone (ghostq-theme.css). Each page lays out its own frame. */}
+            <main className="flex w-full flex-1 flex-col">{children}</main>
+            <SiteFooter />
+          </PlayerProvider>
         </TooltipProvider>
       </body>
     </html>
