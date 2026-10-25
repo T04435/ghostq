@@ -102,7 +102,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Rewrite one section, keeping the rest. Edit a line and see whether its receipts still hold.
 - Done when: the chord check passes on every new song, the craft pass runs and is visible, and one section can be rewritten on its own.
 
-## Brand
+## Brand (ported 25 Oct)
+
+- Built: the GhostQ Design System (direction 1b, graphite and lime) ported 1:1 from its Claude Design source: tokens, fonts (Hanken Grotesk, Red Hat Mono, Geist Pixel), the crowd-grid logo and receipt glyphs, every component, and every screen at 390/768/1440 in light and dark. New Landing at /, Write moved to /write. Not built: Sing Along (designed, a feature of its own) and the sticky QPlayer.
+
 
 - Port the finished GhostQ brand into the app 1:1 from its design-system source: tokens first, then each component, then each screen (Write, the live run and its questions, the song sheet, the song page, Library, How it works).
 - Check AA contrast and keyboard use at 390, 768 and 1440 px.
