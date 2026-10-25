@@ -5,7 +5,7 @@ import { cn } from "cn";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { InlineCitation, InlineCitationCard, InlineCitationCardBody, InlineCitationText } from "@/components/ai-elements/inline-citation";
-import { isQloo, KIND_LETTER, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark } from "@/components/brand/receipt";
+import { isQloo, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark } from "@/components/brand/receipt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,8 +34,8 @@ export function sideName(sheet: Sheet, side: NonNullable<Signal["side"]>): strin
 
 /**
  * ONE song sheet (the DS's SongSheet, hand-written ChordPro layout on shadcn Card): the header (title, credit, key and
- * tempo, the draft label, the feel), then chords over lyrics with a receipt chip on every line under a legend of the
- * glyphs. Clicking a chip (or "Receipts") opens the receipts in a side Sheet, one column, the clicked one highlighted
+ * tempo, the draft label, the feel), then chords over lyrics with a receipt chip on every line (no glyph legend: the
+ * panel's group headings name each kind). Clicking a chip (or "Receipts") opens the receipts in a side Sheet, one column, the clicked one highlighted
  * and scrolled to (the user's call, 25 Oct); hover still previews a chip. The brief lives in the rail (SongBrief).
  * `compact` drops the feel and actions (RemixCompare); `changed` marks rewritten lines ("s:l" keys) for a diff.
  */
@@ -145,15 +145,6 @@ export function SongSheet({
 
         <div className="min-w-0">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 px-(--sheet-x) pt-3.5 text-[11px] text-muted-foreground" aria-hidden>
-              {KIND_ORDER.filter((k) => k !== "home" && k !== "voice" ? true : groups.some((g) => g.kind === k)).map((k) => (
-                <span key={k} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                  <KindGlyph kind={k} ink="var(--foreground)" dim={0.16} size={13} />
-                  <span className="font-mono text-foreground">{KIND_LETTER[k]}</span>
-                  {KIND_NAME[k]}
-                </span>
-              ))}
-            </div>
             <div className="flex flex-col gap-2 px-(--sheet-x) pt-1 pb-6">
               {sheet.sections.map((section, si) => (
                 <section key={`${section.name}-${si}`} className="flex flex-col gap-3 pt-5">
