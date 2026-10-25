@@ -1,7 +1,9 @@
 "use client";
 
 import { Plan, PlanContent, PlanDescription, PlanFooter, PlanHeader, PlanTitle, PlanTrigger } from "@/components/ai-elements/plan";
+import { AgentTag } from "@/components/brand/agent-tag";
 import { ReceiptChip } from "@/components/brand/receipt";
+import { AGENT_NAME_INLINE } from "@/lib/agent-persona";
 import { AgentNote, StatusLine, StatusPill, StepCard, StepNumber, type StepStatus } from "@/components/step";
 import { Trace } from "@/components/ui/trace";
 import type { RunEvent } from "@/lib/run-events";
@@ -141,7 +143,7 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
   );
 }
 
-/** The agent's pick (its ready_to_write call) as AI Elements' Plan: the angle, and the signals the song rests on. */
+/** The Ghost's pick (its ready_to_write call) as AI Elements' Plan: the angle, and the signals the song rests on. */
 function PickPlan({ n, item, pick }: { n: number; item: Step; pick: Pick }) {
   const streaming = item.status === "running";
   const byId = new Map(item.signals.map((s) => [s.id, s]));
@@ -150,8 +152,8 @@ function PickPlan({ n, item, pick }: { n: number; item: Step; pick: Pick }) {
     <Plan defaultOpen isStreaming={streaming} className="gap-3 py-3.5">
       <PlanHeader className="items-center px-4">
         <span className="inline-flex min-w-0 items-center gap-2.5">
-          <StepNumber n={n} />
-          <PlanTitle className="text-sm font-semibold">The agent&apos;s pick</PlanTitle>
+          <StepNumber n={n} running={streaming} />
+          <PlanTitle className="text-sm font-semibold">{`Plan picked by ${AGENT_NAME_INLINE} · ${ids.length} signal${ids.length === 1 ? "" : "s"}`}</PlanTitle>
         </span>
         <span className="flex items-center gap-1">
           <StatusPill status={streaming ? "running" : item.status === "failed" ? "failed" : "done"} label={streaming ? "Picking" : undefined} />
@@ -168,7 +170,7 @@ function PickPlan({ n, item, pick }: { n: number; item: Step; pick: Pick }) {
         </ul>
       </PlanContent>
       <PlanFooter className="border-t px-4 pt-2 pb-0">
-        <span className="font-mono text-[10px] tracking-[.04em] text-muted-foreground">AGENT</span>
+        <AgentTag className="text-xs" />
       </PlanFooter>
     </Plan>
   );

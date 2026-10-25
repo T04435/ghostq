@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MeetTheGhost } from "@/components/brand/meet-the-ghost";
 import { CompareView } from "@/components/compare-view";
 import { cn } from "cn";
 
@@ -9,7 +10,7 @@ const STEPS = [
   { title: "Your sound", body: "You name an artist and pick them from Spotify’s results. A story seed and a “feat.” artist are optional; nothing else is asked.", src: "Spotify" },
   { title: "Your crowd", body: "Qloo tells us where their fans’ taste is strongest and which ages they skew to. The language is the artist’s own, else the city’s.", src: "Qloo" },
   { title: "Their world", body: "What that crowd loves across music, film, books and lifestyle, each with its affinity score.", src: "Qloo" },
-  { title: "The agent chooses", body: "It decides which Qloo call to make next from what it has found, then picks the signals the song rests on and says why as it goes.", src: "Agent" },
+  { title: "The Ghost chooses", body: "It decides which Qloo call to make next from what it has found, then picks the signals the song rests on and says why as it goes.", src: "Agent" },
   {
     title: "The song, with receipts",
     body: "Title, key, tempo, chords, lyrics, melody and brief. Every line cites the signal behind it; code checks each citation is real and no real artist is named.",
@@ -61,6 +62,8 @@ export default function HowPage() {
           </li>
         ))}
       </ol>
+
+      <MeetTheGhost />
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
