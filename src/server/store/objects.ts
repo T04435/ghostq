@@ -38,3 +38,20 @@ export async function getObject(key: string): Promise<Buffer | null> {
     throw error;
   }
 }
+
+/**
+ * An object as a stream, optionally one byte range ("bytes=0-1023"), so audio starts playing while the rest arrives and
+ * seeking only fetches what it needs. Null when the object doesn't exist.
+ */
+export async function getObjectStream(key: string, range?: string | null): Promise<{ body: ReadableStream; length?: number; contentRange?: string; total?: number } | null> {
+  try {
+    const out = await s3().send(new GetObjectCommand({ Bucket: bucket(), Key: key, ...(range ? { Range: range } : {}) }));
+    if (!out.Body) return null;
+    const total = out.ContentRange ? Number(out.ContentRange.split("/")[1]) : out.ContentLength;
+    return { body: out.Body.transformToWebStream(), length: out.ContentLength, contentRange: out.ContentRange, total };
+  } catch (error) {
+    if (error instanceof NoSuchKey) return null;
+    if (error && typeof error === "object" && "name" in error && error.name === "InvalidRange") return null;
+    throw error;
+  }
+}
