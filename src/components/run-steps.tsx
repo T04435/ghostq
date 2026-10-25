@@ -132,7 +132,7 @@ function StepRow({ item, title }: { item: Step; title: string }) {
         <TraceLine status={lineStatus(item.status)}>
           <StepIcon status={item.status} />
           <TraceTitle>{title}</TraceTitle>
-          <TraceDescription>{item.tool === "craft_pass" ? "GhostQ" : "Qloo"}</TraceDescription>
+          <TraceDescription>{item.tool === "craft_pass" ? "GhostQ" : item.tool === "vocal_style" ? "Wikipedia" : "Qloo"}</TraceDescription>
         </TraceLine>
       </TraceCollapsibleTrigger>
       <TraceCollapsibleContent>

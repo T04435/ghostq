@@ -14,6 +14,7 @@ import { idsIn } from "@/lib/signal-text";
 import type { VocalMatch } from "@/lib/voice";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { nextAreas, readCrowd } from "@/server/crowd";
+import { vocalStyle } from "@/server/vocal-style";
 import { artistProfile } from "@/server/musicbrainz";
 import { getSong, newSongId, saveSong } from "@/server/store/songs";
 import { compareArtists, genresFromWords, searchArtist } from "@/server/qloo/api";
@@ -46,7 +47,7 @@ export const WRITER_RULES = `Rules for the song:
 - Chords fit the key (diatonic, or a common borrowed chord such as bVII or iv in major). A section that repeats (every chorus, every verse) repeats its chord progression. Melody notes are practical directions a musician can use.
 - Craft: the title is the hook, sung on the chorus's first or last line. Each verse matches the first verse's syllable count line by line (within 4), so one melody fits both. Every section rhymes (end rhyme or, in Spanish and Portuguese, assonance). Sung lines stay under 18 syllables. No filler ("oh oh", "yeah yeah", "baby baby").
 - Genre: a few words naming the music's genre, built from the artist's own genre and style signals and citing their ids. Be specific (a style, not just "pop"). A singer gets exactly this, so it decides what the song sounds like.
-- Vocal direction: 1–2 sentences on how the voices given above perform this song: sung, rapped, spoken, whispered, harmonies, call and answer, who takes which part. Make it fit the genre and cite signal ids. Use exactly the voices given: never add, drop or change one. Never name an artist or cite an artist id here.`;
+- Vocal direction: when there's a "voice" signal (V…), that's how the artist actually sings: build the vocal direction on it and cite it, describing the delivery in technique words (never naming or comparing to anyone). Then 1–2 sentences on how the voices given above perform this song: sung, rapped, spoken, whispered, harmonies, call and answer, who takes which part. Make it fit the genre and cite signal ids. Use exactly the voices given: never add, drop or change one. Never name an artist or cite an artist id here.`;
 
 type Emit = (event: RunEvent) => void;
 
@@ -203,6 +204,8 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const artistName = x.act?.name ?? x.name;
   emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
+  // How they sing (Wikipedia, by Qloo's Wikidata id), read alongside the crowd; it lands as its own step below.
+  const singing = vocalStyle(x.act?.wikidataId, languageFor(countryFromDescription(x.act?.description)?.countryCode ?? (x.homeFromTags ? countryCodeFor(x.homeFromTags) : null)));
   const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null)]);
   // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's, found by Qloo's id.
   x.vocals = { ...profile.voices, source: `${profile.voices.source} (Qloo has no voice data)` };
@@ -229,6 +232,18 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const picked = [crowd.from.place === "remix" && "the city", crowd.from.ages === "remix" && "the ages"].filter(Boolean).join(" and ");
   emit({ type: "step-end", id: `read-crowd${sfx}`, ok: true, summary: `Writing as ${artistName}${home ? ` (from ${describeHome(home)})` : ""} for ${describeCrowd(crowd)}, in ${crowd.language}.${yours ? ` Qloo had no data on ${yours}, so those are your answers.` : ""}${picked ? ` Remix: ${picked} picked by you; the rest is Qloo's.` : ""}`, signals: crowdSignals, raw: crowd });
   emit({ type: "crowd", artist: artistName, crowd, ...(state.collab ? { who: x.key } : {}) });
+
+  emit({ type: "step-start", id: `vocal-style${sfx}`, tool: "vocal_style", label: TOOL_LABELS.vocal_style, input: { artist: artistName }, ...whose(state, x.key, artistName) });
+  // The note must describe the voice, never name it: one that names the artist is dropped.
+  const style = await singing.then((v) => (v && !v.delivery.toLowerCase().includes(artistName.toLowerCase()) ? v : null));
+  const voice = style ? [state.signals.add("voice", style.delivery, `Wikipedia: ${artistName}'s article, condensed (CC BY-SA, ${style.url})`, null, side)] : [];
+  emit({
+    type: "step-end",
+    id: `vocal-style${sfx}`,
+    ok: Boolean(style),
+    summary: style ? `How ${artistName} sings, from Wikipedia: ${style.delivery}` : x.act?.wikidataId ? `Wikipedia doesn't describe how ${artistName} sings, so the vocal direction rests on the genre and style signals.` : `Qloo has no Wikipedia link for ${artistName}, so the vocal direction rests on the genre and style signals.`,
+    signals: voice,
+  });
   return true;
 }
 
@@ -564,7 +579,7 @@ async function write(state: RunState, emit: Emit, abortSignal?: AbortSignal): Pr
     language: songLanguage(state),
     // What the page and the singer need: every cited signal, the chosen ones, and all the artist's genre and style
     // tags (the singing prompt's genre comes from them; before 23 Oct only line receipts were kept, so it was lost).
-    signals: signals.filter((s) => cited.has(s.id) || state.chosen?.signalIds.includes(s.id) || s.kind === "genre" || s.kind === "style"),
+    signals: signals.filter((s) => cited.has(s.id) || state.chosen?.signalIds.includes(s.id) || s.kind === "genre" || s.kind === "style" || s.kind === "voice"),
     warnings: problems.map((p) => `${p.where}: ${p.issue}`),
   };
 }
