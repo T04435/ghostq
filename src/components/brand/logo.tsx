@@ -5,9 +5,14 @@ import { cn } from "cn";
  * signal Qloo reads from the crowd) and cell (3,3) is a rounded tail at −45°, as wide as a dot and 1.6× as long, also
  * lit: it makes the Q. Gap is about a third of a cell; minimum size 16 px.
  */
-export function Logo({ size = 28, ink = "var(--foreground)", lit = "var(--signal)", className }: { size?: number; ink?: string; lit?: string; className?: string }) {
+/** The mark's geometry at a size: the gap (about a third of a cell, to the nearest half pixel, at least 1.5) and the cell. */
+export function markGeometry(size: number): { gap: number; cell: number } {
   const gap = Math.max(1.5, Math.round(size * 0.11 * 2) / 2);
-  const cell = (size - 2 * gap) / 3;
+  return { gap, cell: (size - 2 * gap) / 3 };
+}
+
+export function Logo({ size = 28, ink = "var(--foreground)", lit = "var(--signal)", className }: { size?: number; ink?: string; lit?: string; className?: string }) {
+  const { gap, cell } = markGeometry(size);
   return (
     <span aria-hidden className={cn("grid flex-none grid-cols-3", className)} style={{ width: size, height: size, gap }}>
       {Array.from({ length: 9 }, (_, i) => (
