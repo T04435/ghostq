@@ -75,6 +75,13 @@ function groupSteps(items: StepItem[]): Row[] {
 
 const STATUS: Record<Step["status"], StepStatus> = { running: "running", ok: "done", failed: "failed" };
 
+/**
+ * A step that came back empty ("Qloo has no data on…", "Wikipedia doesn't describe…") is "No data", not a red failure;
+ * only a real error (a timeout, a refusal) is "Failed".
+ */
+const statusOf = (item: { status: Step["status"]; summary?: string }): StepStatus =>
+  item.status === "failed" && /\b(no |none|nothing|doesn['’]t|didn['’]t|isn['’]t|not (yet|known|listed)|came back empty|has no)/i.test(item.summary ?? "") ? "nodata" : STATUS[item.status];
+
 /** Where a step's data came from: Qloo, except GhostQ's own craft pass and Wikipedia's "How they sing". */
 const sourceOf = (tool: string) => (tool === "craft_pass" ? "GhostQ" : tool === "vocal_style" ? "Wikipedia" : "Qloo");
 
@@ -131,7 +138,7 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
             key={item.key}
             n={n}
             title={item.label}
-            status={STATUS[item.status]}
+            status={statusOf(item)}
             summary={item.summary}
             source={sourceOf(item.tool)}
             receipts={item.signals}
