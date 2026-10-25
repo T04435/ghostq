@@ -15,6 +15,9 @@ export const AGE_BANDS = {
 export type AgeBand = keyof typeof AGE_BANDS;
 
 const answersSchema = z.object({
+  /** Qloo had no exact match for the Spotify pick: the Qloo artist the user chose from its candidates, or none. */
+  qlooId: z.string().trim().min(1).max(120).optional(),
+  noQloo: z.literal(true).optional(),
   /** The artist's sound in the user's words, when Qloo doesn't know the artist. */
   sound: z.string().trim().min(2).max(160).optional(),
   /** A city picked from Qloo's locality search. */
@@ -63,7 +66,10 @@ export const remixSchema = z
   })
   .refine((r) => r.place || r.ages, "Pick a city or ages for the remix");
 export type Remix = z.infer<typeof remixSchema>;
-export type AskField = "sound" | "place" | "ages";
+export type AskField = "qlooArtist" | "sound" | "place" | "ages";
+
+/** A Qloo candidate offered when the Spotify pick has no exact match on Qloo. */
+export type QlooOption = { id: string; name: string; description: string | null };
 
 /** Qloo's data on the fans, the user's answer when Qloo had none, or the crowd picked for a RemixQ. */
 export type CrowdSource = "qloo" | "you" | "remix";
