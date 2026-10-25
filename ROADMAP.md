@@ -51,6 +51,12 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Fix: probe Qloo's artist entity for hometown or origin, gender and members. Read those from Qloo first, and fall back to MusicBrainz per field only when Qloo has nothing. Receipts and the crowd card then name Qloo as the source.
 - Done when: for an artist Qloo knows, home and voices come from Qloo wherever Qloo has them, and MusicBrainz shows only as the named fallback.
 
+### F4. A proper share feature (logged 25 Oct, from the user)
+
+- Today: the song page shows its address as plain text ("localhost:3401/song/rsjagvkfic · shared link, no login"); the only action is the share block's "Copy share link".
+- Fix: a real share control on the song page (and after a write): copy link with feedback, the browser's native share sheet where available (navigator.share), and a share preview that shows the song (title, artist, crowd, draft label) as the OG image. Use the production URL, never localhost.
+- Done when: sharing from a phone opens the share sheet, the pasted link previews the song, and no raw URL text is shown as the "feature".
+
 ## 1. Rate limits and spend caps (first: blocks going live)
 
 - Per-visitor limits on `/api/write`, `/api/sing` and `/api/spotify`, with a plain message when one is hit and when to try again.
