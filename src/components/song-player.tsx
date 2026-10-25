@@ -1,15 +1,12 @@
 "use client";
 
-import { CircleAlert, Clock, Download, Info, Mic } from "lucide-react";
+import { CircleAlert, Clock, Info, LoaderCircle, Mic } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { VocalLinePicker, type VocalDraft } from "@/components/vocal-line-picker";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { leadLabel, VocalLinePicker, type VocalDraft } from "@/components/vocal-line-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import { draftLabel } from "@/lib/draft-label";
 import type { SongSheet } from "@/lib/song-sheet";
 
@@ -19,9 +16,10 @@ const SongAudio = dynamic(() => import("@/components/song-audio"), { ssr: false,
 export type SingState = { status: "idle" | "singing" | "done" | "error"; url?: string; message?: string; retry?: boolean; budget?: boolean };
 
 /**
- * The DS's Player (on AI Elements' Audio Player): the voices to sing with, then by state: idle (Sing it), waiting
- * (Lyria is singing), ready (the track, Sing again), failed (an Alert inside, the budget one in warning colours).
- * The draft label closes it, with the watermark tag once sung. `readOnly`: a saved song that's sung just plays.
+ * The DS's Player, 1:1: the lead voice (idle and ready), then by state: idle (Sing it and its note), waiting (Lyria is
+ * singing, about 50 s), ready (play, progress, times, download, then Sing again), failed (a soft destructive box, or the
+ * warning one when the budget is spent). The draft label closes it, with the watermark tag once sung. `readOnly`: a
+ * saved song that's sung just plays.
  */
 export function SongPlayer({
   sheet,
@@ -41,75 +39,88 @@ export function SongPlayer({
   onSing: () => void;
 }) {
   const fileName = `${sheet.title.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() || "song"}.mp3`;
+  const collab = Boolean(sheet.featuring);
+  const voice = leadLabel(draft, collab);
+  const ready = song.status === "done" && song.url;
+  const showVoice = !readOnly && song.status !== "singing" && !(song.status === "error" && song.budget);
+
   return (
     <Card id="sing" className="scroll-mt-24 gap-4 p-[18px]" role="group" aria-label="Sing the song">
-      {!readOnly && song.status !== "singing" && (
-        <div className="flex flex-col gap-2.5">
-          <h3 className="text-[15px] font-semibold">{sheet.vocals.voices.length > 1 ? "Lead voices" : "Lead voice"}</h3>
-          <VocalLinePicker sheet={sheet} draft={draft} onChange={onDraft} />
-        </div>
-      )}
+      {showVoice && <VocalLinePicker sheet={sheet} draft={draft} onChange={onDraft} />}
 
-      {!readOnly && song.status === "singing" && (
-        <div className="flex flex-col gap-2.5">
-          <div className="h-1.5 overflow-hidden rounded-[3px] bg-muted" aria-hidden>
-            <div className="h-full w-[38%] animate-pulse rounded-[3px] bg-foreground" />
-          </div>
-          <span className="text-xs text-muted-foreground">A 2-minute track from Google Lyria · you can keep reading the sheet</span>
-        </div>
-      )}
-
-      {song.status === "done" && song.url && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <SongAudio src={song.url} />
-            </div>
-            <Button variant="ghost" size="icon" asChild className="text-foreground">
-              <a href={song.url} download={fileName} title="Download .mp3" aria-label="Download .mp3">
-                <Download aria-hidden />
-              </a>
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Sung and produced by Google Lyria from this sheet. AI-generated, with an inaudible SynthID watermark.</p>
-        </div>
-      )}
-
-      {!readOnly && (
+      {!readOnly && (song.status === "idle" || (song.status === "error" && !song.budget && !song.retry)) && (
         <div className="flex flex-wrap items-center gap-3">
-          <Button size={song.status === "done" ? "sm" : "default"} variant={song.status === "done" ? "outline" : "default"} onClick={onSing} disabled={song.status === "singing" || !canSing}>
-            {song.status === "singing" ? <Spinner /> : <Mic aria-hidden />}
-            {song.status === "singing" ? <span className="shimmer">Singing… (can take a few minutes)</span> : song.status === "done" ? "Sing again" : "Sing it"}
+          <Button onClick={onSing} disabled={!canSing} className="h-11 gap-2 rounded-full px-5 text-[15px] font-semibold">
+            <Mic aria-hidden />
+            Sing it
           </Button>
           <span className="min-w-40 flex-1 text-xs leading-[1.45] text-muted-foreground">
-            {!canSing ? "Choose every voice first." : song.status === "done" ? "Each sing costs credits." : "About a minute. A 2-minute track from Google Lyria. Each sing costs credits."}
+            {canSing ? "About a minute. A 2-minute track from Google Lyria. Each sing costs credits." : "Choose a lead voice first."}
           </span>
         </div>
       )}
 
-      {song.status === "error" && (
-        <Alert variant={song.budget ? "budget" : "destructive"}>
-          {song.budget ? <Clock aria-hidden /> : <CircleAlert aria-hidden />}
-          <AlertDescription className="flex flex-wrap items-center gap-3">
-            <span>{song.message}</span>
-            {song.budget && (
-              <Link href="/library" className="font-medium underline">
-                Listen to the songs in the Library
-              </Link>
-            )}
-            {song.retry && (
-              <Button size="xs" onClick={onSing} disabled={!canSing}>
+      {song.status === "error" && !song.budget && !song.retry && (
+        <p className="text-xs text-destructive" role="alert">
+          {song.message}
+        </p>
+      )}
+
+      {song.status === "singing" && (
+        <div className="flex flex-col gap-2.5" role="status">
+          <div className="flex items-center gap-2.5 text-sm font-semibold">
+            <LoaderCircle className="size-4 animate-spin" strokeWidth={2.5} aria-hidden />
+            Singing with Google Lyria · about 50 seconds
+          </div>
+          <div className="relative h-1.5 overflow-hidden rounded-[3px] bg-muted" aria-hidden>
+            <div className="absolute inset-y-0 left-0 w-[38%] animate-pulse rounded-[3px] bg-foreground" />
+          </div>
+          <span className="text-xs text-muted-foreground">{voice} · 2-minute track · you can keep reading the sheet</span>
+        </div>
+      )}
+
+      {ready && (
+        <div className="flex flex-col gap-3">
+          <SongAudio src={song.url!} voice={voice.toUpperCase()} fileName={fileName} />
+          {!readOnly && (
+            <div className="flex flex-wrap items-center justify-end gap-2.5">
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Button variant="outline" size="sm" className="h-[30px] rounded-full px-3 text-xs font-semibold" onClick={onSing} disabled={!canSing}>
+                  Sing again
+                </Button>
+                each sing costs credits
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {song.status === "error" && (song.budget || song.retry) && (
+        <div className={`flex flex-col gap-2.5 rounded-[10px] px-3.5 py-3 ${song.budget ? "bg-warning text-warning-foreground" : "bg-destructive-soft text-foreground"}`} role="alert">
+          <div className="flex items-start gap-2.5 text-[13px] leading-[1.45]">
+            {song.budget ? <Clock className="mt-px size-4 flex-none" aria-hidden /> : <CircleAlert className="mt-px size-4 flex-none text-destructive" aria-hidden />}
+            <span>
+              <strong>{song.budget ? "Today’s singing budget is used up." : "Singing didn’t go through."}</strong> {song.message}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {song.budget ? (
+              <Button asChild size="sm" className="h-8 rounded-full px-3.5 text-[13px] font-semibold">
+                <Link href="/library">Play an example</Link>
+              </Button>
+            ) : (
+              <Button size="sm" className="h-8 rounded-full px-3.5 text-[13px] font-semibold" onClick={onSing} disabled={!canSing}>
                 Try again
               </Button>
             )}
-          </AlertDescription>
-        </Alert>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-wrap items-start gap-2 border-t pt-3 text-xs leading-[1.45] text-muted-foreground">
         <Info className="mt-0.5 size-3 flex-none" strokeWidth={2.5} aria-hidden />
         <span className="min-w-0 flex-1">{draftLabel(sheet.artist, sheet.featuring?.artist)}</span>
-        {song.status === "done" && <Badge variant="outline">WATERMARKED · LYRIA</Badge>}
+        {ready && <span className="rounded-full border px-[7px] py-0.5 font-mono text-[10px] whitespace-nowrap">WATERMARKED · LYRIA</span>}
       </div>
     </Card>
   );
