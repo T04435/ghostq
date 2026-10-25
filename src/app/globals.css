@@ -192,9 +192,9 @@
 /*
  * Keyboard focus: the DS ring is lime, which on the light page (and on a lime button) is too faint to see (about
  * 1.2:1). Every focused control also gets a 2 px outline in the text colour, offset from it, so focus reads at well
- * over 3:1 in both themes. Unlayered, so it beats the outline-none utilities on the shadcn parts.
+ * over 3:1 in both themes. Important, so it beats the outline utilities on the shadcn parts (outline-none, outline-ring/50).
  */
 :focus-visible {
-  outline: 2px solid var(--foreground);
-  outline-offset: 2px;
+  outline: 2px solid var(--foreground) !important;
+  outline-offset: 2px !important;
 }
