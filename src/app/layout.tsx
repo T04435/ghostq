@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { versionText } from "@/lib/version";
-import "./globals.css";
+import "./ghostq-theme.css";
 
 // The DS type: Hanken Grotesk 400/500/600 for UI, Red Hat Mono 400/500 for chords and data, Geist Pixel (its ELSH axis
 // gives the Circle, Square and Grid cuts) for standalone readouts.
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <TooltipProvider>
           <SiteHeader />
-          {/* Dark mode follows the system through CSS alone (globals.css). Each page lays out its own frame. */}
+          {/* Dark mode follows the system through CSS alone (ghostq-theme.css). Each page lays out its own frame. */}
           <main className="flex w-full flex-1 flex-col">{children}</main>
           <SiteFooter />
         </TooltipProvider>
