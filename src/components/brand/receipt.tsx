@@ -124,7 +124,7 @@ export function ReceiptChip({
       variant="ghost"
       className={cn(
         "h-6 gap-[5px] rounded-full border-0 pr-[9px] pl-[7px] leading-none transition-colors duration-100 [&>svg]:size-auto!",
-        active ? (q ? "bg-foreground text-signal hover:bg-foreground hover:text-signal" : "bg-foreground text-background hover:bg-foreground hover:text-background") : q ? "bg-signal text-signal-foreground hover:bg-signal hover:text-signal-foreground" : "bg-muted text-foreground hover:bg-muted hover:text-foreground",
+        active ? (q ? "bg-signal-foreground text-signal hover:bg-signal-foreground hover:text-signal" : "bg-foreground text-background hover:bg-foreground hover:text-background") : q ? "bg-signal text-signal-foreground hover:bg-signal hover:text-signal-foreground" : "bg-muted text-foreground hover:bg-muted hover:text-foreground",
         as === "button" && "cursor-pointer outline-none focus-visible:ring-3 focus-visible:ring-ring",
         className,
       )}

@@ -266,7 +266,7 @@ export function SongSheet({
                           <span
                             className={cn(
                               "justify-self-start rounded-full px-1.5 py-0.5 font-mono text-[10.5px] font-semibold transition-colors",
-                              on ? (q ? "bg-foreground text-signal" : "bg-foreground text-background") : q ? "bg-signal text-signal-foreground" : "bg-muted text-foreground",
+                              on ? (q ? "bg-signal-foreground text-signal" : "bg-foreground text-background") : q ? "bg-signal text-signal-foreground" : "bg-muted text-foreground",
                             )}
                           >
                             {s.id}
