@@ -54,3 +54,13 @@ describe("songs saved before 23 Oct", () => {
     expect(toVocalLine("nonsense")).toBeNull();
   });
 });
+
+describe("directionFor (the lead the user picks)", () => {
+  it("keeps the writer's delivery, drops the old casting and says who sings now", async () => {
+    const { directionFor } = await import("@/components/vocal-line-picker");
+    const start = { instrumental: false, voices: ["male", "male"] as ("male" | "female")[], genre: "g", direction: "Punchy, half-rapped verses right on the dembow. Voice A takes Verse 1 and Voice B takes Verse 2. Both voices stack on the chorus." };
+    expect(directionFor(start, ["male", "male"])).toBe(start.direction);
+    expect(directionFor(start, ["male"])).toBe("Punchy, half-rapped verses right on the dembow. One male lead sings every part.");
+    expect(directionFor(start, ["female", "male"])).toContain("2 leads (female, male)");
+  });
+});

@@ -75,6 +75,8 @@ export function pickArtist(results: QlooEntity[], name: string, spotifyId?: stri
   const want = nameKey(name);
   const exact = results.find((r) => nameKey(r.name) === want);
   if (exact) return exact;
+  // With a Spotify pick, only that id or the exact name counts: "Yomil" once matched the duo "Yomil y El Dany" (25 Oct).
+  if (spotifyId) return undefined;
   return results.find((r) => {
     const got = nameKey(r.name);
     const [short, long] = got.length < want.length ? [got, want] : [want, got];
