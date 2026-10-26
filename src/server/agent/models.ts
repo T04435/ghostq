@@ -4,12 +4,10 @@ import "server-only";
  * Model ids on Vercel AI Gateway (same as Busk Map, checked against the gateway's model list on 2026-10-15).
  * - agent: picks the Qloo calls and the signals
  * - writer: writes the song sheet
- * - plain: the no-data comparison on /how
  */
 export const MODELS = {
   agent: "anthropic/claude-sonnet-5.5",
   writer: "anthropic/claude-sonnet-5.5",
-  plain: "anthropic/claude-sonnet-5.5",
 } as const;
 
 /** Sonnet 5.5 takes adaptive thinking only; summaries make the agent's reasoning readable on the page. */

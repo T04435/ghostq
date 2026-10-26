@@ -126,7 +126,7 @@ export default function LandingPage() {
       </section>
 
       <section className="mx-auto w-full max-w-[1200px] px-(--page-x) pb-22">
-        <div className="flex flex-col items-start gap-5 border-t pt-14">
+        <div className="flex flex-col items-start gap-5 pt-14">
           <Logo size={56} />
           <h2 className="max-w-[700px] text-[clamp(30px,4vw,56px)] leading-none font-semibold tracking-[-0.045em] text-pretty">Who is this song for? Now you can answer.</h2>
           <Button size="lg" asChild>
@@ -206,7 +206,7 @@ async function HeroSong() {
 /** A feature band: its name, a heading and a line on the left; a live example from the Library on the right. */
 function Feature({ label, icon, title, body, cta, flip = false, children }: { label: string; icon: React.ReactNode; title: string; body: string; cta?: { href: string; label: string }; flip?: boolean; children: React.ReactNode }) {
   return (
-    <section className="mx-auto grid w-full max-w-[1200px] items-center gap-8 border-t px-(--page-x) py-14 desk:grid-cols-2 desk:gap-14 sm:py-18">
+    <section className="mx-auto grid w-full max-w-[1200px] items-center gap-8 px-(--page-x) py-14 desk:grid-cols-2 desk:gap-14 sm:py-18">
       <div className={cn("flex max-w-[520px] flex-col gap-3.5", flip && "desk:order-2")}>
         {/* The feature's name is the heading, on the brand's grid (the user, 26 Oct: no label pill above it). */}
         <h2 className="flex items-center gap-4">
