@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AGE_BANDS } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { SongSummary } from "@/lib/song-summary";
+import { SongTitle } from "@/components/song-title";
 
 export type SongCardSong = Pick<SongSummary, "id" | "title" | "artist" | "featuring" | "remixOf" | "crowd" | "language" | "sung" | "audioVersion" | "mine"> &
   Partial<Pick<SongSummary, "key" | "tempo" | "receiptCount" | "receipts">> & { remixCount?: number };
@@ -57,12 +58,7 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
         )}
         <div className="flex min-w-0 flex-col gap-1 pt-0.5">
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-            <Link href={`/song/${song.id}`} className="pixel-circle text-[17px] leading-tight wrap-anywhere hover:underline">
-              {song.title}
-            </Link>
-            <span className="pixel-circle text-[13px] leading-tight wrap-anywhere text-muted-foreground">
-              {song.featuring ? `${song.artist} feat. ${song.featuring}` : song.artist}
-            </span>
+            <SongTitle title={song.title} artist={song.featuring ? `${song.artist} feat. ${song.featuring}` : song.artist} href={`/song/${song.id}`} />
             {song.mine && (
               <Badge variant="strong" className="self-center">
                 YOURS

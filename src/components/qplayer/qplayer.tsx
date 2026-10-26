@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Maximize, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type MouseEvent } from "react";
@@ -9,6 +9,7 @@ import { FullScreenSingAlong } from "@/components/sing-along/full-screen";
 import { CountIn, gapLabel, LiveWords } from "@/components/sing-along/live-line";
 import { useSavedSheet, useSingAlong } from "@/components/sing-along/use-sing-along";
 import { draftLabel } from "@/lib/draft-label";
+import { SongTitle } from "@/components/song-title";
 
 const NO_SHEET = { tempo: 90, sections: [] };
 const phone = () => window.matchMedia("(max-width: 639px)").matches;
@@ -71,13 +72,9 @@ export function QPlayer() {
       </button>
       <Link href={`/song/${song.id}`} onClick={expand} className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-[1.15] outline-none focus-visible:underline">
         {/* Title and artist in Geist Pixel Circle, as on the Library card and the sheet (the user, 26 Oct). */}
-        <span className="truncate text-[13px]">
-          <span className="pixel-circle text-[15px]">{song.title}</span>
-          <span className="opacity-75">
-            {" "}
-            <span className="pixel-circle text-[13px]">{credit}</span>
-            {(lineText || between) && " · GhostQ draft"}
-          </span>
+        <span className="flex min-w-0 items-baseline gap-2 text-[13px]">
+          <SongTitle size="sm" title={song.title} artist={credit} truncate className="[&>span:last-child]:text-current [&>span:last-child]:opacity-75" />
+          {(lineText || between) && <span className="flex-none opacity-75">· GhostQ draft</span>}
         </span>
         {lineText ? (
           <LiveWords text={lineText} line={sing!.timing.lines[live!.line]} time={sing!.time} className="flex-nowrap overflow-hidden text-xs leading-[1.2] font-medium whitespace-nowrap" />
@@ -111,7 +108,7 @@ export function QPlayer() {
       </Link>
       {sheet && (
         <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={icon}>
-          <ChevronUp className="size-4" aria-hidden />
+          <Maximize className="size-3.5" aria-hidden />
         </button>
       )}
       <button type="button" onClick={() => player.setMuted(!muted)} title={muted ? "Unmute" : "Mute"} aria-label={muted ? "Unmute" : "Mute"} aria-pressed={muted} className={icon}>

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AGE_BANDS } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import { getSong, listSongs } from "@/server/store/songs";
+import { SongTitle } from "@/components/song-title";
 
 export const metadata: Metadata = {
   title: "GhostQ · write the song a crowd is already waiting for",
@@ -168,6 +169,7 @@ async function HeroSong() {
   return (
     <>
       <Link href={`/song/${song.id}`} className="flex flex-col gap-3.5 rounded-lg border bg-card p-5 text-foreground shadow-[0_24px_60px_rgba(0,0,0,.08)] hover:border-foreground">
+        <SongTitle title={sheet.title} artist={sheet.featuring ? `${sheet.artist} feat. ${sheet.featuring.artist}` : sheet.artist} />
         <div className="flex items-center justify-between gap-2">
           <span className="rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold tracking-[.05em] text-card uppercase">{section.name}</span>
           <span className="pixel-grid text-base whitespace-nowrap">
@@ -205,7 +207,7 @@ async function HeroSong() {
         </div>
       </Link>
       <span className="px-1 text-xs text-muted-foreground">
-        From “{sheet.title}”, a {draftLabel(sheet.artist)}. Lyrics are original.
+        A {draftLabel(sheet.artist)}. Lyrics are original.
       </span>
     </>
   );

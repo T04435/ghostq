@@ -11,6 +11,7 @@ import { loadLastRun, type LastRun } from "@/lib/last-run";
 import type { PlainSong } from "@/lib/plain-song";
 import type { SongSheet } from "@/lib/song-sheet";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
+import { SongTitle } from "@/components/song-title";
 
 /** The lines the compare shows: the chorus first, then the first verse (the DS's order), else the opening sections. */
 function compareLines<L>(sections: { name: string; lines: L[] }[]): L[] {
@@ -99,7 +100,9 @@ export function CompareView() {
       </div>
       <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-foreground bg-card p-5">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[13px] font-semibold">GhostQ · {sheet.title}</span>
+          <span className="flex min-w-0 items-baseline gap-2 text-[13px] font-semibold">
+            GhostQ · <SongTitle size="sm" title={sheet.title} artist={sheet.artist} />
+          </span>
           <SignalCount n={sheet.signals.length} lime />
         </div>
         <div className="flex flex-col gap-2">
