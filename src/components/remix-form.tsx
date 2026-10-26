@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, GitFork, MapPin, Search, X } from "lucide-react";
+import { Check, MapPin, Search, X } from "lucide-react";
 import { useState } from "react";
+import { RemixGlyph } from "@/components/brand/receipt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ export function RemixForm({
     <Card className="gap-4 p-[18px]">
       <div className="flex flex-col gap-1">
         <h2 className="inline-flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
-          <GitFork className="size-4 flex-none" aria-hidden />
+          <RemixGlyph />
           Remix <SongTitle size="sm" title={original.title} className="inline-flex" /> for another crowd
         </h2>
         <p className="text-[13px] leading-[1.45] text-muted-foreground">
@@ -198,7 +199,7 @@ export function RemixForm({
 
         <div className="flex flex-wrap items-center gap-3 border-t pt-3.5">
           <Button type="submit" disabled={busy || !ready}>
-            {busy ? <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> : <GitFork aria-hidden />}
+            {busy ? <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> : <RemixGlyph />}
             {busy ? "Remixing…" : "Remix it"}
           </Button>
           <span className={unpicked ? "min-w-40 flex-1 text-xs leading-[1.45] text-destructive" : "min-w-40 flex-1 text-xs leading-[1.45] text-muted-foreground"}>

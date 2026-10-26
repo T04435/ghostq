@@ -1,9 +1,9 @@
 "use client";
 
-import { Feather, GitFork, MicAudioLines, Pause, Play } from "lucide-react";
+import { Feather, MicAudioLines, Pause, Play } from "lucide-react";
 import { cn } from "cn";
 import Link from "next/link";
-import { ReceiptChip } from "@/components/brand/receipt";
+import { ReceiptChip, RemixGlyph } from "@/components/brand/receipt";
 import { audioSrc, usePlayer } from "@/components/qplayer/player-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
             )}
             {song.remixOf && (
               <Badge variant="strong" className="self-center" title={`Remix of ${song.remixOf}`}>
-                <GitFork aria-hidden />
+                <RemixGlyph size={12} />
                 REMIX
               </Badge>
             )}

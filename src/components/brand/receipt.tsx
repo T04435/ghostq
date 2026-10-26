@@ -82,6 +82,14 @@ export function KindGlyph({ kind, ...rest }: { kind: SignalKind; ink?: string; d
  */
 export const FEATURE_GLYPHS = { collab: GLYPHS.crowd, remix: "110110101", player: "110110100" } as const;
 
+/**
+ * RemixQ's icon everywhere (the user, 27 Oct, in place of lucide's GitFork): the R glyph in the text colour, sized like
+ * the icon it replaces, with the logo's gap of about a third of a cell.
+ */
+export function RemixGlyph({ size = 16, className }: { size?: number; className?: string }) {
+  return <DotGlyph bits={FEATURE_GLYPHS.remix} size={size} gap={Math.max(1, Math.round(size * 0.11 * 2) / 2)} dim={0.25} className={className} />;
+}
+
 /** CollabQ sides as a disc: A is the left half filled, B the right half, Shared the full disc. Solo songs carry none. */
 export function SideMark({ side, size = 10, color = "currentColor", className }: { side: NonNullable<Signal["side"]>; size?: number; color?: string; className?: string }) {
   const background = side === "A" ? `linear-gradient(90deg, ${color} 50%, transparent 50%)` : side === "B" ? `linear-gradient(90deg, transparent 50%, ${color} 50%)` : color;
