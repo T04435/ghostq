@@ -22,7 +22,7 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
  * time in Geist Pixel Square and Open song, and Mute. Dense (640 to 1023 px) drops the progress and time; compact (a
  * phone) keeps the short label. Sing-along: while a line is sung its words light up in place of the label (the bar then
  * says "GhostQ draft" after the credit), with the count-in between lines; the expand button, or the title on a phone,
- * opens the full-screen sing-along on a phone and the song's page on anything wider.
+ * opens the full-screen sing-along (the title opens the song's page from 640 px).
  */
 export function QPlayer() {
   const player = usePlayer();
@@ -39,8 +39,10 @@ export function QPlayer() {
   const live = sing && sheet ? sing.position : null;
   const lineText = live && live.line >= 0 ? sheet!.sections[sing!.timing.lines[live.line].section]?.lines[sing!.timing.lines[live.line].line]?.text : undefined;
   const between = Boolean(live && live.line < 0 && live.next >= 0 && sing!.time > 0);
+  // The ^ opens the full-screen sing-along at any size (the user, 26 Oct); the title does too on a phone, and opens the
+  // song's page on anything wider.
   const expand = (e?: MouseEvent) => {
-    if (sheet && sing && phone()) {
+    if (sheet && sing && (!e || phone())) {
       e?.preventDefault();
       setFull(true);
     } else if (!e) router.push(`/song/${song.id}`);
@@ -108,8 +110,7 @@ export function QPlayer() {
         Open song
       </Link>
       {sheet && (
-        // Sing along: full screen on a phone; from 1024 px "Open song" already does what it would, so it hides there.
-        <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={`${icon} lg:hidden`}>
+        <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={icon}>
           <ChevronUp className="size-4" aria-hidden />
         </button>
       )}
