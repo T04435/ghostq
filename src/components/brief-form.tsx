@@ -4,6 +4,7 @@ import { CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArtistSearch } from "@/components/artist-search";
+import { Logo } from "@/components/brand/logo";
 import { CollabGlyph, RemixGlyph } from "@/components/brand/receipt";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { Button } from "@/components/ui/button";
@@ -115,7 +116,7 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
                 setFeat({ artist: example.brief?.feat?.artist ?? "", spotifyId: example.brief?.feat?.spotifyId });
               }}
             >
-              {example.brief?.feat && <CollabGlyph size={14} />}
+              {example.brief?.feat ? <CollabGlyph size={14} /> : <Logo size={14} />}
               {example.label}
             </Button>
             ),
