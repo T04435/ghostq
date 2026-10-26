@@ -1,6 +1,5 @@
 import { Logo } from "@/components/brand/logo";
 import { MeetTheGhost } from "@/components/brand/meet-the-ghost";
-import { CompareView } from "@/components/compare-view";
 import { cn } from "cn";
 
 /** The five steps, each with where its data comes from (lime only for Qloo). */
@@ -40,7 +39,7 @@ const LIMITS = [
  */
 export function HowItWorks() {
   return (
-    <section id="how" className="mx-auto flex w-full max-w-[1200px] scroll-mt-20 flex-col gap-14 border-t px-(--page-x) py-14 sm:py-18">
+    <section id="how" className="mx-auto flex w-full max-w-[1200px] scroll-mt-20 flex-col gap-14 px-(--page-x) py-14 sm:py-18">
       <div className="flex max-w-[720px] flex-col gap-3">
         <h2 className="flex items-center gap-4">
           <Logo size={40} ink="var(--glyph-ink)" />
@@ -72,15 +71,7 @@ export function HowItWorks() {
 
       <MeetTheGhost />
 
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <h3 className="text-[26px] font-semibold tracking-[-0.03em]">Same brief, two writers</h3>
-          <p className="max-w-[640px] text-[15px] leading-normal text-muted-foreground">Your last song next to the same brief written by a plain AI model with no crowd data.</p>
-        </div>
-        <CompareView />
-      </section>
-
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5 border-t pt-8">
+      <section className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5 pt-8">
         <div className="flex flex-col gap-2.5">
           <h4 className="text-base font-semibold">Data sources</h4>
           <ul className="flex flex-col gap-1.5 text-sm leading-normal text-muted-foreground">
