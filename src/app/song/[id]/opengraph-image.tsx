@@ -113,10 +113,17 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                     <path d="M7 4.5v15l12-7.5z" fill={LIME} />
                   </svg>
                 ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.2" strokeLinecap="round">
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                    <path d="M12 19v3" />
+                  // Lucide mic-audio-lines, the Sing it icon on the card and the player.
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 3v2.341" />
+                    <path d="M12 17v4" />
+                    <path d="M14 5v.341" />
+                    <path d="M18 5v13" />
+                    <path d="M2 10v3" />
+                    <path d="M22 10v3" />
+                    <path d="M6 6v11" />
+                    <path d="M9 21h6" />
+                    <rect width="4" height="8" x="10" y="9" rx="2" />
                   </svg>
                 )}
               </div>
