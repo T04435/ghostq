@@ -82,7 +82,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
           <span>Newest first</span>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {shown.map((s) => (
           <SongCard key={s.id} song={s} actions />
         ))}
