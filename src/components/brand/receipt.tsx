@@ -45,11 +45,14 @@ export const KIND_ORDER: SignalKind[] = ["crowd", "theme", "genre", "style", "ar
 /** Only Qloo-sourced things get the signal colour; every other source is plain mono. */
 export const isQloo = (source: string | undefined) => /qloo/i.test(source ?? "");
 
-/** A kind's letter on the grid. `dim` is the opacity of the unlit cells (0.2 on chips, 0.16 in legends). */
-export function KindGlyph({ kind, ink = "currentColor", dim = 0.2, size = 12, gap = 1.5, className }: { kind: SignalKind; ink?: string; dim?: number; size?: number; gap?: number; className?: string }) {
+/**
+ * Any 3×3 dot glyph on the brand's grid: nine bits in reading order, lit at full ink, unlit at `dim`. Cell 9 is the
+ * mark's rounded tail. The receipt kinds and the Landing's feature glyphs are drawn with it.
+ */
+export function DotGlyph({ bits, ink = "currentColor", dim = 0.2, size = 12, gap = 1.5, className }: { bits: string; ink?: string; dim?: number; size?: number; gap?: number; className?: string }) {
   return (
     <span aria-hidden className={cn("grid flex-none grid-cols-3", className)} style={{ width: size, height: size, gap }}>
-      {GLYPHS[kind].split("").map((bit, i) => (
+      {bits.split("").map((bit, i) => (
         <span
           key={i}
           className="rounded-full"
@@ -59,6 +62,14 @@ export function KindGlyph({ kind, ink = "currentColor", dim = 0.2, size = 12, ga
     </span>
   );
 }
+
+/** A kind's letter on the grid. `dim` is the opacity of the unlit cells (0.2 on chips, 0.16 in legends). */
+export function KindGlyph({ kind, ...rest }: { kind: SignalKind; ink?: string; dim?: number; size?: number; gap?: number; className?: string }) {
+  return <DotGlyph bits={GLYPHS[kind]} {...rest} />;
+}
+
+/** The Landing features on the same grid: two crowds overlapping (CollabQ), a fork (RemixQ), play (QPlayer). */
+export const FEATURE_GLYPHS = { collab: "110111011", remix: "101010010", player: "100110100" } as const;
 
 /** CollabQ sides as a disc: A is the left half filled, B the right half, Shared the full disc. Solo songs carry none. */
 export function SideMark({ side, size = 10, color = "currentColor", className }: { side: NonNullable<Signal["side"]>; size?: number; color?: string; className?: string }) {
