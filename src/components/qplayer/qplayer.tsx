@@ -68,11 +68,12 @@ export function QPlayer() {
         <SkipForward className="size-3.5 fill-current" aria-hidden />
       </button>
       <Link href={`/song/${song.id}`} onClick={expand} className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-[1.15] outline-none focus-visible:underline">
-        <span className="truncate text-[13px] font-semibold">
-          {song.title}
-          <span className="font-normal opacity-75">
+        {/* Title and artist in Geist Pixel Circle, as on the Library card and the sheet (the user, 26 Oct). */}
+        <span className="truncate text-[13px]">
+          <span className="pixel-circle text-[15px]">{song.title}</span>
+          <span className="opacity-75">
             {" "}
-            · {credit}
+            <span className="pixel-circle text-[13px]">{credit}</span>
             {(lineText || between) && " · GhostQ draft"}
           </span>
         </span>
