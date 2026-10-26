@@ -206,6 +206,16 @@
   }
 }
 
+/* The Landing's feature glyphs: graphite on the light page (lime alone vanishes on it), lime on the dark one. */
+:root {
+  --glyph-ink: var(--foreground);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glyph-ink: var(--signal);
+  }
+}
+
 @media (min-width: 640px) {
   :root {
     --page-x: 32px;

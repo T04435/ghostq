@@ -43,7 +43,7 @@ export function HowItWorks() {
     <section id="how" className="mx-auto flex w-full max-w-[1200px] scroll-mt-20 flex-col gap-14 border-t px-(--page-x) py-14 sm:py-18">
       <div className="flex max-w-[720px] flex-col gap-3">
         <h2 className="flex items-center gap-4">
-          <Logo size={40} ink="var(--signal)" />
+          <Logo size={40} ink="var(--glyph-ink)" />
           <span data-text="How it works" className="pixel-echo pixel-grid text-[clamp(36px,4.4vw,56px)] leading-none tracking-[.01em]">
             How it works
           </span>
