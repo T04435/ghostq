@@ -9,7 +9,7 @@ import type { Signal, SignalKind } from "@/lib/signals";
  * T theme, S style, G genre, R artist (style reference), F movie (film), B book, L audience (lifestyle), C crowd.
  * O home and V voice ("How they sing") aren't in the DS: drawn here on the same grid (design gap).
  */
-const GLYPHS: Record<SignalKind, string> = {
+export const GLYPHS: Record<SignalKind, string> = {
   theme: "111010010",
   style: "011010110",
   genre: "110101111",
