@@ -473,8 +473,8 @@ export function GhostQApp({
           )}
           {/* What's next, once a song is written: right under the brief, not at the foot of the page (the user, 26 Oct). */}
           {sheet && !busy && folded && (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button type="button" onClick={writeAnother}>
                   <Sparkles aria-hidden />
                   Write another
@@ -492,7 +492,7 @@ export function GhostQApp({
                   </Button>
                 )}
               </div>
-              <span className="px-1 text-xs leading-normal text-muted-foreground">
+              <span className="max-w-[560px] px-1 text-xs leading-normal text-pretty text-muted-foreground">
                 Write another keeps {sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song. Saved to the public Library with its
                 research. Anyone with the link can open it.
               </span>
