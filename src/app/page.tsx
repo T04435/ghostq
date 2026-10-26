@@ -78,7 +78,7 @@ export default function LandingPage() {
       {/* The three things a finished song can do next, each shown on a real song from the Library (the user, 26 Oct). */}
       <Feature
         label="CollabQ"
-        icon={<DotGlyph bits={FEATURE_GLYPHS.collab} size={40} gap={4} dim={0.14} />}
+        icon={<DotGlyph bits={FEATURE_GLYPHS.collab} size={40} gap={4} />}
         title="Artist A feat. Artist B. One song, two crowds."
         body="Verse 1 is written for A’s crowd and verse 2 for B’s, each in its artist’s language. The chorus is built on what both crowds share, from Qloo’s compare, and sung by both leads."
         cta={{ href: "/write", label: "Write a feat." }}
@@ -89,7 +89,7 @@ export default function LandingPage() {
       </Feature>
       <Feature
         label="RemixQ"
-        icon={<DotGlyph bits={FEATURE_GLYPHS.remix} size={40} gap={4} dim={0.14} />}
+        icon={<DotGlyph bits={FEATURE_GLYPHS.remix} size={40} gap={4} />}
         title="The same song, for another crowd."
         body="Pick a new city, new ages, or both. GhostQ reads the new crowd from Qloo and rewrites the verses and bridge for it. The title, key, tempo, sections and hook stay, and every changed line is marked."
         cta={{ href: "/library", label: "Pick a song to remix" }}
@@ -101,7 +101,7 @@ export default function LandingPage() {
       </Feature>
       <Feature
         label="QPlayer"
-        icon={<DotGlyph bits={FEATURE_GLYPHS.player} size={40} gap={4} dim={0.14} />}
+        icon={<DotGlyph bits={FEATURE_GLYPHS.player} size={40} gap={4} />}
         title="Press play. Follow every word."
         body="Sung songs play in the QPlayer across the whole site. The sheet follows the recording word by word, with the chord being played, and the receipts behind the line you hear. Open it full screen and sing along."
       >

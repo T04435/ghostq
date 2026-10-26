@@ -68,8 +68,11 @@ export function KindGlyph({ kind, ...rest }: { kind: SignalKind; ink?: string; d
   return <DotGlyph bits={GLYPHS[kind]} {...rest} />;
 }
 
-/** The Landing features on the same grid: two crowds overlapping (CollabQ), a fork (RemixQ), play (QPlayer). */
-export const FEATURE_GLYPHS = { collab: "110111011", remix: "101010010", player: "100110100" } as const;
+/**
+ * The Landing features as receipt letters (the user, 26 Oct): C (the Crowd glyph) for CollabQ, R (the Style reference
+ * glyph) for RemixQ, and P, drawn the same way, for QPlayer.
+ */
+export const FEATURE_GLYPHS = { collab: GLYPHS.crowd, remix: GLYPHS.artist, player: "111111100" } as const;
 
 /** CollabQ sides as a disc: A is the left half filled, B the right half, Shared the full disc. Solo songs carry none. */
 export function SideMark({ side, size = 10, color = "currentColor", className }: { side: NonNullable<Signal["side"]>; size?: number; color?: string; className?: string }) {
