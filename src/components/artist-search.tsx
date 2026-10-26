@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
-import { Spinner } from "@/components/ui/spinner";
 import type { SpotifyArtist } from "@/lib/spotify-artist";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 
 type Value = { artist: string; spotifyId?: string };
 
@@ -107,7 +107,7 @@ export function ArtistSearch({ id, value, placeholder, hint, onChange }: { id: s
         <div className="flex flex-col overflow-hidden rounded-xl border bg-popover shadow-[0_12px_32px_rgba(0,0,0,.1)]" role="region" aria-label="Spotify results">
           {matches.status === "searching" && (
             <p className="flex items-center gap-2 px-3.5 py-2.5 text-sm text-muted-foreground">
-              <Spinner /> Searching Spotify…
+              <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> Searching Spotify…
             </p>
           )}
           {matches.status === "error" && <p className="px-3.5 py-2.5 text-sm text-destructive">{matches.message}</p>}

@@ -19,9 +19,9 @@ import {
   QuestionnaireSubmit,
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
-import { Spinner } from "@/components/ui/spinner";
 import { AGE_BANDS, type AgeBand, type AskField, type Brief, type QlooOption, type Language } from "@/lib/brief";
 import { describePlace, type Place } from "@/lib/place";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 
 type Answers = NonNullable<Brief["answers"]>;
 
@@ -195,7 +195,7 @@ export function AskCard({
             </div>
             {cities.status === "searching" && (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner /> Searching cities…
+                <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> Searching cities…
               </p>
             )}
             {cities.status === "error" && <p className="text-sm text-destructive">{cities.message}</p>}

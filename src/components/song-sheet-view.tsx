@@ -12,10 +12,10 @@ import { ReceiptLink, SongBrief, SongSheet } from "@/components/song-sheet";
 import { draftFromSheet, lineFromDraft } from "@/components/vocal-line-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { toChordPro } from "@/lib/chords";
 import type { SungTiming } from "@/lib/lyric-align";
 import { sheetToMarkdown, type SongSheet as Sheet } from "@/lib/song-sheet";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 
 /**
  * A finished song as the DS lays it out: the sheet, with a side rail (the player, the share text, then `aside`) that
@@ -165,7 +165,7 @@ export function SongSheetView({
               onSheetChange && sheet.id && song.status !== "done"
                 ? (si) => (
                     <Button variant="ghost" size="xs" disabled={rewriting.section !== null} onClick={() => void rewrite(si)}>
-                      {rewriting.section === si ? <Spinner /> : <RefreshCw aria-hidden />}
+                      {rewriting.section === si ? <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> : <RefreshCw aria-hidden />}
                       {rewriting.section === si ? <span className="shimmer">Rewriting…</span> : "Rewrite"}
                     </Button>
                   )

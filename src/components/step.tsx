@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, Clock, LoaderCircle, Minus, X } from "lucide-react";
+import { Check, ChevronRight, Clock, Minus, X } from "lucide-react";
 import { cn } from "cn";
 import type { ReactNode } from "react";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
@@ -13,7 +13,8 @@ import type { Signal } from "@/lib/signals";
 export type StepStatus = "running" | "done" | "nodata" | "failed" | "pending";
 
 const STATUS: Record<StepStatus, { label: string; icon: ReactNode; className: string }> = {
-  running: { label: "Running", icon: <LoaderCircle className="animate-spin" strokeWidth={2.5} />, className: "border-border text-foreground" },
+  // Running shows the Ghost at work, never a spinner (the user, 26 Oct).
+  running: { label: "Running", icon: <GhostMark size={GHOST_SIZES.tag} state="working" decorative />, className: "border-border text-foreground" },
   done: { label: "Done", icon: <Check strokeWidth={3} />, className: "bg-signal text-signal-foreground" },
   nodata: { label: "No data", icon: <Minus strokeWidth={3} />, className: "bg-muted text-muted-foreground" },
   failed: { label: "Failed", icon: <X strokeWidth={3} />, className: "bg-destructive text-destructive-foreground" },
@@ -169,13 +170,17 @@ export function AgentNote({ children }: { children: ReactNode }) {
 }
 
 /**
- * The writing status: a graphite bar with a spinner while the agent works ("Writing the song from 12 Qloo signals").
- * `done` swaps the spinner for a check (the DS has no finished state: design gap).
+ * The writing status: the Ghost's bar ("The Ghost is writing the song from 12 Qloo signals"), its mark working while it
+ * writes and at rest once it's done. Brand graphite with paper ink in both themes (the user, 26 Oct: the agent, not a
+ * spinner, and never a white bar in dark mode).
  */
 export function StatusLine({ children, done = false }: { children: ReactNode; done?: boolean }) {
   return (
-    <div role="status" className="flex items-center gap-2.5 rounded-lg bg-foreground px-4 py-3.5 text-sm font-semibold text-background">
-      {done ? <Check className="size-4 flex-none" strokeWidth={3} aria-hidden /> : <LoaderCircle className="size-4 flex-none animate-spin" strokeWidth={2.5} aria-hidden />}
+    <div
+      role="status"
+      className="flex items-center gap-2.5 rounded-lg border border-transparent bg-[oklch(0.2_0.012_250)] px-4 py-3.5 text-sm font-semibold text-[oklch(0.96_0.003_250)] dark:border-border"
+    >
+      <GhostMark size={GHOST_SIZES.status} state={done ? "rest" : "working"} decorative />
       <span>{children}</span>
     </div>
   );

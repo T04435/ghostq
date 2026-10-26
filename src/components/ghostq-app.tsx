@@ -21,6 +21,7 @@ import { RemixOfLink } from "@/components/remix-links";
 import { SectionCollapsible } from "@/components/section-collapsible";
 import { describeAges, describeCrowd, type Brief, type Crowd, type Remix } from "@/lib/brief";
 import { possessive } from "@/lib/possessive";
+import { AGENT_NAME_START } from "@/lib/agent-persona";
 import { clearLastRun, loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
@@ -307,7 +308,7 @@ export function GhostQApp({
       <div className="grid items-start gap-5 desk:grid-cols-[360px_minmax(0,1fr)]">
         {crowdColumn}
         <div className="flex min-w-0 flex-col gap-2.5">
-          {items.length === 0 && busy && <StatusLine>Finding the artist on Qloo…</StatusLine>}
+          {items.length === 0 && busy && <StatusLine>{AGENT_NAME_START} is finding the artist on Qloo…</StatusLine>}
           <RunSteps items={items} notes={false} collapsed={finished} />
           {ask && (
             <AskCard

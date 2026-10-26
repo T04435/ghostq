@@ -6,11 +6,11 @@ import { ReceiptChip } from "@/components/brand/receipt";
 import { EmptyState } from "@/components/empty-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { describeCrowd } from "@/lib/brief";
 import { loadLastRun, type LastRun } from "@/lib/last-run";
 import type { PlainSong } from "@/lib/plain-song";
 import type { SongSheet } from "@/lib/song-sheet";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 
 /** The lines the compare shows: the chorus first, then the first verse (the DS's order), else the opening sections. */
 function compareLines<L>(sections: { name: string; lines: L[] }[]): L[] {
@@ -85,7 +85,7 @@ export function CompareView() {
           <div className="flex flex-col items-start gap-2.5">
             <p className="text-sm leading-normal text-muted-foreground">Write the same brief with a plain AI model and no crowd data, to see what the crowd changes.</p>
             <Button onClick={writePlain} disabled={busy}>
-              {busy && <Spinner />}
+              {busy && <GhostMark size={GHOST_SIZES.tag} state="working" decorative />}
               {busy ? "Writing the plain AI version…" : "Write the same brief with plain AI"}
             </Button>
           </div>
