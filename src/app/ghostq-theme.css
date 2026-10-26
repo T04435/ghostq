@@ -180,7 +180,7 @@
     inset: 0;
     z-index: -1;
     color: var(--signal);
-    transform: translate(0.027em, 0.027em);
+    transform: translate(max(1px, 0.027em), max(1px, 0.027em));
     pointer-events: none;
   }
 }

@@ -29,12 +29,15 @@ export function Logo({ size = 28, ink = "var(--foreground)", lit = "var(--signal
   );
 }
 
-/** The lockup: the mark and the wordmark (Hanken Grotesk 600, tracking −4%). Header: 28 px mark, 20 px word, 10 px gap. */
-export function Wordmark({ size = 28, fontSize = 20, gap = 10, className }: { size?: number; fontSize?: number; gap?: number; className?: string }) {
+/**
+ * The lockup: the mark and the wordmark, set like the Landing's section titles (the user, 27 Oct): Geist Pixel Grid with
+ * the lime echo one dot down and right. Header: 28 px mark, 22 px word, 10 px gap.
+ */
+export function Wordmark({ size = 28, fontSize = 22, gap = 10, className }: { size?: number; fontSize?: number; gap?: number; className?: string }) {
   return (
     <span className={cn("inline-flex items-center", className)} style={{ gap }}>
       <Logo size={size} />
-      <span className="leading-none font-semibold tracking-[-0.04em]" style={{ fontSize }}>
+      <span data-text="GhostQ" className="pixel-echo pixel-grid leading-none tracking-[.01em]" style={{ fontSize }}>
         GhostQ
       </span>
     </span>
