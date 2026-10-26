@@ -113,7 +113,7 @@ export function ReceiptChip({
   const inner = (
     <>
       <KindGlyph kind={signal.kind} />
-      <span className="font-mono text-[11px] font-semibold">{signal.id}</span>
+      <span className="pixel-circle text-[13px] leading-none">{signal.id}</span>
       {showLabel && <span className="font-sans text-[11.5px] font-medium">{signal.label.trim()}</span>}
       {signal.side && <SideMark side={signal.side} />}
     </>

@@ -78,7 +78,7 @@ function Receipt({ signal }: { signal: Signal }) {
           </div>
         ))}
       </div>
-      <div style={{ fontFamily: "Red Hat Mono", fontSize: 22 }}>{signal.id}</div>
+      <div style={{ fontFamily: "Geist Pixel Circle", fontSize: 24 }}>{signal.id}</div>
       <div style={{ fontSize: 22, fontWeight: 600 }}>{signal.label.trim()}</div>
     </div>
   );
