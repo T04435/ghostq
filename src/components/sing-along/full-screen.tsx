@@ -12,6 +12,7 @@ import { clock, CountIn, gapLabel, LiveWords, SongMap } from "./live-line";
 import { lineInFocus } from "./sing-along-panel";
 import type { SingAlong } from "./use-sing-along";
 import { SongTitle } from "@/components/song-title";
+import { Logo } from "@/components/brand/logo";
 
 /**
  * The DS's full-screen sing-along (a phone, opened from the QPlayer): the section in lime Geist Pixel Grid, the line
@@ -36,9 +37,8 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" showCloseButton={false} className="gap-[18px] border-0 bg-background px-[22px] pt-5 pb-[26px] data-[side=bottom]:h-dvh sm:gap-6 sm:px-[max(32px,calc((100vw-760px)/2))] sm:pt-8 sm:pb-8">
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="icon" className="size-11 flex-none rounded-full" onClick={() => onOpenChange(false)} aria-label="Close the sing-along">
-            <Minimize aria-hidden />
-          </Button>
+          {/* The brand's mark on the left, Minimize on the right (the user, 26 Oct). */}
+          <Logo size={40} />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             {/* Title and artist in Geist Pixel Circle, as everywhere a song is named (the user, 26 Oct). */}
             <SheetTitle className="min-w-0 font-normal">
@@ -46,6 +46,9 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
             </SheetTitle>
             <SheetDescription className="truncate text-xs">{describeCrowd(sheet.crowd)}</SheetDescription>
           </div>
+          <Button variant="secondary" size="icon" className="size-11 flex-none rounded-full" onClick={() => onOpenChange(false)} aria-label="Close the sing-along">
+            <Minimize aria-hidden />
+          </Button>
         </div>
         <span className="mt-2 pixel-grid text-[22px] leading-none sm:text-[32px] tracking-[.02em] text-foreground uppercase dark:text-signal">{timing.sections[position.section]?.name}</span>
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-[26px]" aria-live="polite">
