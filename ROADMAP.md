@@ -31,7 +31,12 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 
 </details>
 
-### F2. Artist not in Qloo: read their songs from Spotify (built 26 Oct)
+### F4. Qloo data through NotOnQ (27 Oct, branch feat/notonq-harness)
+
+- Built: every Qloo call goes through NotOnQ (`QLOO_API_BASE_URL=https://notonq.vercel.app/q/app/ghostq`; locally `http://localhost:3400/q/app/ghostq-dev`). Qloo's answers pass through unchanged. For an artist Qloo has no record of, NotOnQ fills it from open data: Qloo's own genre tags where they match, where the artist is from (`notonq:home`, MusicBrainz), and taste answers (sound-alikes, crowd, heatmap, audiences, compare) through similar artists Qloo knows. Receipts say so ("NotOnQ: …", "through similar artists Qloo knows: …; via NotOnQ").
+- Replaces F2 (the Spotify catalogue genre guess) and the MusicBrainz home lookup for artists Qloo lacks. The run asks for the sound only when neither Qloo nor NotOnQ knows the artist, and for place and ages only when NotOnQ has no similar artists either.
+
+### F2. Artist not in Qloo: read their songs from Spotify (built 26 Oct; replaced by F4 on 27 Oct)
 
 - Built: when Qloo doesn't know the act, the run reads their Spotify catalogue (latest 10 albums and singles with years, the track titles of the newest 3), a model names the genres those titles show (or says nothing), and Qloo's tag search turns that into genre signals, credited "Spotify: <artist>'s catalogue (N releases, years), as Qloo genre tags". It asks for the sound only when that gives nothing. Spotify's artist object no longer carries genres for development-mode apps (probed 26 Oct), so the titles are the source.
 

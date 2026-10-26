@@ -19,7 +19,7 @@ export type Place = z.infer<typeof placeSchema>;
  * Where the artist is from. `source`: "qloo" (Qloo's description or tags, country only), "qloo+musicbrainz" (the
  * country from Qloo, the city from MusicBrainz, found by Qloo's own MusicBrainz id) or "musicbrainz" (the fallback).
  */
-export type Home = { name: string; country: string; countryCode: string | null; source: "musicbrainz" | "qloo" | "qloo+musicbrainz" };
+export type Home = { name: string; country: string; countryCode: string | null; source: "musicbrainz" | "qloo" | "qloo+musicbrainz" | "notonq" };
 
 /** The languages GhostQ writes in: the ones Lyria sings (Lyria 3's launch list, Feb 2026; checked 23 Oct). */
 export const LANGUAGES = ["English", "Spanish", "Portuguese", "French", "German", "Japanese", "Korean", "Hindi"] as const;

@@ -13,9 +13,15 @@ function idsOf(value: unknown): string[] {
   return items.flatMap((x) => (x && typeof x === "object" && "id" in x && typeof x.id === "string" ? [x.id] : []));
 }
 
+/** Where the artist is from, on artists NotOnQ filled (Qloo's own artist records have no such field). */
+const notonqHome = z.object({ name: z.string(), country: z.string().optional(), country_code: z.string().optional() });
+
 const entity = z.object({
   entity_id: z.string(),
-  properties: z.object({ external: external.optional(), short_description: z.string().nullable().optional() }).partial().optional(),
+  properties: z
+    .object({ external: external.optional(), short_description: z.string().nullable().optional(), "notonq:home": notonqHome.optional() })
+    .partial()
+    .optional(),
   external: external.optional(),
   name: z.string(),
   popularity: z.number().optional(),
@@ -36,7 +42,26 @@ export type QlooEntity = {
   description?: string | null;
   /** Wikidata id (Q…): the artist's Wikipedia article, for how they sing (server/vocal-style.ts). */
   wikidataId?: string | null;
+  /**
+   * Set when the record came from NotOnQ (GhostQ's Qloo data goes through it): "filled" for an artist Qloo has no
+   * record of, built from open data; "picked" or "matched" for Qloo's own record that NotOnQ chose for this request.
+   */
+  notonq?: { kind: "filled" | "picked" | "matched"; standIns: string[]; home: { name: string; country: string | null; countryCode: string | null } | null } | null;
 };
+
+/** How a taste answer about an artist NotOnQ filled was made: Qloo, through the similar artists Qloo knows. */
+export const throughStandIns = (x: { act?: Pick<QlooEntity, "notonq"> | null }) =>
+  x.act?.notonq?.kind === "filled" ? ` (through similar artists Qloo knows${x.act.notonq.standIns.length ? `: ${x.act.notonq.standIns.join(", ")}` : ""}; via NotOnQ)` : "";
+
+/** NotOnQ's label leads short_description; a filled artist's label names the similar artists Qloo knows that answer
+ * taste questions for it. */
+export function notonqOf(description: string | null | undefined, home?: z.infer<typeof notonqHome>): QlooEntity["notonq"] {
+  const d = description ?? "";
+  const kind = d.startsWith("Not in Qloo") ? "filled" : d.startsWith("Picked by NotOnQ") ? "picked" : d.startsWith("Matched by NotOnQ") ? "matched" : null;
+  if (!kind) return null;
+  const standIns = (/similar artists Qloo knows: ([^.]+)\./.exec(d)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return { kind, standIns, home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null };
+}
 
 function toEntity(e: z.infer<typeof entity>): QlooEntity {
   return {
@@ -49,6 +74,7 @@ function toEntity(e: z.infer<typeof entity>): QlooEntity {
     description: e.properties?.short_description ?? null,
     // Qloo writes it in lower case ("q13476175"); Wikidata's ids are "Q…".
     wikidataId: [...idsOf(e.properties?.external?.wikidata), ...idsOf(e.external?.wikidata)][0]?.toUpperCase() ?? null,
+    notonq: notonqOf(e.properties?.short_description, e.properties?.["notonq:home"]),
     tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
   };
 }

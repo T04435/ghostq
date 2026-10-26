@@ -15,7 +15,7 @@ pnpm dev                      # http://localhost:3300
 ```
 
 Keys:
-- `QLOO_API_KEY`: a Qloo API key.
+- `QLOO_API_KEY`: a Qloo API key. Qloo's data comes through [NotOnQ](https://notonq.vercel.app) (`QLOO_API_BASE_URL`, default `https://notonq.vercel.app/q/app/ghostq`): Qloo's answers unchanged, and artists Qloo has no record of filled from open data, labelled.
 - `AI_GATEWAY_API_KEY`: a Vercel AI Gateway key (or `vercel link` + `vercel env pull` for an OIDC token).
 - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`: a Spotify app (client credentials) for the artist search.
 - `GEMINI_API_KEY`: a Gemini API key on a paid tier, for singing with Lyria 3.5 (about US$0.08 a song). Optional: without it the app still writes song sheets.

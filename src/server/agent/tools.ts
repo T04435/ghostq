@@ -4,7 +4,7 @@ import { z, ZodError } from "zod";
 import { describeCrowd, type Brief, type Crowd, type Place } from "@/lib/brief";
 import type { SongSheet } from "@/lib/song-sheet";
 import type { VocalMatch } from "@/lib/voice";
-import { isMusicGenre, type QlooEntity } from "@/lib/qloo-parse";
+import { isMusicGenre, throughStandIns, type QlooEntity } from "@/lib/qloo-parse";
 import { SignalRegistry, type Side, type Signal } from "@/lib/signals";
 import * as qloo from "@/server/qloo/api";
 import { QlooError } from "@/server/qloo/client";
@@ -168,7 +168,7 @@ export function createTools(state: RunState) {
           if (!x.act) return { ok: false, summary: "No artist found yet. Call find_artist first, or use artists_in_genres.", signals: [] };
           try {
             const list = await qloo.soundAlikes(x.act.id, state.onCall);
-            const signals = state.addArtists(list, `Qloo insights: fans of ${x.act.name}`, 8, state.side(artist));
+            const signals = state.addArtists(list, `Qloo insights: fans of ${x.act.name}${throughStandIns(x)}`, 8, state.side(artist));
             return { ok: true, summary: `${state.collab ? `${x.name} s` : "S"}ounds like: ${names(signals)}.`, signals, raw: list.map((a) => ({ name: a.name, affinity: a.affinity })) };
           } catch (error) {
             if (error instanceof QlooError && error.status === 400) {
@@ -210,7 +210,7 @@ export function createTools(state: RunState) {
             x.genreTagIds = [...new Set([...x.genreTagIds, ...tags.slice(0, 3).map((t) => t.id)])];
           }
           tags = tags.slice(0, 10);
-          const source = `Qloo insights: ${kind} tags for ${crowdName(x)}${act ? ` and fans of ${act.name}` : ""}`;
+          const source = `Qloo insights: ${kind} tags for ${crowdName(x)}${act ? ` and fans of ${act.name}${throughStandIns({ act })}` : ""}`;
           const signals = tags.map((t) => state.signals.add(kind, t.name, source, t.affinity, state.side(artist)));
           return { ok: tags.length > 0, summary: tags.length ? `${state.collab ? `${x.name}'s crowd: ` : ""}${names(signals)}.` : `No ${kind} tags came back.`, signals, raw: tags };
         }),
@@ -226,7 +226,7 @@ export function createTools(state: RunState) {
           if (!tags.length) return { ok: false, summary: "No music genres yet. Call crowd_tags with kind 'genre' first.", signals: [] };
           const act = x.act && !x.actInvalid ? x.act : null;
           const list = await qloo.sceneArtists(tags, x.crowd, act?.id, state.onCall);
-          const signals = state.addArtists(list, `Qloo insights: local scene for ${crowdName(x)}`, 8, state.side(artist));
+          const signals = state.addArtists(list, `Qloo insights: local scene for ${crowdName(x)}${act ? throughStandIns({ act }) : ""}`, 8, state.side(artist));
           return { ok: list.length > 0, summary: list.length ? `Local scene${of(x)}: ${names(signals)}.` : "No local scene artists came back.", signals, raw: list.map((a) => ({ name: a.name, affinity: a.affinity })) };
         }),
     }),
@@ -251,7 +251,7 @@ export function createTools(state: RunState) {
           const x = state.artist(artist);
           if (!x.act || x.actInvalid) return { ok: false, summary: "No usable artist in Qloo for this.", signals: [] };
           const list = (await qloo.fanAudiences(x.act.id, state.onCall)).slice(0, 6);
-          const signals = list.map((e) => state.signals.add("audience", e.name, `Qloo insights: audiences of ${x.act!.name}'s fans`, e.affinity, state.side(artist)));
+          const signals = list.map((e) => state.signals.add("audience", e.name, `Qloo insights: audiences of ${x.act!.name}'s fans${throughStandIns(x)}`, e.affinity, state.side(artist)));
           return { ok: list.length > 0, summary: list.length ? `${state.collab ? `${x.name}'s fans: ` : ""}${names(signals)}.` : "No audiences came back.", signals, raw: list.map((e) => ({ name: e.name, affinity: e.affinity })) };
         }),
     }),

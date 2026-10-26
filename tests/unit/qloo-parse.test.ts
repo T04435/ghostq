@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMusicGenre, parseDemographics, parseEntities, parseSearch, parseTags, pickArtist } from "@/lib/qloo-parse";
+import { isMusicGenre, notonqOf, parseDemographics, parseEntities, parseSearch, parseTags, pickArtist, throughStandIns } from "@/lib/qloo-parse";
 
 // Synthetic fixtures in the shapes seen in the day-1 probes. Real Qloo responses stay out of the repo.
 
@@ -17,7 +17,7 @@ describe("parseSearch", () => {
       ],
     };
     expect(parseSearch(json)).toEqual([
-      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, description: null, wikidataId: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
+      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, description: null, wikidataId: null, notonq: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
     ]);
   });
 
@@ -112,5 +112,30 @@ describe("musicbrainz id", () => {
   it("is read from the search result's external ids", () => {
     const json = { results: [{ entity_id: "A", name: "A", properties: { external: { musicbrainz: { id: "63aa26c3-d59b-4da4-84ac-716b54f1ef4d" } } } }] };
     expect(parseSearch(json)[0].musicbrainzId).toBe("63aa26c3-d59b-4da4-84ac-716b54f1ef4d");
+  });
+});
+
+describe("NotOnQ records", () => {
+  const filled = {
+    entity_id: "5e23e428-0000-4000-a000-000000000001",
+    name: "Small Act",
+    properties: {
+      short_description: "Not in Qloo: filled by NotOnQ from open sources. Taste answers (recommendations, maps, audiences) use similar artists Qloo knows: Act A, Act B, Act C. From Leeds, United Kingdom (MusicBrainz). Small Act is an English band.",
+      "notonq:home": { name: "Leeds", country: "United Kingdom", country_code: "GB", source: "musicbrainz" },
+    },
+    tags: [{ name: "Indie Pop", tag_id: "urn:tag:genre:music:indie_pop", type: "urn:tag:genre:music" }],
+  };
+
+  it("reads a filled artist's label, similar artists and home", () => {
+    const [e] = parseSearch({ results: [filled] });
+    expect(e.notonq).toEqual({ kind: "filled", standIns: ["Act A", "Act B", "Act C"], home: { name: "Leeds", country: "United Kingdom", countryCode: "GB" } });
+    expect(throughStandIns({ act: e })).toBe(" (through similar artists Qloo knows: Act A, Act B, Act C; via NotOnQ)");
+  });
+
+  it("tells Qloo's own records NotOnQ chose apart from fills, and leaves Qloo's own alone", () => {
+    expect(notonqOf("Picked by NotOnQ: Qloo returned 0 artists for this request; this is Qloo's own record.")?.kind).toBe("picked");
+    expect(notonqOf("Matched by NotOnQ: Qloo has this artist but not under this Spotify ID.")?.kind).toBe("matched");
+    expect(notonqOf("An American singer-songwriter.")).toBeNull();
+    expect(throughStandIns({ act: parseSearch({ results: [{ entity_id: "E2", name: "Known" }] })[0] })).toBe("");
   });
 });
