@@ -51,7 +51,7 @@ export function SavedSong({
         <Button variant="ghost" size="xs" asChild className="-ml-1">
           <Link href="/library">
             <ChevronLeft aria-hidden />
-            Library
+            Songbook
           </Link>
         </Button>
         {/* F4: a real share control in place of the raw address; anyone with the link opens it, no login. */}

@@ -56,8 +56,8 @@ export async function POST(request: Request) {
       const base = "Google's music model (Lyria) blocked this attempt under its content policy (prohibited content). It doesn't say which words, and it's inconsistent: the same song often goes through on another try.";
       return Response.json(
         hidden
-          ? { error: `${base} Lyria has now refused this song ${blocks} times, so it's been taken out of the Library; its link still works.`, retry: false }
-          : { error: `${base} (Refusal ${blocks} of ${SING_BLOCKS_TO_HIDE}: at ${SING_BLOCKS_TO_HIDE} the song leaves the Library.)`, retry: true },
+          ? { error: `${base} Lyria has now refused this song ${blocks} times, so it's been taken out of the Songbook; its link still works.`, retry: false }
+          : { error: `${base} (Refusal ${blocks} of ${SING_BLOCKS_TO_HIDE}: at ${SING_BLOCKS_TO_HIDE} the song leaves the Songbook.)`, retry: true },
         { status: 422 },
       );
     }

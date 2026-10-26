@@ -11,15 +11,14 @@ import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuL
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const LINKS = [
-  { href: "/write", label: "Write", match: (p: string) => p.startsWith("/write") },
+  { href: "/write", label: "Ghost", match: (p: string) => p.startsWith("/write") },
   // A song's page and its remixes live in the Library.
-  { href: "/library", label: "Library", match: (p: string) => p.startsWith("/library") || p.startsWith("/song") || p.startsWith("/remix") },
-  { href: "/how", label: "How it works", match: (p: string) => p.startsWith("/how") },
+  { href: "/library", label: "Songbook", match: (p: string) => p.startsWith("/library") || p.startsWith("/song") || p.startsWith("/remix") },
 ];
 
 const link = "rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent data-active:bg-muted data-active:font-semibold data-active:text-foreground data-active:hover:bg-muted data-active:focus:bg-muted";
 
-/** The DS header: the lockup (home, the Landing) on the left, Write · Library · How it works on the right (a Sheet menu on a phone). */
+/** The DS header: the lockup (home, the Landing) on the left, Ghost · Songbook (the user, 26 Oct; How it works is a Landing section now) on the right (a Sheet menu on a phone). */
 export function SiteHeader() {
   return (
     <header className="border-b bg-background text-foreground">

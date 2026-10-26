@@ -498,7 +498,7 @@ export function GhostQApp({
                 )}
               </div>
               <span className="max-w-[560px] px-1 text-xs leading-normal text-pretty text-muted-foreground">
-                Write another keeps {sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song. Saved to the public Library with its
+                Write another keeps {sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song. Saved to the public Songbook with its
                 research. Anyone with the link can open it.
               </span>
             </div>
@@ -519,9 +519,9 @@ export function GhostQApp({
       )}
 
       {!inRun && !budget && !sheet && recent && (
-        <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-3.5 border-t pt-7" aria-label="Recent from the Library">
+        <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-3.5 border-t pt-7" aria-label="Recent from the Songbook">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-[15px] font-semibold">Recent from the Library</h2>
+            <h2 className="text-[15px] font-semibold">Recent from the Songbook</h2>
             <Link href="/library" className="text-[13px] font-semibold text-muted-foreground hover:text-foreground">
               All songs
             </Link>
