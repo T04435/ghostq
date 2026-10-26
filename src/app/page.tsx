@@ -78,7 +78,7 @@ export default function LandingPage() {
       {/* The three things a finished song can do next, each shown on a real song from the Library (the user, 26 Oct). */}
       <Feature
         label="CollabQ"
-        icon={<DotGlyph bits={FEATURE_GLYPHS.collab} size={40} gap={4} />}
+        icon={<DotGlyph bits={FEATURE_GLYPHS.collab} size={40} gap={4} ink="var(--signal)" />}
         title="Artist A feat. Artist B. One song, two crowds."
         body="Verse 1 is written for A’s crowd and verse 2 for B’s, each in its artist’s language. The chorus is built on what both crowds share, from Qloo’s compare, and sung by both leads."
         cta={{ href: "/write", label: "Write a feat." }}
@@ -89,7 +89,7 @@ export default function LandingPage() {
       </Feature>
       <Feature
         label="RemixQ"
-        icon={<DotGlyph bits={FEATURE_GLYPHS.remix} size={40} gap={4} />}
+        icon={<DotGlyph bits={FEATURE_GLYPHS.remix} size={40} gap={4} ink="var(--signal)" />}
         title="The same song, for another crowd."
         body="Pick a new city, new ages, or both. GhostQ reads the new crowd from Qloo and rewrites the verses and bridge for it. The title, key, tempo, sections and hook stay, and every changed line is marked."
         cta={{ href: "/library", label: "Pick a song to remix" }}
@@ -101,7 +101,7 @@ export default function LandingPage() {
       </Feature>
       <Feature
         label="QPlayer"
-        icon={<DotGlyph bits={FEATURE_GLYPHS.player} size={40} gap={4} />}
+        icon={<DotGlyph bits={FEATURE_GLYPHS.player} size={40} gap={4} ink="var(--signal)" />}
         title="Press play. Follow every word."
         body="Sung songs play in the QPlayer across the whole site. The sheet follows the recording word by word, with the chord being played, and the receipts behind the line you hear. Open it full screen and sing along."
       >
@@ -211,7 +211,9 @@ function Feature({ label, icon, title, body, cta, flip = false, children }: { la
         {/* The feature's name is the heading, on the brand's grid (the user, 26 Oct: no label pill above it). */}
         <h2 className="flex items-center gap-4">
           {icon}
-          <span className="pixel-grid text-[clamp(36px,4.4vw,56px)] leading-none tracking-[.01em]">{label}</span>
+          <span data-text={label} className="pixel-echo pixel-grid text-[clamp(36px,4.4vw,56px)] leading-none tracking-[.01em]">
+            {label}
+          </span>
         </h2>
         <p className="text-[clamp(22px,2.2vw,30px)] leading-[1.1] font-semibold tracking-[-0.03em] text-pretty">{title}</p>
         <p className="text-base leading-normal text-pretty text-muted-foreground">{body}</p>
