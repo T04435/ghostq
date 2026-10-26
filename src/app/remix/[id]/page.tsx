@@ -9,7 +9,7 @@ import { RemixList } from "@/components/remix-links";
 import { SongCard } from "@/components/song-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { remixSchema, type Remix as RemixPicks } from "@/lib/brief";
-import { getSong, remixesOf } from "@/server/store/songs";
+import { getSong, remixesOf, topReceipts } from "@/server/store/songs";
 
 export const metadata: Metadata = { title: "RemixQ · GhostQ", description: "Rewrite a GhostQ song for another crowd: a new city, new ages, or both." };
 
@@ -69,7 +69,7 @@ async function Remix({ params, searchParams }: { params: PageProps<"/remix/[id]"
       original={
         <>
           <SongCard
-            song={{ id: saved.id, title: sheet.title, artist: sheet.artist, featuring: null, remixOf: sheet.remixOf?.title ?? null, crowd: sheet.crowd, language: sheet.language, sung: Boolean(saved.audio), audioVersion: saved.audio?.createdAt ?? null }}
+            song={{ id: saved.id, title: sheet.title, artist: sheet.artist, featuring: null, remixOf: sheet.remixOf?.title ?? null, crowd: sheet.crowd, language: sheet.language, sung: Boolean(saved.audio), audioVersion: saved.audio?.createdAt ?? null, key: sheet.key, tempo: sheet.tempo, receiptCount: sheet.signals.length, receipts: topReceipts(sheet) }}
           />
           <CrowdCard artist={sheet.artist} crowd={sheet.crowd} />
           <RemixList remixes={remixes} />

@@ -7,6 +7,7 @@ import type { Brief, Crowd } from "@/lib/brief";
 import type { SungTiming } from "@/lib/lyric-align";
 import { publicEvent, type RunEvent } from "@/lib/run-events";
 import { normalizeSheet, type SongSheet } from "@/lib/song-sheet";
+import type { Signal } from "@/lib/signals";
 import type { SongSummary } from "@/lib/song-summary";
 import { toVocalLine, type VocalLine } from "@/lib/voice";
 import { env, providerStatus } from "@/server/env";
@@ -284,6 +285,16 @@ export async function getAudioStream(id: string, range: string | null): Promise<
   return { body: new Uint8Array(audio.subarray(start, end + 1)), length: end - start + 1, contentRange: `bytes ${start}-${end}/${audio.length}` };
 }
 
+/** The three signals a sheet's lines cite most, for the Library card. */
+export function topReceipts(sheet: SongSheet): Signal[] {
+  const cited = new Map<string, number>();
+  for (const line of sheet.sections.flatMap((s) => s.lines)) for (const id of new Set(line.signalIds)) cited.set(id, (cited.get(id) ?? 0) + 1);
+  return sheet.signals
+    .filter((s) => cited.has(s.id))
+    .sort((a, b) => cited.get(b.id)! - cited.get(a.id)!)
+    .slice(0, 3);
+}
+
 /** Every visible song, newest first. `viewer`: the asking device's id (limits.deviceFromCookie), to mark its own songs. */
 export async function listSongs(limit = 200, viewer: string | null = null): Promise<SongSummary[]> {
   const songs = (await store().list(limit)).map((s) => normalize(s)!);
@@ -302,6 +313,10 @@ export async function listSongs(limit = 200, viewer: string | null = null): Prom
       audioVersion: s.audio?.createdAt ?? null,
       createdAt: s.createdAt,
       mine: Boolean(viewer && s.owner === viewer),
+      key: s.sheet.key,
+      tempo: s.sheet.tempo,
+      receiptCount: s.sheet.signals.length,
+      receipts: topReceipts(s.sheet),
     }));
 }
 

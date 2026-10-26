@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, Clock, Info, LoaderCircle, Mic } from "lucide-react";
+import { CircleAlert, Clock, Info, LoaderCircle, MicAudioLines } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { audioSrc } from "@/components/qplayer/player-context";
@@ -52,7 +52,7 @@ export function SongPlayer({
       {!readOnly && (song.status === "idle" || (song.status === "error" && !song.budget && !song.retry)) && (
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={onSing} disabled={!canSing} className="h-11 gap-2 rounded-full px-5 text-[15px] font-semibold">
-            <Mic aria-hidden />
+            <MicAudioLines aria-hidden />
             Sing it
           </Button>
           <span className="min-w-40 flex-1 text-xs leading-[1.45] text-muted-foreground">
