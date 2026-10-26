@@ -21,12 +21,13 @@ const LIME = "#dbec36";
 const LIME_INK = "#20240c";
 
 /**
- * The image renderer can't switch a variable font's axes, so Geist Pixel ships here as a static Circle cut (ELSH 20,
- * instanced from the Google Fonts file with fontTools on 26 Oct), with static Hanken Grotesk and Red Hat Mono.
+ * The image renderer can't switch a variable font's axes, so Geist Pixel ships here as static Circle (ELSH 20) and Grid
+ * (ELSH 40) cuts, instanced from the Google Fonts file with fontTools, with static Hanken Grotesk and Red Hat Mono.
  */
 const fonts = Promise.all(
   [
     ["Geist Pixel Circle", "GeistPixel-Circle.ttf", 400],
+    ["Geist Pixel Grid", "GeistPixel-Grid.ttf", 400],
     ["Hanken Grotesk", "HankenGrotesk-Regular.ttf", 400],
     ["Hanken Grotesk", "HankenGrotesk-SemiBold.ttf", 600],
     ["Red Hat Mono", "RedHatMono-Regular.ttf", 400],
@@ -58,6 +59,18 @@ function Mark({ size: s }: { size: number }) {
           {[0, 1, 2].map((c) => dot(r * 3 + c))}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** The wordmark as on the site: Geist Pixel Grid with a lime copy one dot down and right behind it (the pixel-echo utility). */
+function Word({ size: s }: { size: number }) {
+  const off = Math.max(1, s * 0.027);
+  const word = { fontFamily: "Geist Pixel Grid", fontSize: s, lineHeight: 1, letterSpacing: "0.01em" } as const;
+  return (
+    <div style={{ display: "flex", position: "relative" }}>
+      <div style={{ ...word, position: "absolute", left: off, top: off, color: LIME }}>GhostQ</div>
+      <div style={{ ...word, color: INK }}>GhostQ</div>
     </div>
   );
 }
@@ -103,7 +116,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: GRAPHITE, color: INK, padding: "60px 72px", fontFamily: "Hanken Grotesk" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <Mark size={52} />
-          <div style={{ fontSize: 38, fontWeight: 600, letterSpacing: "-0.04em" }}>GhostQ</div>
+          <Word size={40} />
           {sheet && (
             // The invitation, top right (the user, 26 Oct): play a sung song, or sing one that isn't sung yet.
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, height: 56, padding: "0 26px 0 10px", borderRadius: 999, background: LIME, color: LIME_INK, fontSize: 24, fontWeight: 600 }}>
