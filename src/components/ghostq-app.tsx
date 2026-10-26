@@ -25,6 +25,7 @@ import { AGENT_NAME_START } from "@/lib/agent-persona";
 import { clearLastRun, loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
+import { SongTitle } from "@/components/song-title";
 
 /** The brief with the run's answers filled in for the artist it asked about (CollabQ asks per artist). */
 function withAnswers(brief: Brief, who: "A" | "B" | undefined, answers: NonNullable<Brief["answers"]>): Brief {
@@ -355,19 +356,19 @@ export function GhostQApp({
     const stage = budget ? "budget" : finished && sheet?.remixOf ? "result" : inRun || ask ? "running" : "form";
     const [heading, sub] =
       stage === "result" && picked
-        ? [`${remixOf.title}, remixed for ${remixHeading(picked)}`, "The original and the remix side by side. Each keeps its own receipts; rewritten lines are marked on both."]
+        ? [<><SongTitle as="span" size="xl" title={remixOf.title} className="inline-flex" />, remixed for {remixHeading(picked)}</>, "The original and the remix side by side. Each keeps its own receipts; rewritten lines are marked on both."]
         : stage === "running" && picked
           ? [`Remixing for ${remixHeading(picked)}`, "Live steps, like a write. About a minute."]
           : stage === "budget"
-            ? [`Remix ${remixOf.title}`, "Remixes read a new crowd from Qloo, so they wait for the daily budget too."]
-            : [`Remix ${remixOf.title}`, "Pick a new city, up to three age bands, or both. GhostQ reads the new crowd and rewrites the verses and bridge. The title, key, tempo, sections and hook stay."];
+            ? [<>Remix <SongTitle as="span" size="xl" title={remixOf.title} className="inline-flex" /></>, "Remixes read a new crowd from Qloo, so they wait for the daily budget too."]
+            : [<>Remix <SongTitle as="span" size="xl" title={remixOf.title} className="inline-flex" /></>, "Pick a new city, up to three age bands, or both. GhostQ reads the new crowd and rewrites the verses and bridge. The title, key, tempo, sections and hook stay."];
     return (
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-7 px-(--page-x) pt-7 pb-18">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="xs" asChild className="-ml-1">
             <Link href={`/song/${remixOf.id}`}>
               <ChevronLeft aria-hidden />
-              {remixOf.title}
+              <SongTitle size="sm" title={remixOf.title} />
             </Link>
           </Button>
           <span className="font-mono text-[11px] text-muted-foreground">RemixQ · the same song for another crowd</span>

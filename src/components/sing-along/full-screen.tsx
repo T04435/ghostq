@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Pause, Play } from "lucide-react";
+import { Minimize, Pause, Play } from "lucide-react";
 import { ReceiptChip } from "@/components/brand/receipt";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -11,6 +11,7 @@ import type { SongSheet } from "@/lib/song-sheet";
 import { clock, CountIn, gapLabel, LiveWords, SongMap } from "./live-line";
 import { lineInFocus } from "./sing-along-panel";
 import type { SingAlong } from "./use-sing-along";
+import { SongTitle } from "@/components/song-title";
 
 /**
  * The DS's full-screen sing-along (a phone, opened from the QPlayer): the section in lime Geist Pixel Grid, the line
@@ -36,13 +37,14 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
       <SheetContent side="bottom" showCloseButton={false} className="gap-[18px] border-0 bg-background px-[22px] pt-5 pb-[26px] data-[side=bottom]:h-dvh sm:gap-6 sm:px-[max(32px,calc((100vw-760px)/2))] sm:pt-8 sm:pb-8">
         <div className="flex items-center gap-3">
           <Button variant="secondary" size="icon" className="size-11 flex-none rounded-full" onClick={() => onOpenChange(false)} aria-label="Close the sing-along">
-            <ChevronDown aria-hidden />
+            <Minimize aria-hidden />
           </Button>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <SheetTitle className="truncate text-[15px] font-semibold">{sheet.title}</SheetTitle>
-            <SheetDescription className="truncate text-xs">
-              {credit} · {describeCrowd(sheet.crowd)}
-            </SheetDescription>
+            {/* Title and artist in Geist Pixel Circle, as everywhere a song is named (the user, 26 Oct). */}
+            <SheetTitle className="min-w-0 font-normal">
+              <SongTitle title={sheet.title} artist={credit} truncate />
+            </SheetTitle>
+            <SheetDescription className="truncate text-xs">{describeCrowd(sheet.crowd)}</SheetDescription>
           </div>
         </div>
         <span className="mt-2 pixel-grid text-[22px] leading-none sm:text-[32px] tracking-[.02em] text-foreground uppercase dark:text-signal">{timing.sections[position.section]?.name}</span>

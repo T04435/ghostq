@@ -18,6 +18,7 @@ import { draftLabel } from "@/lib/draft-label";
 import { possessive } from "@/lib/possessive";
 import type { Signal } from "@/lib/signals";
 import { songArtist, type SongSheet as Sheet } from "@/lib/song-sheet";
+import { SongTitle } from "@/components/song-title";
 
 /** The required label on every song: plain text with Lucide info. Fixed wording, never truncated on a sheet or card. */
 export function DraftLabel({ artist, feat, className }: { artist: string; feat?: string; className?: string }) {
@@ -114,10 +115,7 @@ export function SongSheet({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-1.5">
               {/* Title and artist on one line in Geist Pixel Circle, as on the Library card (the user, 26 Oct). */}
-              <h2 className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="pixel-circle text-[clamp(28px,4vw,40px)] leading-[1.05]">{sheet.title}</span>
-                <span className="pixel-circle text-[17px] leading-tight text-muted-foreground">{songArtist(sheet)}</span>
-              </h2>
+              <SongTitle as="h2" size="lg" title={sheet.title} artist={songArtist(sheet)} />
               <span className="text-[13px] text-muted-foreground">
                 {sheet.featuring
                   ? `Verse 1 for ${possessive(sheet.artist)} crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${possessive(sheet.featuring.artist)} (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.`

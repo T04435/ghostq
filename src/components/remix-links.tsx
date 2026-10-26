@@ -2,6 +2,7 @@ import { GitFork } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { describeAges, type Crowd } from "@/lib/brief";
+import { SongTitle } from "@/components/song-title";
 
 type Remix = { id: string; title: string; crowd: Crowd; sung?: boolean; changed?: number; total?: number };
 
@@ -14,8 +15,8 @@ export function RemixOfLink({ of }: { of: { id: string; title: string; crowdText
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-xs text-muted-foreground">Remix of</span>
-        <span className="text-sm font-semibold">
-          {of.title} <span className="font-normal text-muted-foreground">· {of.crowdText}</span>
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+          <SongTitle size="sm" title={of.title} /> <span className="text-muted-foreground">· {of.crowdText}</span>
         </span>
       </span>
       <span className="text-xs font-semibold whitespace-nowrap">Open original</span>
@@ -48,7 +49,7 @@ export function RemixList({ remixes }: { remixes: Remix[] }) {
                     <span className="pixel-square text-[13px] text-foreground">{r.changed}</span> of {r.total} lines changed
                   </span>
                 ) : (
-                  r.title
+                  <SongTitle size="sm" title={r.title} className="text-foreground" />
                 )}
               </span>
             </Link>

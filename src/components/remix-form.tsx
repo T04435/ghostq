@@ -13,6 +13,7 @@ import { describePlace, type Place } from "@/lib/place";
 import type { SongSheet } from "@/lib/song-sheet";
 import { possessive } from "@/lib/possessive";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
+import { SongTitle } from "@/components/song-title";
 
 const MAX_AGES = 3;
 
@@ -57,7 +58,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
       <div className="flex flex-col gap-1">
         <h2 className="inline-flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
           <GitFork className="size-4 flex-none" aria-hidden />
-          Remix &quot;{original.title}&quot; for another crowd
+          Remix <SongTitle size="sm" title={original.title} className="inline-flex" /> for another crowd
         </h2>
         <p className="text-[13px] leading-[1.45] text-muted-foreground">
           Written for {possessive(original.artist)} crowd: {describeCrowd(original.crowd)}. Pick a new city, new ages, or both. What you leave stays as Qloo reads it; the song
