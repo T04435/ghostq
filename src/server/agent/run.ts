@@ -13,6 +13,8 @@ import { craftProblems, MAX_CRAFT_FIXES, type CraftProblem } from "@/lib/craft";
 import { z } from "zod";
 import { idsIn } from "@/lib/signal-text";
 import type { VocalMatch } from "@/lib/voice";
+import { artistCatalogue } from "@/server/spotify/client";
+import { soundFromCatalogue } from "@/server/spotify/sound";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { nextAreas, readCrowd } from "@/server/crowd";
 import { vocalStyle } from "@/server/vocal-style";
@@ -155,6 +157,20 @@ const HOME_SOURCE: Record<Home["source"], (artist: string) => string> = {
   musicbrainz: (a) => `MusicBrainz: where ${a} is from (Qloo doesn't say)`,
 };
 
+/** An artist's sound from their Spotify catalogue (F2), or null when Spotify can't be read or says nothing. */
+async function spotifySound(name: string, spotifyId: string): Promise<{ sound: string; releases: number; years: string } | null> {
+  try {
+    const catalogue = await artistCatalogue(spotifyId);
+    const sound = await soundFromCatalogue(name, catalogue);
+    if (!sound) return null;
+    const years = catalogue.releases.map((r) => r.year).filter(Boolean).sort();
+    return { sound, releases: catalogue.releases.length, years: years.length ? (years[0] === years.at(-1) ? years[0] : `${years[0]}–${years.at(-1)}`) : "" };
+  } catch (e) {
+    console.error("spotify sound failed", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 /** Words too common in artist names to count as a match. */
 const STOPWORDS = new Set(["the", "los", "las", "les", "del", "and", "und", "con"]);
 
@@ -224,8 +240,22 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     const listed = signals.map((g) => `${g.id} ${g.label}`).join(", ");
     emit({ type: "step-end", id: `find-artist${sfx}`, ok: tags.length > 0, summary: `Qloo doesn't know ${x.name}, so their sound comes from your words. Genres: ${listed || "none matched"}.`, signals, raw: tags });
   } else {
-    missing.push("sound");
-    emit({ type: "step-end", id: `find-artist${sfx}`, ok: false, summary: `Qloo doesn't know ${x.name} yet.`, signals: [], raw: null });
+    // F2: Qloo doesn't know the act, so its sound comes from its Spotify catalogue (release and track titles) as Qloo
+    // genre tags; only when Spotify has nothing to go on does the run ask the user.
+    const read = x.spotifyId ? await spotifySound(x.name, x.spotifyId) : null;
+    const tags = read?.sound ? (await genresFromWords(read.sound, state.onCall)).slice(0, 6) : [];
+    if (read && tags.length) {
+      x.genreTagIds = tags.map((t) => t.id);
+      ownTags = tags.map((t) => t.name);
+      x.homeFromTags = ownTags.find((n) => countryCodeFor(n)) ?? null;
+      const source = `Spotify: ${x.name}'s catalogue (${read.releases} releases${read.years ? `, ${read.years}` : ""}), as Qloo genre tags`;
+      const signals = tags.map((t) => state.signals.add("genre", t.name, source, t.popularity, side));
+      const listed = signals.map((g) => `${g.id} ${g.label}`).join(", ");
+      emit({ type: "step-end", id: `find-artist${sfx}`, ok: true, summary: `Qloo doesn't know ${x.name}, so their sound comes from their Spotify releases ("${read.sound}"). Genres: ${listed}.`, signals, raw: { spotify: read } });
+    } else {
+      missing.push("sound");
+      emit({ type: "step-end", id: `find-artist${sfx}`, ok: false, summary: `Qloo doesn't know ${x.name} yet, and their Spotify releases don't say what they sound like.`, signals: [], raw: null });
+    }
   }
 
   const artistName = x.act?.name ?? x.name;

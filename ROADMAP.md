@@ -31,7 +31,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 
 </details>
 
-### F2. Artist not in Qloo: read their songs from Spotify
+### F2. Artist not in Qloo: read their songs from Spotify (built 26 Oct)
+
+- Built: when Qloo doesn't know the act, the run reads their Spotify catalogue (latest 10 albums and singles with years, the track titles of the newest 3), a model names the genres those titles show (or says nothing), and Qloo's tag search turns that into genre signals, credited "Spotify: <artist>'s catalogue (N releases, years), as Qloo genre tags". It asks for the sound only when that gives nothing. Spotify's artist object no longer carries genres for development-mode apps (probed 26 Oct), so the titles are the source.
+
 
 - Today: when Qloo doesn't know the artist, the run asks the user to describe the sound in words.
 - Fix: first look the artist up on Spotify (the brief already carries their Spotify id when picked from search) and read their songs: albums and tracks, titles and release years. Turn that into the artist's sound (genres, era, mood) and use it as the run's genre signals; ask the user only if Spotify has nothing either.
@@ -51,7 +54,10 @@ Reported on the live site (v1.0.0). Each fix keeps the "artist + story only" inp
 - Fix: probe Qloo's artist entity for hometown or origin, gender and members. Read those from Qloo first, and fall back to MusicBrainz per field only when Qloo has nothing. Receipts and the crowd card then name Qloo as the source.
 - Done when: for an artist Qloo knows, home and voices come from Qloo wherever Qloo has them, and MusicBrainz shows only as the named fallback.
 
-### F4. A proper share feature (logged 25 Oct, from the user)
+### F4. A proper share feature (built 26 Oct)
+
+- Built: one Share button (the browser's share sheet where there is one, else the link copied with "Link copied"), always the ghostq.xyz link; the song page shows it in place of the raw address; each song has a 1200×630 preview image (title, credit, crowd, draft label, SUNG) and a large Twitter card. Titles in Japanese, Korean or Hindi fall back to the image renderer's default font.
+
 
 - Today: the song page shows its address as plain text ("localhost:3401/song/rsjagvkfic · shared link, no login"); the only action is the share block's "Copy share link".
 - Fix: a real share control on the song page (and after a write): copy link with feedback, the browser's native share sheet where available (navigator.share), and a share preview that shows the song (title, artist, crowd, draft label) as the OG image. Use the production URL, never localhost.
