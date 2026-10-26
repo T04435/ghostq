@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { Logo } from "@/components/brand/logo";
-import { DotGlyph, FEATURE_GLYPHS, ReceiptChip, SideMark } from "@/components/brand/receipt";
+import { DotGlyph, FEATURE_GLYPHS, ReceiptChip, SideMark, CollabGlyph, RemixGlyph } from "@/components/brand/receipt";
 import { PlaySongButton } from "@/components/play-song-button";
 import { HowItWorks } from "@/components/how-it-works";
 import { RecentSongs, RecentSongsSkeleton } from "@/components/recent-songs";
@@ -81,7 +81,7 @@ export default function LandingPage() {
         icon={<FeatureGlyph bits={FEATURE_GLYPHS.collab} />}
         title="Artist A feat. Artist B. One song, two crowds."
         body="Verse 1 is written for A’s crowd and verse 2 for B’s, each in its artist’s language. The chorus is built on what both crowds share, from Qloo’s compare, and sung by both leads."
-        cta={{ href: "/write?mode=feat", label: "Write a feat." }}
+        cta={{ href: "/write?mode=feat", label: "Write a Collab", icon: <CollabGlyph /> }}
       >
         <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
           <CollabExample />
@@ -92,7 +92,7 @@ export default function LandingPage() {
         icon={<FeatureGlyph bits={FEATURE_GLYPHS.remix} />}
         title="The same song, for another crowd."
         body="Pick a new city, new ages, or both. GhostQ reads the new crowd from Qloo and rewrites the verses and bridge for it. The title, key, tempo, sections and hook stay, and every changed line is marked."
-        cta={{ href: "/write?mode=remix", label: "Pick a song to remix" }}
+        cta={{ href: "/write?mode=remix", label: "Remix a song", icon: <RemixGlyph /> }}
         flip
       >
         <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
@@ -204,7 +204,7 @@ async function HeroSong() {
 
 
 /** A feature band: its name, a heading and a line on the left; a live example from the Library on the right. */
-function Feature({ label, icon, title, body, cta, flip = false, children }: { label: string; icon: React.ReactNode; title: string; body: string; cta?: { href: string; label: string }; flip?: boolean; children: React.ReactNode }) {
+function Feature({ label, icon, title, body, cta, flip = false, children }: { label: string; icon: React.ReactNode; title: string; body: string; cta?: { href: string; label: string; icon: React.ReactNode }; flip?: boolean; children: React.ReactNode }) {
   return (
     <section className="mx-auto grid w-full max-w-[1200px] items-center gap-8 px-(--page-x) py-14 desk:grid-cols-2 desk:gap-14 sm:py-18">
       <div className={cn("flex max-w-[520px] flex-col gap-3.5", flip && "desk:order-2")}>
@@ -218,8 +218,12 @@ function Feature({ label, icon, title, body, cta, flip = false, children }: { la
         <p className="text-[clamp(22px,2.2vw,30px)] leading-[1.1] font-semibold tracking-[-0.03em] text-pretty">{title}</p>
         <p className="text-base leading-normal text-pretty text-muted-foreground">{body}</p>
         {cta && (
-          <Button variant="secondary" asChild className="self-start">
-            <Link href={cta.href}>{cta.label}</Link>
+          // The brand's lime button with the feature's glyph (the user, 27 Oct).
+          <Button size="lg" asChild className="self-start">
+            <Link href={cta.href}>
+              {cta.icon}
+              {cta.label}
+            </Link>
           </Button>
         )}
       </div>
