@@ -44,3 +44,7 @@ next-env.d.ts
 
 # Saved songs and audio in local development (Qloo-derived data stays out of the repo)
 /.data/
+
+# Impeccable live mode: keep the config, not session state or machine paths
+.impeccable/live/*
+!.impeccable/live/config.json
