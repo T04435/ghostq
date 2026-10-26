@@ -3,7 +3,7 @@
 import { Plan, PlanContent, PlanDescription, PlanFooter, PlanHeader, PlanTitle, PlanTrigger } from "@/components/ai-elements/plan";
 import { AgentTag } from "@/components/brand/agent-tag";
 import { ReceiptChip } from "@/components/brand/receipt";
-import { AGENT_NAME_INLINE } from "@/lib/agent-persona";
+import { AGENT_NAME_INLINE, AGENT_NAME_START } from "@/lib/agent-persona";
 import { AgentNote, StatusLine, StatusPill, StepCard, StepNumber, type StepStatus } from "@/components/step";
 import { Trace } from "@/components/ui/trace";
 import type { RunEvent } from "@/lib/run-events";
@@ -113,7 +113,7 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
         if (item.kind === "writing") {
           return (
             <StatusLine key={item.key} done={item.done}>
-              {item.done ? `Written from ${item.signalCount} Qloo signals.` : `Writing the song from ${item.signalCount} Qloo signals…`}
+              {item.done ? `${AGENT_NAME_START} wrote it from ${item.signalCount} Qloo signals.` : `${AGENT_NAME_START} is writing the song from ${item.signalCount} Qloo signals…`}
             </StatusLine>
           );
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, Clock, Info, LoaderCircle, MicAudioLines } from "lucide-react";
+import { CircleAlert, Clock, Info, MicAudioLines } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { audioSrc } from "@/components/qplayer/player-context";
@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { draftLabel } from "@/lib/draft-label";
 import type { SongSheet } from "@/lib/song-sheet";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
+import { AGENT_NAME_START } from "@/lib/agent-persona";
 
 // AI Elements' Audio Player, browser-only (its media-chrome elements can't hydrate from server HTML).
 const SongAudio = dynamic(() => import("@/components/song-audio"), { ssr: false, loading: () => <Skeleton className="h-11 w-full rounded-full" /> });
@@ -70,11 +72,11 @@ export function SongPlayer({
       {song.status === "singing" && (
         <div className="flex flex-col gap-2.5" role="status">
           <div className="flex items-center gap-2.5 text-sm font-semibold">
-            <LoaderCircle className="size-4 animate-spin" strokeWidth={2.5} aria-hidden />
-            Singing with Google Lyria · about 50 seconds
+            <GhostMark size={GHOST_SIZES.status} state="working" decorative />
+            {AGENT_NAME_START} is singing it with Google Lyria · about 50 seconds
           </div>
           <div className="relative h-1.5 overflow-hidden rounded-[3px] bg-muted" aria-hidden>
-            <div className="absolute inset-y-0 left-0 w-[38%] animate-pulse rounded-[3px] bg-foreground" />
+            <div className="absolute inset-y-0 left-0 w-[38%] animate-pulse rounded-[3px] bg-signal" />
           </div>
           <span className="text-xs text-muted-foreground">{voice} · 2-minute track · you can keep reading the sheet</span>
         </div>

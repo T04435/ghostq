@@ -7,12 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Item, ItemContent, ItemTitle } from "@/components/ui/item";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AGE_BANDS, describeAges, describeCrowd, type AgeBand, type Remix } from "@/lib/brief";
 import { describePlace, type Place } from "@/lib/place";
 import type { SongSheet } from "@/lib/song-sheet";
 import { possessive } from "@/lib/possessive";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 
 const MAX_AGES = 3;
 
@@ -133,7 +133,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
               </div>
               {cities.status === "searching" && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Spinner /> Searching cities…
+                  <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> Searching cities…
                 </p>
               )}
               {cities.status === "error" && <p className="text-sm text-destructive">{cities.message}</p>}
@@ -186,7 +186,7 @@ export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; b
 
         <div className="flex flex-wrap items-center gap-3 border-t pt-3.5">
           <Button type="submit" disabled={busy || !ready}>
-            {busy ? <Spinner /> : <GitFork aria-hidden />}
+            {busy ? <GhostMark size={GHOST_SIZES.tag} state="working" decorative /> : <GitFork aria-hidden />}
             {busy ? "Remixing…" : "Remix it"}
           </Button>
           <span className={unpicked ? "min-w-40 flex-1 text-xs leading-[1.45] text-destructive" : "min-w-40 flex-1 text-xs leading-[1.45] text-muted-foreground"}>
