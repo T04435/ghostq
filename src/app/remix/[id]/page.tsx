@@ -28,7 +28,10 @@ export default function RemixPage({ params, searchParams }: PageProps<"/remix/[i
   );
 }
 
-/** Picks made on the song page (?place=<json>&ages=a,b): validated here, then the remix starts on its own. */
+/**
+ * Picks made on the song page (?place=<json>&ages=a,b): validated here, then the remix starts on its own. With
+ * &prefill=1 (a Ghost suggestion on Write) they are only filled in.
+ */
 function picksFrom(q: Record<string, string | string[] | undefined>): Omit<RemixPicks, "of"> | undefined {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   let place: unknown;
@@ -45,7 +48,9 @@ function picksFrom(q: Record<string, string | string[] | undefined>): Omit<Remix
 }
 
 async function Remix({ params, searchParams }: { params: PageProps<"/remix/[id]">["params"]; searchParams: PageProps<"/remix/[id]">["searchParams"] }) {
-  const [saved, start] = await Promise.all([params.then((p) => getSong(p.id)), searchParams.then(picksFrom)]);
+  const [saved, q] = await Promise.all([params.then((p) => getSong(p.id)), searchParams]);
+  const picks = picksFrom(q);
+  const prefill = q.prefill === "1";
   if (!saved) notFound();
   if (saved.sheet.featuring) {
     return (
@@ -65,7 +70,8 @@ async function Remix({ params, searchParams }: { params: PageProps<"/remix/[id]"
   return (
     <GhostQApp
       remixOf={{ ...sheet, id: saved.id }}
-      start={start}
+      start={prefill ? undefined : picks}
+      prefill={prefill ? picks : undefined}
       original={
         <>
           <SongCard

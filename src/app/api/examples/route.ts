@@ -1,6 +1,7 @@
 import { freshExamples } from "@/server/examples";
 
-/** GET two "Try" examples for the Write page: artists the Library has no song for yet (server/examples). */
-export async function GET() {
-  return Response.json(await freshExamples(), { headers: { "Cache-Control": "no-store" } });
+/** GET two Ghost suggestions for the Write page (server/examples); ?mode=feat for CollabQ pairs, ?mode=remix for RemixQs. */
+export async function GET(request: Request) {
+  const mode = new URL(request.url).searchParams.get("mode");
+  return Response.json(await freshExamples(mode === "feat" || mode === "remix" ? mode : "solo"), { headers: { "Cache-Control": "no-store" } });
 }

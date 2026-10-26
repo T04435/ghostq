@@ -44,12 +44,13 @@ type Crowds = { A?: { artist: string; crowd: Crowd }; B?: { artist: string; crow
  * The write page (/write) and RemixQ (/remix/<id>, with `remixOf`): the brief or the remix form, the live run (the
  * crowd and the agent's notes beside the steps), then the finished song with its side rail.
  * `recent`: the Library strip under the brief, `examples`: songs for the budget notice (server-rendered slots).
- * RemixQ: `start` runs the picks made on the song page on its own; `original`: the original's card, crowd and remixes
- * beside the form.
+ * RemixQ: `start` runs the picks made on the song page on its own, `prefill` only fills them in (a Ghost suggestion);
+ * `original`: the original's card, crowd and remixes beside the form.
  */
 export function GhostQApp({
   remixOf,
   start,
+  prefill,
   recent,
   examples,
   original,
@@ -57,6 +58,8 @@ export function GhostQApp({
   remixOf?: SongSheet;
   /** RemixQ picks made on the song page: the run starts on its own. */
   start?: Omit<Remix, "of">;
+  /** RemixQ picks from a Ghost suggestion: filled in, and the run waits for Remix. */
+  prefill?: Omit<Remix, "of">;
   recent?: ReactNode;
   examples?: ReactNode;
   original?: ReactNode;
@@ -380,7 +383,7 @@ export function GhostQApp({
 
         {stage === "form" && (
           <div className="grid items-start gap-5 desk:grid-cols-2">
-            <RemixForm original={remixOf} busy={busy} onSubmit={remix} />
+            <RemixForm original={remixOf} busy={busy} initial={prefill} onSubmit={remix} />
             <div className="flex min-w-0 flex-col gap-3">
               <span className="font-mono text-[11px] tracking-[.06em] text-muted-foreground">THE ORIGINAL</span>
               {original}
