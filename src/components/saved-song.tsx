@@ -13,6 +13,7 @@ import { SectionCollapsible } from "@/components/section-collapsible";
 import { Button } from "@/components/ui/button";
 import { describeCrowd, type Crowd } from "@/lib/brief";
 import { applyStepEvent, RunSteps, stepCount, type StepItem } from "@/components/run-steps";
+import { ShareButton } from "@/components/share-text";
 import { SongSheetView } from "@/components/song-sheet-view";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
@@ -29,7 +30,6 @@ export function SavedSong({
   research,
   audioUrl,
   timing,
-  link,
 }: {
   sheet: SongSheet;
   /** RemixQ: the song this one remixes, linked from the rail. */
@@ -40,8 +40,6 @@ export function SavedSong({
   audioUrl?: string;
   /** When each line is sung in that audio (Whisper), for the sing-along. */
   timing?: SungTiming | null;
-  /** The page's address as shown at the top ("ghostq.app/song/…"). */
-  link: string;
 }) {
   const steps = useMemo(() => research.reduce<StepItem[]>((items, event, n) => applyStepEvent(items, event, n), []), [research]);
   const qlooCalls = steps.filter((s) => s.kind === "step" && !["craft_pass", "vocal_style", "ready_to_write"].includes(s.tool)).length;
@@ -56,7 +54,11 @@ export function SavedSong({
             Library
           </Link>
         </Button>
-        <span className="font-mono text-[11px] break-all text-muted-foreground">{link} · shared link, no login</span>
+        {/* F4: a real share control in place of the raw address; anyone with the link opens it, no login. */}
+        <span className="flex items-center gap-2.5 text-xs text-muted-foreground">
+          No login needed
+          <ShareButton sheet={sheet} path={`/song/${sheet.id}`} size="xs" />
+        </span>
       </div>
       {/* A song nobody has sung yet can be sung from its page (Lyria, with the usual limits); a sung one just plays. */}
       <SongSheetView

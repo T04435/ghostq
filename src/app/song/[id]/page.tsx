@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,7 +16,7 @@ export async function generateMetadata({ params }: PageProps<"/song/[id]">): Pro
   const { sheet } = song;
   const crowds = sheet.featuring ? `${possessive(sheet.artist)} and ${possessive(sheet.featuring.artist)} crowds` : `${possessive(sheet.artist)} crowd: ${describeCrowd(sheet.crowd)}`;
   const description = `${draftLabel(sheet.artist, sheet.featuring?.artist)}. ${sheet.remixOf ? `A RemixQ of "${sheet.remixOf.title}" for` : "Written for"} ${crowds}.`;
-  return { title, description, openGraph: { title, description, type: "music.song", siteName: "GhostQ" }, twitter: { card: "summary", title, description } };
+  return { title, description, openGraph: { title, description, type: "music.song", siteName: "GhostQ" }, twitter: { card: "summary_large_image", title, description } };
 }
 
 /** A shared song: read-only, no login. The song is read per request, so it streams in behind a placeholder. */
@@ -43,7 +42,6 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
   const song = publicSong(saved);
   // RemixQ: a remix shows next to its original; any song lists its remixes.
   const [original, remixes] = await Promise.all([song.sheet.remixOf ? getSong(song.sheet.remixOf.id) : null, remixesOf(id)]);
-  const host = (await headers()).get("host") ?? "";
   return (
     <SavedSong
       sheet={{ ...song.sheet, id }}
@@ -52,7 +50,6 @@ async function Song({ params }: { params: PageProps<"/song/[id]">["params"] }) {
       research={song.research}
       audioUrl={song.audio ? `/api/songs/${id}/audio?v=${encodeURIComponent(song.audio.createdAt)}` : undefined}
       timing={song.audio?.timing ?? null}
-      link={`${host}/song/${id}`}
     />
   );
 }

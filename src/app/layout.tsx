@@ -5,6 +5,7 @@ import { QPlayer } from "@/components/qplayer/qplayer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SITE_URL } from "@/lib/site";
 import { versionText } from "@/lib/version";
 import "./ghostq-theme.css";
 
@@ -15,6 +16,7 @@ const redHatMono = Red_Hat_Mono({ variable: "--font-red-hat-mono", subsets: ["la
 const geistPixel = Geist_Pixel({ variable: "--font-geist-pixel", subsets: ["latin"], axes: ["ELSH"], adjustFontFallback: false });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "GhostQ",
   description: "An AI ghostwriter that knows your next crowd: original song sheets built on Qloo taste data, with a receipt on every line.",
   other: { "app-version": versionText() },
