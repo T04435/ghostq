@@ -77,7 +77,7 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
           </span>
           {!examples && (
             <span className="text-muted-foreground" role="status">
-              picking artists not in the Library yet…
+              picking artists not in the Songbook yet…
             </span>
           )}
           {examples?.map((example) => (

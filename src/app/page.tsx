@@ -4,8 +4,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { Logo } from "@/components/brand/logo";
-import { KIND_ORDER, ReceiptChip, SideMark } from "@/components/brand/receipt";
+import { ReceiptChip, SideMark } from "@/components/brand/receipt";
 import { PlaySongButton } from "@/components/play-song-button";
+import { HowItWorks } from "@/components/how-it-works";
 import { RecentSongs, RecentSongsSkeleton } from "@/components/recent-songs";
 import { SongCount } from "@/components/song-count";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ const exampleSong = cache(async () => {
 
 const card = "flex flex-col gap-3 rounded-lg border bg-card p-5";
 
-/** The Landing: hero, the three steps, CollabQ, RemixQ, the QPlayer and Sing Along, the Library preview and the closing CTA. */
+/** The Landing: hero, CollabQ, RemixQ, the QPlayer and Sing Along, How it works (#how), the Songbook preview and the closing CTA. */
 export default function LandingPage() {
   return (
     <>
@@ -60,7 +61,7 @@ export default function LandingPage() {
             <Button size="lg" variant="secondary" asChild>
               <Link href="/library">
                 <Play className="fill-current" aria-hidden />
-                Hear one from the Library
+                Hear one from the Songbook
               </Link>
             </Button>
           </div>
@@ -73,33 +74,6 @@ export default function LandingPage() {
           <Suspense fallback={<Skeleton className="h-[260px] rounded-lg" />}>
             <HeroSong />
           </Suspense>
-        </div>
-      </section>
-
-      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-(--page-x) pb-18">
-        <h2 className="max-w-[600px] text-[clamp(26px,3vw,36px)] leading-[1.05] font-semibold tracking-[-0.035em]">One name in. A crowd, a song and the reasons out.</h2>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
-          <Suspense fallback={<Skeleton className="h-44 rounded-lg" />}>
-            <CrowdStep />
-          </Suspense>
-          <Suspense fallback={<Skeleton className="h-44 rounded-lg" />}>
-            <WorldStep />
-          </Suspense>
-          <div className={card}>
-            <span className="font-mono text-[11px] text-muted-foreground">03 · THE SONG</span>
-            <div className="flex items-center gap-2.5" aria-hidden>
-              <span className="inline-flex size-9 flex-none items-center justify-center rounded-full bg-foreground text-card">
-                <Play className="size-3.5 fill-current" />
-              </span>
-              <span className="relative h-1.5 flex-1 overflow-hidden rounded-[3px] bg-muted">
-                <span className="absolute inset-y-0 left-0 w-[35%] rounded-[3px] bg-foreground" />
-              </span>
-              <span className="pixel-square text-sm">2:00</span>
-            </div>
-            <p className="text-[13px] leading-normal text-muted-foreground">
-              A full song sheet with chords, melody and a production brief. Optionally sung and produced by Google Lyria, labelled and watermarked.
-            </p>
-          </div>
         </div>
       </section>
 
@@ -135,11 +109,13 @@ export default function LandingPage() {
         </Suspense>
       </Feature>
 
+      <HowItWorks />
+
       <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-(--page-x) py-18">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="text-[clamp(26px,3vw,36px)] leading-[1.05] font-semibold tracking-[-0.035em]">Open a finished one first</h2>
           <Link href="/library" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-            Whole Library
+            Whole Songbook
           </Link>
         </div>
         <Suspense fallback={<RecentSongsSkeleton count={4} className={PREVIEW} />}>
@@ -224,61 +200,7 @@ async function HeroSong() {
   );
 }
 
-/** 01 · The crowd, from the example song: its city with Qloo's rank, and its strongest age band. */
-async function CrowdStep() {
-  const song = await exampleSong();
-  const crowd = song?.sheet.crowd;
-  const age = crowd?.ages[0];
-  return (
-    <div className={card}>
-      <span className="font-mono text-[11px] text-muted-foreground">01 · THE CROWD</span>
-      {crowd?.place && (
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-[28px] leading-tight font-semibold tracking-[-0.03em]">{crowd.place.name}</span>
-          {crowd.placeRank && (
-            <span className="pixel-circle text-[15px] text-muted-foreground">
-              #{crowd.placeRank.rank.toLocaleString("en-US")} of {crowd.placeRank.of.toLocaleString("en-US")} areas
-            </span>
-          )}
-        </div>
-      )}
-      {age && age.skew !== null && (
-        <div className="grid grid-cols-[minmax(52px,max-content)_1fr_54px] items-center gap-2 text-xs">
-          <span className="pixel-circle text-sm whitespace-nowrap">{AGE_BANDS[age.age]}</span>
-          <span className="relative h-1.5 overflow-hidden rounded-[3px] bg-muted">
-            <span className="absolute inset-y-0 left-0 rounded-[3px] bg-signal" style={{ width: `${Math.min(100, Math.round((Math.abs(age.skew) / 0.35) * 100))}%` }} />
-          </span>
-          <span className="text-right pixel-circle text-sm">
-            {age.skew >= 0 ? "+" : ""}
-            {age.skew}
-          </span>
-        </div>
-      )}
-      <p className="text-[13px] leading-normal text-muted-foreground">Qloo tells us where an artist’s fans’ taste is strongest, and how old they skew. Shown as a result, never asked as a form.</p>
-    </div>
-  );
-}
 
-/** 02 · Their world: four of the example song's receipts, one per kind where it can. */
-async function WorldStep() {
-  const song = await exampleSong();
-  const signals = song?.sheet.signals ?? [];
-  const picks = KIND_ORDER.filter((k) => k !== "crowd" && k !== "home" && k !== "voice")
-    .map((k) => signals.find((s) => s.kind === k))
-    .filter((s) => s !== undefined)
-    .slice(0, 4);
-  return (
-    <div className={card}>
-      <span className="font-mono text-[11px] text-muted-foreground">02 · THEIR WORLD</span>
-      <div className="flex flex-wrap gap-1">
-        {picks.map((s) => (
-          <ReceiptChip key={s.id} signal={s} showLabel />
-        ))}
-      </div>
-      <p className="text-[13px] leading-normal text-muted-foreground">An agent reads what the crowd loves across music, film, books and lifestyle. Each step shows live, with its source.</p>
-    </div>
-  );
-}
 
 /** A feature band: its name, a heading and a line on the left; a live example from the Library on the right. */
 function Feature({ label, title, body, cta, flip = false, children }: { label: string; title: string; body: string; cta?: { href: string; label: string }; flip?: boolean; children: React.ReactNode }) {

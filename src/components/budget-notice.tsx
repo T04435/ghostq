@@ -25,7 +25,7 @@ export function BudgetNotice({ kind, message, examples }: { kind: "qloo" | "sing
           <p>{message ?? TEXT[kind].body}</p>
           {!examples && (
             <Link href="/library" className="font-medium underline">
-              Listen to the songs in the Library
+              Listen to the songs in the Songbook
             </Link>
           )}
         </AlertDescription>

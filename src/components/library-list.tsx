@@ -52,7 +52,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
     return (
       <EmptyState
         size="lg"
-        title="The Library is empty"
+        title="The Songbook is empty"
         body="Nobody has written a song yet. The first one lands here with its crowd and receipts, for everyone to open."
         action={{ label: "Write the first song", href: "/write" }}
       />
