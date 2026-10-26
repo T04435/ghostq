@@ -33,7 +33,7 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" showCloseButton={false} className="gap-[18px] border-0 bg-background px-[22px] pt-5 pb-[26px] data-[side=bottom]:h-dvh">
+      <SheetContent side="bottom" showCloseButton={false} className="gap-[18px] border-0 bg-background px-[22px] pt-5 pb-[26px] data-[side=bottom]:h-dvh sm:gap-6 sm:px-[max(32px,calc((100vw-760px)/2))] sm:pt-8 sm:pb-8">
         <div className="flex items-center gap-3">
           <Button variant="secondary" size="icon" className="size-11 flex-none rounded-full" onClick={() => onOpenChange(false)} aria-label="Close the sing-along">
             <ChevronDown aria-hidden />
@@ -45,18 +45,18 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
             </SheetDescription>
           </div>
         </div>
-        <span className="mt-2 pixel-grid text-[22px] leading-none tracking-[.02em] text-foreground uppercase dark:text-signal">{timing.sections[position.section]?.name}</span>
+        <span className="mt-2 pixel-grid text-[22px] leading-none sm:text-[32px] tracking-[.02em] text-foreground uppercase dark:text-signal">{timing.sections[position.section]?.name}</span>
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-[26px]" aria-live="polite">
-          {before >= 0 && text(before) && <span className="text-[17px] leading-[1.3] font-medium text-muted-foreground">{text(before)}</span>}
+          {before >= 0 && text(before) && <span className="text-[17px] leading-[1.3] font-medium text-muted-foreground sm:text-2xl">{text(before)}</span>}
           {current >= 0 ? (
-            <LiveWords text={text(current) ?? ""} line={timing.lines[current]} time={time} className="text-[28px] leading-[1.25] font-semibold" />
+            <LiveWords text={text(current) ?? ""} line={timing.lines[current]} time={time} className="text-[28px] leading-[1.25] font-semibold sm:text-[44px]" />
           ) : (
             <div className="flex flex-col gap-3.5">
               <span className="text-[15px] text-muted-foreground">{gapLabel(timing, time, position.section)}</span>
               <CountIn timing={timing} time={time} />
             </div>
           )}
-          {after >= 0 && text(after) && <span className="text-xl leading-[1.3] font-medium text-muted-foreground">{text(after)}</span>}
+          {after >= 0 && text(after) && <span className="text-xl leading-[1.3] font-medium text-muted-foreground sm:text-[28px]">{text(after)}</span>}
         </div>
         <div className="flex min-h-7 flex-wrap items-center gap-1.5">
           {receipts.map((s) => (
@@ -73,7 +73,7 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
             type="button"
             onClick={sing.toggle}
             aria-label={sing.playing ? "Pause" : "Play"}
-            className="inline-flex size-16 cursor-pointer items-center justify-center rounded-full bg-signal text-signal-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring"
+            className="inline-flex size-16 cursor-pointer sm:size-20 items-center justify-center rounded-full bg-signal text-signal-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
             {sing.playing ? <Pause className="size-6 fill-current" aria-hidden /> : <Play className="size-6 fill-current" aria-hidden />}
           </button>
