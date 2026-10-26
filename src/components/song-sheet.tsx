@@ -113,8 +113,11 @@ export function SongSheet({
         <div className="flex flex-col gap-2.5 border-b px-(--sheet-x) pt-[22px] pb-[18px]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-1.5">
-              <h2 className="text-[clamp(26px,4vw,36px)] leading-[1.05] font-semibold tracking-[-0.035em]">{sheet.title}</h2>
-              <span className="text-[15px] font-semibold">{songArtist(sheet)}</span>
+              {/* Title and artist on one line in Geist Pixel Circle, as on the Library card (the user, 26 Oct). */}
+              <h2 className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="pixel-circle text-[clamp(28px,4vw,40px)] leading-[1.05]">{sheet.title}</span>
+                <span className="pixel-circle text-[17px] leading-tight text-muted-foreground">{songArtist(sheet)}</span>
+              </h2>
               <span className="text-[13px] text-muted-foreground">
                 {sheet.featuring
                   ? `Verse 1 for ${possessive(sheet.artist)} crowd (${describeCrowd(sheet.crowd)}), verse 2 for ${possessive(sheet.featuring.artist)} (${describeCrowd(sheet.featuring.crowd)}), the chorus for both.`

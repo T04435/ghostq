@@ -20,8 +20,8 @@ const chip = "inline-flex items-baseline gap-[5px] rounded-full bg-muted px-[9px
  * ONE song card (the DS's LibrarySongCard, redesigned 26 Oct with the user) for Library rows and the recent and example
  * strips:
  * - one round control: play for a sung song, a feather (a written sheet) for one that isn't sung yet;
- * - the title with the artist on the same line, smaller, in Geist Pixel Circle; the draft label under it (always);
- * - top right: SUNG, or the Write page's lime Sing it on an unsung song (`actions`, the Library);
+ * - the title and, smaller, the artist on one line, both in Geist Pixel Circle (the user, 26 Oct); the draft label under it (always);
+ * - top right: the Write page's lime Sing it on an unsung song (`actions`, the Library); a sung one says so by its play button;
  * - a footer under a hairline with the song's tags: the crowd, language, key and tempo, the three receipts its lines
  *   cite most, and how many receipts it has, linking to the sheet.
  * Songs written in this browser carry a graphite and lime ring.
@@ -57,7 +57,7 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
         )}
         <div className="flex min-w-0 flex-col gap-1 pt-0.5">
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-            <Link href={`/song/${song.id}`} className="text-base leading-tight font-semibold tracking-[-0.01em] wrap-anywhere hover:underline">
+            <Link href={`/song/${song.id}`} className="pixel-circle text-[17px] leading-tight wrap-anywhere hover:underline">
               {song.title}
             </Link>
             <span className="pixel-circle text-[13px] leading-tight wrap-anywhere text-muted-foreground">
@@ -77,11 +77,7 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
           </span>
           <span className="text-[11px] leading-[1.4] text-pretty text-muted-foreground">{draftLabel(song.artist, song.featuring ?? undefined)}</span>
         </div>
-        {song.sung ? (
-          <Badge variant="signal" className="mt-1">
-            SUNG
-          </Badge>
-        ) : actions ? (
+        {!song.sung && actions ? (
           <Button asChild size="sm" className="h-8 gap-1.5 rounded-full px-3 text-[13px] font-semibold">
             <Link href={`/song/${song.id}#sing`}>
               <MicAudioLines aria-hidden />
