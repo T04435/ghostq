@@ -14,5 +14,7 @@ export type SongSummary = {
   story: string | null;
   sung: boolean;
   audioVersion: string | null;
+  /** Written in this browser (its device cookie matches the song's owner): the Library highlights it. */
+  mine?: boolean;
   createdAt: string;
 };

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LibraryList } from "@/components/library-list";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cookies } from "next/headers";
+import { DEVICE_COOKIE } from "@/lib/device";
+import { deviceFromCookie } from "@/server/limits";
 import { listSongs } from "@/server/store/songs";
 
 export const metadata: Metadata = { title: "Library · GhostQ", description: "Every song written with GhostQ, each with the Qloo research behind it." };
@@ -37,5 +40,7 @@ function LibrarySkeleton() {
 }
 
 async function Songs() {
-  return <LibraryList songs={await listSongs()} />;
+  // The songs this browser wrote are marked as yours (its device cookie, hashed, against each song's owner).
+  const viewer = deviceFromCookie((await cookies()).get(DEVICE_COOKIE)?.value);
+  return <LibraryList songs={await listSongs(200, viewer)} />;
 }

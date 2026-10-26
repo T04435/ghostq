@@ -1,6 +1,7 @@
 /**
- * The device cookie: a random id, set on a visitor's first request (src/proxy.ts) and used only to count the
- * per-device limits, so judges sharing one network each get their own allowance. No personal data, no tracking.
+ * The device cookie: a random id, set on a visitor's first request (src/proxy.ts). It counts the per-device limits, so
+ * judges sharing one network each get their own allowance, and (hashed) marks the songs this browser wrote: only it may
+ * rewrite them, and the Library highlights them as yours. No personal data, no tracking.
  */
 export const DEVICE_COOKIE = "ghostq_device";
 export const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;

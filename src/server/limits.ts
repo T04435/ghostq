@@ -138,7 +138,11 @@ export function visitor(request: Request): string {
 /** A device's id from its cookie (hashed too), or null when the request has none (curl, cookies blocked). */
 export function device(request: Request): string | null {
   const cookie = request.headers.get("cookie") ?? "";
-  const value = cookie.split(";").map((c) => c.trim().split("=")).find(([k]) => k === DEVICE_COOKIE)?.[1];
+  return deviceFromCookie(cookie.split(";").map((c) => c.trim().split("=")).find(([k]) => k === DEVICE_COOKIE)?.[1]);
+}
+
+/** The same id from the cookie's value (a page reads it with cookies()): it matches a saved song's owner. */
+export function deviceFromCookie(value: string | undefined | null): string | null {
   return isDeviceId(value) ? hash(value) : null;
 }
 
