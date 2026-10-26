@@ -349,13 +349,13 @@ async function HearOne() {
 
 
 /**
- * A feature's glyph with the titles' echo: a lime copy one dot down and right behind it, and the glyph itself in
- * --glyph-ink (graphite on the light page, lime on the dark one).
+ * A feature's glyph with the titles' echo: a --glyph-echo copy one dot down and right behind it (lime on the light page,
+ * none on the dark one), and the glyph itself in --glyph-ink (graphite on the light page, lime on the dark one).
  */
 function FeatureGlyph({ bits }: { bits: string }) {
   return (
     <span className="relative inline-flex flex-none">
-      <DotGlyph bits={bits} size={40} gap={4} ink="var(--signal)" className="absolute translate-[1.5px]" />
+      <DotGlyph bits={bits} size={40} gap={4} ink="var(--glyph-echo)" className="absolute translate-[1.5px]" />
       <DotGlyph bits={bits} size={40} gap={4} ink="var(--glyph-ink)" className="relative" />
     </span>
   );

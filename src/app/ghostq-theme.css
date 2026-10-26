@@ -206,13 +206,16 @@
   }
 }
 
-/* The Landing's feature glyphs: graphite on the light page (lime alone vanishes on it), lime on the dark one. */
+/* The Landing's feature glyphs: graphite with a lime echo on the light page (lime alone vanishes on it), lime with no
+   echo on the dark one (a lime echo there shows through the dim dots and doubles them). */
 :root {
   --glyph-ink: var(--foreground);
+  --glyph-echo: var(--signal);
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --glyph-ink: var(--signal);
+    --glyph-echo: transparent;
   }
 }
 
