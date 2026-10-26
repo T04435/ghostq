@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AGENT_NAME_START } from "@/lib/agent-persona";
+import { AGENT_NAME, AGENT_NAME_START } from "@/lib/agent-persona";
 import type { Brief } from "@/lib/brief";
 
 type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void; /** The line beside Write the song. */ note?: string };
@@ -70,10 +70,10 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
     <form onSubmit={submit} className="flex flex-col gap-4">
       {examples?.length !== 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          {/* The Ghost's suggestions, shown by its mark alone (the user, 26 Oct): it works while it picks, then rests. */}
+          {/* "Ghost suggests:" by the Ghost's mark (the user, 26 Oct): the mark works while it picks, then rests. */}
           <span className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap">
             <GhostMark size={GHOST_SIZES.tag} state={examples ? "rest" : "working"} label={`${AGENT_NAME_START}'s suggestions`} />
-            <span className="text-muted-foreground">Suggestions:</span>
+            <span className="text-muted-foreground">{AGENT_NAME} suggests:</span>
           </span>
           {!examples && (
             <span className="text-muted-foreground" role="status">
