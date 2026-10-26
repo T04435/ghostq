@@ -167,7 +167,7 @@
   font-synthesis: none;
 }
 /*
- * The Landing's feature titles: a lime copy of the text behind it, shifted 2 px up and left (the user, 26 Oct). A real
+ * The Landing's feature titles: a lime copy of the text behind it, two dots down and right (the user, 27 Oct). A real
  * second layer (attr(data-text)), not a text-shadow, so the lime keeps the pixel cut's dots. Needs data-text = the text.
  */
 @utility pixel-echo {
@@ -179,7 +179,8 @@
     inset: 0;
     z-index: -1;
     color: var(--signal);
-    transform: translate(-2px, -2px);
+    /* Two of the font's dots down and right, at any size (a dot is about 0.04em). */
+    transform: translate(0.08em, 0.08em);
     pointer-events: none;
   }
 }
