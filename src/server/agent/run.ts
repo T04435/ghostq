@@ -2,6 +2,7 @@ import "server-only";
 import { generateText, NoObjectGeneratedError, Output, ToolLoopAgent, type StopCondition } from "ai";
 import { AGE_BANDS, describeBrief, describeCrowd, describeHome, type AskField, type Brief, type Crowd } from "@/lib/brief";
 import { countryCodeFor, countryFromDescription, describePlace, languageFor, languagesFromTags, type Home } from "@/lib/place";
+import { throughStandIns } from "@/lib/qloo-parse";
 import { pickArtist, type ComparedTag } from "@/lib/qloo-parse";
 import { publicEvent, TOOL_LABELS, type RunEvent } from "@/lib/run-events";
 import { signalLine, type Signal } from "@/lib/signals";
@@ -13,8 +14,6 @@ import { craftProblems, MAX_CRAFT_FIXES, type CraftProblem } from "@/lib/craft";
 import { z } from "zod";
 import { idsIn } from "@/lib/signal-text";
 import type { VocalMatch } from "@/lib/voice";
-import { artistCatalogue } from "@/server/spotify/client";
-import { soundFromCatalogue } from "@/server/spotify/sound";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { nextAreas, readCrowd } from "@/server/crowd";
 import { vocalStyle } from "@/server/vocal-style";
@@ -145,6 +144,12 @@ function whose(state: RunState, key: "A" | "B", name?: string): { who?: "A" | "B
  * country, or answers alone when Qloo says nothing.
  */
 function homeFor(x: ArtistRun, mb: Home | null): Home | null {
+  // An artist Qloo has no record of: NotOnQ's fill says where they're from (MusicBrainz, through NotOnQ). GhostQ adds
+  // no lookup of its own on top.
+  if (filledByNotOnQ(x)) {
+    const h = x.act!.notonq!.home;
+    return h ? { name: h.name, country: h.country ?? h.name, countryCode: h.countryCode, source: "notonq" } : null;
+  }
   const fromQloo = countryFromDescription(x.act?.description) ?? (x.homeFromTags ? { country: x.homeFromTags, countryCode: countryCodeFor(x.homeFromTags) } : null);
   if (!fromQloo) return mb;
   if (mb && mb.countryCode && mb.countryCode === fromQloo.countryCode && mb.name !== mb.country) return { ...mb, source: "qloo+musicbrainz" };
@@ -155,21 +160,15 @@ const HOME_SOURCE: Record<Home["source"], (artist: string) => string> = {
   qloo: (a) => `Qloo: ${a}'s profile`,
   "qloo+musicbrainz": (a) => `Qloo: ${a}'s country; MusicBrainz (by Qloo's id): the city`,
   musicbrainz: (a) => `MusicBrainz: where ${a} is from (Qloo doesn't say)`,
+  notonq: (a) => `NotOnQ: where ${a} is from (MusicBrainz; Qloo has no record of ${a})`,
 };
 
-/** An artist's sound from their Spotify catalogue (F2), or null when Spotify can't be read or says nothing. */
-async function spotifySound(name: string, spotifyId: string): Promise<{ sound: string; releases: number; years: string } | null> {
-  try {
-    const catalogue = await artistCatalogue(spotifyId);
-    const sound = await soundFromCatalogue(name, catalogue);
-    if (!sound) return null;
-    const years = catalogue.releases.map((r) => r.year).filter(Boolean).sort();
-    return { sound, releases: catalogue.releases.length, years: years.length ? (years[0] === years.at(-1) ? years[0] : `${years[0]}–${years.at(-1)}`) : "" };
-  } catch (e) {
-    console.error("spotify sound failed", e instanceof Error ? e.message : e);
-    return null;
-  }
-}
+/** The artist is one Qloo has no record of, filled by NotOnQ from open data. */
+const filledByNotOnQ = (x: ArtistRun) => x.act?.notonq?.kind === "filled";
+
+/** Qloo's own description of the act: none for an artist NotOnQ filled (its text is NotOnQ's label and Wikipedia's). */
+const qlooDescription = (x: ArtistRun) => (filledByNotOnQ(x) ? null : x.act?.description);
+
 
 /** Words too common in artist names to count as a match. */
 const STOPWORDS = new Set(["the", "los", "las", "les", "del", "and", "und", "con"]);
@@ -208,7 +207,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     x.homeFromTags = genreTags.map((t) => t.name).find((n) => countryCodeFor(n)) ?? null;
     const genres = genreTags.filter((t) => !countryCodeFor(t.name)).slice(0, 6);
     x.genreTagIds = genres.map((g) => g.id);
-    const own = `Qloo: ${match.name}'s own tags (voice)`;
+    const own = filledByNotOnQ(x) ? `NotOnQ: ${match.name}'s genres from open data, as Qloo's own tags (Qloo has no record of ${match.name})` : `Qloo: ${match.name}'s own tags (voice)`;
     const signals = [
       ...genres.map((g) => state.signals.add("genre", g.name, own, null, side)),
       ...match.tags.filter((t) => t.type === "urn:tag:theme:qloo").slice(0, 5).map((t) => state.signals.add("theme", t.name, own, null, side)),
@@ -228,7 +227,8 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     ];
     const pinned = x.spotifyId && match.spotifyIds.includes(x.spotifyId) ? " (matched by Spotify id)" : "";
     const listed = [...new Map(signals.map((g) => [g.id, g])).values()].map((g) => `${g.id} ${g.label}`).join(", ");
-    emit({ type: "step-end", id: `find-artist${sfx}`, ok: true, summary: `Found ${match.name}${pinned}. Their own sound and themes: ${listed || "none listed"}.`, signals, raw: { name: match.name, popularity: match.popularity, tags: match.tags } });
+    const found = filledByNotOnQ(x) ? `Qloo has no record of ${match.name}, so NotOnQ filled it from open data` : `Found ${match.name}${pinned}`;
+    emit({ type: "step-end", id: `find-artist${sfx}`, ok: true, summary: `${found}. Their own sound and themes: ${listed || "none listed"}.`, signals, raw: { name: match.name, popularity: match.popularity, tags: match.tags } });
   } else if (answers?.sound) {
     // Qloo doesn't know the act: its sound in the user's words becomes Qloo genres (semantic tag search).
     const tags = (await genresFromWords(answers.sound, state.onCall)).slice(0, 6);
@@ -240,33 +240,20 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     const listed = signals.map((g) => `${g.id} ${g.label}`).join(", ");
     emit({ type: "step-end", id: `find-artist${sfx}`, ok: tags.length > 0, summary: `Qloo doesn't know ${x.name}, so their sound comes from your words. Genres: ${listed || "none matched"}.`, signals, raw: tags });
   } else {
-    // F2: Qloo doesn't know the act, so its sound comes from its Spotify catalogue (release and track titles) as Qloo
-    // genre tags; only when Spotify has nothing to go on does the run ask the user.
-    const read = x.spotifyId ? await spotifySound(x.name, x.spotifyId) : null;
-    const tags = read?.sound ? (await genresFromWords(read.sound, state.onCall)).slice(0, 6) : [];
-    if (read && tags.length) {
-      x.genreTagIds = tags.map((t) => t.id);
-      ownTags = tags.map((t) => t.name);
-      x.homeFromTags = ownTags.find((n) => countryCodeFor(n)) ?? null;
-      const source = `Spotify: ${x.name}'s catalogue (${read.releases} releases${read.years ? `, ${read.years}` : ""}), as Qloo genre tags`;
-      const signals = tags.map((t) => state.signals.add("genre", t.name, source, t.popularity, side));
-      const listed = signals.map((g) => `${g.id} ${g.label}`).join(", ");
-      emit({ type: "step-end", id: `find-artist${sfx}`, ok: true, summary: `Qloo doesn't know ${x.name}, so their sound comes from their Spotify releases ("${read.sound}"). Genres: ${listed}.`, signals, raw: { spotify: read } });
-    } else {
-      missing.push("sound");
-      emit({ type: "step-end", id: `find-artist${sfx}`, ok: false, summary: `Qloo doesn't know ${x.name} yet, and their Spotify releases don't say what they sound like.`, signals: [], raw: null });
-    }
+    // Neither Qloo nor NotOnQ (which fills artists Qloo has no record of, from open data) knows the act: ask.
+    missing.push("sound");
+    emit({ type: "step-end", id: `find-artist${sfx}`, ok: false, summary: `Neither Qloo nor NotOnQ knows ${x.name} yet.`, signals: [], raw: null });
   }
 
   const artistName = x.act?.name ?? x.name;
   emit({ type: "step-start", id: `read-crowd${sfx}`, tool: "read_crowd", label: state.collab ? `Read ${artistName}'s crowd` : TOOL_LABELS.read_crowd, input: { artist: artistName }, ...whose(state, x.key, artistName) });
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
   // How they sing (Wikipedia, by Qloo's Wikidata id), read alongside the crowd; it lands as its own step below.
-  const singing = vocalStyle(x.act?.wikidataId, languageFor(countryFromDescription(x.act?.description)?.countryCode ?? (x.homeFromTags ? countryCodeFor(x.homeFromTags) : null)));
+  const singing = vocalStyle(x.act?.wikidataId, languageFor(countryFromDescription(qlooDescription(x))?.countryCode ?? x.act?.notonq?.home?.countryCode ?? (x.homeFromTags ? countryCodeFor(x.homeFromTags) : null)));
   const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null, { spotifyId: x.spotifyId, name: x.act?.name ?? x.name })]);
   // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's. If MusicBrainz's
   // country disagrees with Qloo's description of the act, it's another artist of the same name: don't use its voices.
-  const qlooCountry = countryFromDescription(x.act?.description)?.countryCode;
+  const qlooCountry = countryFromDescription(qlooDescription(x))?.countryCode ?? x.act?.notonq?.home?.countryCode ?? undefined;
   const sameArtist = !qlooCountry || !profile.home?.countryCode || profile.home.countryCode === qlooCountry;
   x.vocals = sameArtist
     ? { ...profile.voices, source: `${profile.voices.source} (Qloo has no voice data)` }
@@ -304,8 +291,8 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   if (!state.collab) x.nextAreas = nextAreas(area).catch(() => []);
   const crowdSignals = [
     ...(home ? [state.signals.add("home", describeHome(home), HOME_SOURCE[home.source](artistName), null, side)] : []),
-    ...(crowd.place ? [state.signals.add("crowd", `Crowd around ${describePlace(crowd.place)}`, crowd.from.place === "qloo" ? `Qloo insights: ${artistName}'s fans' strongest area (heatmap; place named by OpenStreetMap)` : "Your answer", null, side)] : []),
-    ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? `Qloo insights: ${artistName}'s fans (demographics)` : "Your answer", a.skew, side)),
+    ...(crowd.place ? [state.signals.add("crowd", `Crowd around ${describePlace(crowd.place)}`, crowd.from.place === "qloo" ? `Qloo insights: ${artistName}'s fans' strongest area (heatmap; place named by OpenStreetMap)${throughStandIns(x)}` : "Your answer", null, side)] : []),
+    ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? `Qloo insights: ${artistName}'s fans (demographics)${throughStandIns(x)}` : "Your answer", a.skew, side)),
   ];
   const yours = [crowd.from.place === "you" && "the city", crowd.from.ages === "you" && "the ages"].filter(Boolean).join(" and ");
   const picked = [crowd.from.place === "remix" && "the city", crowd.from.ages === "remix" && "the ages"].filter(Boolean).join(" and ");
@@ -338,7 +325,8 @@ async function readWhatTheyShare(state: RunState, emit: Emit): Promise<void> {
     const c = await compareArtists(a.act.id, b.act.id, state.onCall);
     const useful = (t: { kind: string }) => t.kind === "theme" || t.kind === "style" || t.kind === "genre";
     const add = (t: ComparedTag, source: string, side: "A" | "B" | "shared") => state.signals.add(t.kind as "theme" | "style" | "genre", t.name, source, t.score, side);
-    const shared = c.shared.filter(useful).slice(0, 10).map((t) => add(t, `Qloo compare: shared by ${a.name}'s and ${b.name}'s fans`, "shared"));
+    const via = throughStandIns(a) || throughStandIns(b) ? " (an artist Qloo has no record of is compared through similar artists Qloo knows, via NotOnQ)" : "";
+    const shared = c.shared.filter(useful).slice(0, 10).map((t) => add(t, `Qloo compare: shared by ${a.name}'s and ${b.name}'s fans${via}`, "shared"));
     const onlyA = c.onlyA.filter((t) => t.kind === "theme").slice(0, 4).map((t) => add(t, `Qloo compare: ${a.name}'s fans, not ${b.name}'s`, "A"));
     const onlyB = c.onlyB.filter((t) => t.kind === "theme").slice(0, 4).map((t) => add(t, `Qloo compare: ${b.name}'s fans, not ${a.name}'s`, "B"));
     const list = (s: Signal[]) => s.map((x) => `${x.id} ${x.label}`).join(", ") || "none";
@@ -359,7 +347,7 @@ async function readWhatTheyShare(state: RunState, emit: Emit): Promise<void> {
 function askMessage(artist: string, fields: AskField[]): string {
   const parts = fields.map((f) => ({ language: "choose the song's language", qlooArtist: "pick the right artist", sound: `describe ${artist}'s sound in a few words`, place: "find the city of the crowd you're writing for", ages: "pick up to three age bands" })[f]);
   const lead = fields.includes("sound")
-    ? `Qloo doesn't know ${artist} yet.`
+    ? `Neither Qloo nor NotOnQ knows ${artist} yet.`
     : fields.every((f) => f === "language")
       ? `${artist}'s home, Qloo tags and crowd point to different languages.`
       : `Qloo has no data on part of ${artist}'s crowd.`;

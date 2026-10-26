@@ -39,27 +39,3 @@ export async function searchSpotifyArtists(query: string): Promise<SpotifyArtist
   cache.set(key, { at: Date.now(), value });
   return value;
 }
-
-export type Catalogue = { releases: { name: string; year: string; type: string }[]; tracks: string[] };
-const catalogues = new Map<string, { at: number; value: Catalogue }>();
-
-/**
- * An artist's catalogue on Spotify: their latest albums and singles (name, year) and the track titles of the newest
- * three. Spotify's artist object no longer carries genres for development-mode apps (probed 26 Oct), but album and
- * track lists still come back.
- */
-export async function artistCatalogue(id: string): Promise<Catalogue> {
-  const hit = catalogues.get(id);
-  if (hit && Date.now() - hit.at < 24 * 60 * 60 * 1000) return hit.value;
-  const headers = { Authorization: `Bearer ${await accessToken()}` };
-  const get = async (path: string) => {
-    const response = await fetch(`${API}${path}`, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!response.ok) throw new Error(`Spotify ${path.split("?")[0]} returned ${response.status}`);
-    return response.json() as Promise<{ items?: { id: string; name: string; release_date?: string; album_type?: string }[] }>;
-  };
-  const albums = (await get(`/artists/${encodeURIComponent(id)}/albums?${new URLSearchParams({ include_groups: "album,single", limit: "10" })}`)).items ?? [];
-  const tracks = (await Promise.all(albums.slice(0, 3).map((a) => get(`/albums/${a.id}/tracks?limit=10`).then((t) => (t.items ?? []).map((x) => x.name), () => [] as string[])))).flat();
-  const value = { releases: albums.map((a) => ({ name: a.name, year: (a.release_date ?? "").slice(0, 4), type: a.album_type ?? "album" })), tracks: [...new Set(tracks)].slice(0, 30) };
-  catalogues.set(id, { at: Date.now(), value });
-  return value;
-}

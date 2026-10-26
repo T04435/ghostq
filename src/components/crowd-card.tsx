@@ -181,7 +181,7 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
           label="Home (the voice)"
           value={crowd.home ? describeHome(crowd.home) : "no data"}
           muted={!crowd.home}
-          note={crowd.home ? { qloo: "Qloo", "qloo+musicbrainz": "Qloo and MusicBrainz", musicbrainz: "MusicBrainz" }[crowd.home.source] : "neither Qloo nor MusicBrainz says"}
+          note={crowd.home ? { qloo: "Qloo", "qloo+musicbrainz": "Qloo and MusicBrainz", musicbrainz: "MusicBrainz", notonq: "NotOnQ (MusicBrainz)" }[crowd.home.source] : "neither Qloo nor NotOnQ says"}
         />
       </div>
     </div>
