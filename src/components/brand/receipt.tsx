@@ -49,16 +49,24 @@ export const isQloo = (source: string | undefined) => /qloo/i.test(source ?? "")
  * Any 3×3 dot glyph on the brand's grid: nine bits in reading order, lit at full ink, unlit at `dim`. Cell 9 is the
  * mark's rounded tail. The receipt kinds and the Landing's feature glyphs are drawn with it.
  */
-export function DotGlyph({ bits, ink = "currentColor", dim = 0.2, size = 12, gap = 1.5, className }: { bits: string; ink?: string; dim?: number; size?: number; gap?: number; className?: string }) {
+export function DotGlyph({ bits, ink = "currentColor", dim = 0.2, size = 12, gap = 1.5, tail = true, className }: { bits: string; ink?: string; dim?: number; size?: number; gap?: number; tail?: boolean; className?: string }) {
+  const cell = (size - 2 * gap) / 3;
   return (
     <span aria-hidden className={cn("grid flex-none grid-cols-3", className)} style={{ width: size, height: size, gap }}>
-      {bits.split("").map((bit, i) => (
-        <span
-          key={i}
-          className="rounded-full"
-          style={{ background: ink, opacity: bit === "1" ? 1 : dim, ...(i === 8 ? { transform: "rotate(-45deg) scale(0.85,1.6)" } : {}) }}
-        />
-      ))}
+      {bits.split("").map((bit, i) => {
+        const opacity = bit === "1" ? 1 : dim;
+        // The tail, drawn as the logo draws it (logo.tsx): a pill one dot wide and 1.6 long at −45°, not a stretched dot.
+        if (tail && i === 8)
+          return (
+            <span key={i} className="relative">
+              <span
+                className="absolute top-1/2 left-1/2"
+                style={{ width: cell, height: cell * 1.6, borderRadius: cell / 2, background: ink, opacity, transform: "translate(-50%,-50%) rotate(-45deg)" }}
+              />
+            </span>
+          );
+        return <span key={i} className="rounded-full" style={{ background: ink, opacity }} />;
+      })}
     </span>
   );
 }
@@ -69,10 +77,10 @@ export function KindGlyph({ kind, ...rest }: { kind: SignalKind; ink?: string; d
 }
 
 /**
- * The Landing features as receipt letters (the user, 26 Oct): C (the Crowd glyph) for CollabQ, R (the Style reference
- * glyph) for RemixQ, and P, drawn the same way, for QPlayer.
+ * The Landing features as receipt-style letters (the user, 26 Oct): C (the Crowd glyph) for CollabQ, R and P drawn on
+ * the same grid for RemixQ and QPlayer.
  */
-export const FEATURE_GLYPHS = { collab: GLYPHS.crowd, remix: GLYPHS.artist, player: "111111100" } as const;
+export const FEATURE_GLYPHS = { collab: GLYPHS.crowd, remix: "110110101", player: "110110100" } as const;
 
 /** CollabQ sides as a disc: A is the left half filled, B the right half, Shared the full disc. Solo songs carry none. */
 export function SideMark({ side, size = 10, color = "currentColor", className }: { side: NonNullable<Signal["side"]>; size?: number; color?: string; className?: string }) {
