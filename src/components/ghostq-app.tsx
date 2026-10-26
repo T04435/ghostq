@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronLeft, CircleAlert, GitFork, PenLine, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronLeft, CircleAlert, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { RemixGlyph } from "@/components/brand/receipt";
 import { AgentLockup } from "@/components/brand/agent-lockup";
 import { AgentStatusLine, agentStatusText, type AgentState } from "@/components/brand/agent-status-line";
 import { BriefForm } from "@/components/brief-form";
@@ -494,7 +495,7 @@ export function GhostQApp({
                 {sheet.id && !sheet.featuring && (
                   <Button variant="outline" asChild>
                     <Link href={`/remix/${sheet.id}`}>
-                      <GitFork aria-hidden />
+                      <RemixGlyph />
                       Remix for another crowd
                     </Link>
                   </Button>

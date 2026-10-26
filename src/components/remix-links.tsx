@@ -1,5 +1,5 @@
-import { GitFork } from "lucide-react";
 import Link from "next/link";
+import { RemixGlyph } from "@/components/brand/receipt";
 import { Badge } from "@/components/ui/badge";
 import { describeAges, type Crowd } from "@/lib/brief";
 import { SongTitle } from "@/components/song-title";
@@ -11,7 +11,7 @@ export function RemixOfLink({ of }: { of: { id: string; title: string; crowdText
   return (
     <Link href={`/song/${of.id}`} className="flex items-center gap-3 rounded-lg border bg-card px-3.5 py-2.5 text-foreground hover:border-foreground">
       <span className="inline-flex size-8 flex-none items-center justify-center rounded-full bg-muted">
-        <GitFork className="size-[15px]" aria-hidden />
+        <RemixGlyph size={15} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-xs text-muted-foreground">Remix of</span>

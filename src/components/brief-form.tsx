@@ -1,9 +1,10 @@
 "use client";
 
-import { CircleAlert, GitFork } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArtistSearch } from "@/components/artist-search";
+import { RemixGlyph } from "@/components/brand/receipt";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -98,7 +99,7 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
             example.href ? (
               <Button key={example.label} asChild variant="outline" size="sm" aria-disabled={busy}>
                 <Link href={example.href}>
-                  <GitFork aria-hidden />
+                  <RemixGlyph size={14} />
                   {example.label}
                 </Link>
               </Button>

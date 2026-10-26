@@ -1,11 +1,11 @@
 "use client";
 
-import { GitFork, Info, TriangleAlert } from "lucide-react";
+import { Info, TriangleAlert } from "lucide-react";
 import { cn } from "cn";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { InlineCitation, InlineCitationCard, InlineCitationCardBody, InlineCitationText } from "@/components/ai-elements/inline-citation";
-import { isQloo, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark } from "@/components/brand/receipt";
+import { isQloo, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark, RemixGlyph } from "@/components/brand/receipt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -139,7 +139,7 @@ export function SongSheet({
               href={`/song/${sheet.remixOf.id}`}
               className="inline-flex items-center gap-1.5 self-start rounded-full border py-1 pr-2.5 pl-2 text-xs font-semibold hover:border-foreground"
             >
-              <GitFork className="size-3" strokeWidth={2.5} aria-hidden />
+              <RemixGlyph size={12} />
               RemixQ of the original <span className="font-normal text-muted-foreground">· written for {describeCrowd(sheet.remixOf.crowd)}</span>
             </Link>
           )}
