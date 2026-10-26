@@ -1,4 +1,4 @@
-import { ArrowRight, Pause, Play } from "lucide-react";
+import { ArrowRight, Blend, GitFork, MicAudioLines, Pause } from "lucide-react";
 import { cn } from "cn";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -40,7 +40,7 @@ const exampleSong = cache(async () => {
 
 const card = "flex flex-col gap-3 rounded-lg border bg-card p-5";
 
-/** The Landing: hero, CollabQ, RemixQ, the QPlayer and Sing Along, How it works (#how), the Songbook preview and the closing CTA. */
+/** The Landing: hero, CollabQ, RemixQ, the QPlayer and Sing Along, the Songbook preview, the closing CTA and How it works (#how) last. */
 export default function LandingPage() {
   return (
     <>
@@ -58,12 +58,10 @@ export default function LandingPage() {
             <Button size="lg" asChild>
               <Link href="/write">Write a song</Link>
             </Button>
-            <Button size="lg" variant="secondary" asChild>
-              <Link href="/library">
-                <Play className="fill-current" aria-hidden />
-                Hear one from the Songbook
-              </Link>
-            </Button>
+            {/* Plays the example song in the QPlayer (no page change); the Songbook link is in the nav. */}
+            <Suspense fallback={null}>
+              <HearOne />
+            </Suspense>
           </div>
           <span className="text-[13px] text-muted-foreground">No sign-up. About a minute. Every song is public, with its research.</span>
           <Suspense fallback={<SongCount />}>
@@ -79,7 +77,8 @@ export default function LandingPage() {
 
       {/* The three things a finished song can do next, each shown on a real song from the Library (the user, 26 Oct). */}
       <Feature
-        label="COLLABQ"
+        label="CollabQ"
+        icon={<Blend aria-hidden />}
         title="Artist A feat. Artist B. One song, two crowds."
         body="Verse 1 is written for A’s crowd and verse 2 for B’s, each in its artist’s language. The chorus is built on what both crowds share, from Qloo’s compare, and sung by both leads."
         cta={{ href: "/write", label: "Write a feat." }}
@@ -89,7 +88,8 @@ export default function LandingPage() {
         </Suspense>
       </Feature>
       <Feature
-        label="REMIXQ"
+        label="RemixQ"
+        icon={<GitFork aria-hidden />}
         title="The same song, for another crowd."
         body="Pick a new city, new ages, or both. GhostQ reads the new crowd from Qloo and rewrites the verses and bridge for it. The title, key, tempo, sections and hook stay, and every changed line is marked."
         cta={{ href: "/library", label: "Pick a song to remix" }}
@@ -100,7 +100,8 @@ export default function LandingPage() {
         </Suspense>
       </Feature>
       <Feature
-        label="QPLAYER · SING ALONG"
+        label="QPlayer · Sing Along"
+        icon={<MicAudioLines aria-hidden />}
         title="Press play. Follow every word."
         body="Sung songs play in the QPlayer across the whole site. The sheet follows the recording word by word, with the chord being played, and the receipts behind the line you hear. Open it full screen and sing along."
       >
@@ -108,8 +109,6 @@ export default function LandingPage() {
           <SingAlongExample />
         </Suspense>
       </Feature>
-
-      <HowItWorks />
 
       <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-(--page-x) py-18">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -135,6 +134,8 @@ export default function LandingPage() {
           </Button>
         </div>
       </section>
+
+      <HowItWorks />
     </>
   );
 }
@@ -203,11 +204,11 @@ async function HeroSong() {
 
 
 /** A feature band: its name, a heading and a line on the left; a live example from the Library on the right. */
-function Feature({ label, title, body, cta, flip = false, children }: { label: string; title: string; body: string; cta?: { href: string; label: string }; flip?: boolean; children: React.ReactNode }) {
+function Feature({ label, icon, title, body, cta, flip = false, children }: { label: string; icon: React.ReactNode; title: string; body: string; cta?: { href: string; label: string }; flip?: boolean; children: React.ReactNode }) {
   return (
     <section className="mx-auto grid w-full max-w-[1200px] items-center gap-8 border-t px-(--page-x) py-14 desk:grid-cols-2 desk:gap-14 sm:py-18">
       <div className={cn("flex max-w-[520px] flex-col gap-3.5", flip && "desk:order-2")}>
-        <span className="font-mono text-[11px] tracking-[.06em] text-muted-foreground">{label}</span>
+        <FeatureLabel icon={icon}>{label}</FeatureLabel>
         <h2 className="text-[clamp(28px,3.4vw,44px)] leading-none font-semibold tracking-[-0.04em] text-pretty">{title}</h2>
         <p className="text-base leading-normal text-pretty text-muted-foreground">{body}</p>
         {cta && (
@@ -330,5 +331,22 @@ async function SingAlongExample() {
         <PlaySongButton song={{ id: song.id, title: sheet.title, artist: sheet.artist, audioVersion: song.audio.createdAt }} />
       </div>
     </div>
+  );
+}
+
+/** "Hear one from the Songbook": the example song in the QPlayer, right here. */
+async function HearOne() {
+  const song = await exampleSong();
+  if (!song?.audio) return null;
+  return <PlaySongButton variant="secondary" label="Hear one from the Songbook" song={{ id: song.id, title: song.sheet.title, artist: song.sheet.artist, audioVersion: song.audio.createdAt }} />;
+}
+
+/** A feature's name as a graphite pill with its icon, readable at a glance (the user, 26 Oct). */
+function FeatureLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 self-start rounded-full bg-foreground py-1.5 pr-3.5 pl-2.5 text-[13px] font-semibold text-background [&_svg]:size-4">
+      {icon}
+      {children}
+    </span>
   );
 }

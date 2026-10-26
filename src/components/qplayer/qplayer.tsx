@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { ArrowUpRight, Maximize, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type MouseEvent } from "react";
@@ -103,8 +103,8 @@ export function QPlayer() {
       <span className="hidden pixel-square text-[13px] whitespace-nowrap lg:inline">
         {clock(time)} <span className="opacity-60">/ {clock(duration)}</span>
       </span>
-      <Link href={`/song/${song.id}`} className="hidden flex-none text-xs font-semibold whitespace-nowrap underline underline-offset-3 lg:inline">
-        Open song
+      <Link href={`/song/${song.id}`} title="Open song" aria-label="Open song" className={`${icon} hidden lg:inline-flex`}>
+        <ArrowUpRight className="size-4" aria-hidden />
       </Link>
       {sheet && (
         <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={icon}>
