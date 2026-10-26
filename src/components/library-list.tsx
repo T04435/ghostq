@@ -16,6 +16,8 @@ const TYPES: [string, string][] = [
   ["collab", "CollabQ"],
 ];
 const typeOf = (s: SongSummary) => (s.remixOf ? "remix" : s.featuring ? "collab" : "original");
+/** "Your songs": the ones this browser wrote, offered as a Type when there are any. */
+const YOURS: [string, string] = ["yours", "Your songs"];
 
 /** The public Library: every saved song, with search and filters; a sung song plays in the QPlayer. */
 export function LibraryList({ songs }: { songs: SongSummary[] }) {
@@ -41,7 +43,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
         (artist === ALL || s.artist === artist || s.featuring === artist) &&
         (city === ALL || s.crowd.place?.name === city) &&
         (language === ALL || s.language === language) &&
-        (type === ALL || typeOf(s) === type) &&
+        (type === ALL || (type === YOURS[0] ? Boolean(s.mine) : typeOf(s) === type)) &&
         (!q || [s.title, s.artist, s.featuring ?? "", s.story ?? ""].some((t) => t.toLowerCase().includes(q))),
     );
   }, [songs, query, artist, city, language, type]);
@@ -69,7 +71,7 @@ export function LibraryList({ songs }: { songs: SongSummary[] }) {
             <FilterSelect id="lib-artist" label="Artist" all={ALL} value={artist} onChange={setArtist} options={options.artists.map((a) => [a, a])} />
             <FilterSelect id="lib-city" label="City" all={ALL} value={city} onChange={setCity} options={options.cities.map((c) => [c, c])} />
             <FilterSelect id="lib-language" label="Language" all={ALL} value={language} onChange={setLanguage} options={options.languages.map((l) => [l, l])} />
-            <FilterSelect id="lib-type" label="Type" all={ALL} value={type} onChange={setType} options={TYPES} />
+            <FilterSelect id="lib-type" label="Type" all={ALL} value={type} onChange={setType} options={songs.some((s) => s.mine) ? [YOURS, ...TYPES] : TYPES} />
           </div>
         </div>
         <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">

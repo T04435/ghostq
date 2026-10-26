@@ -22,6 +22,15 @@ export function loadLastRun(): LastRun | null {
   }
 }
 
+/** Write another / New artist (the user, 26 Oct): the page opens empty next time, until a new song is written. */
+export function clearLastRun(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // Storage blocked: nothing was kept.
+  }
+}
+
 export function saveLastRun(run: LastRun): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(run));

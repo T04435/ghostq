@@ -284,8 +284,8 @@ export async function getAudioStream(id: string, range: string | null): Promise<
   return { body: new Uint8Array(audio.subarray(start, end + 1)), length: end - start + 1, contentRange: `bytes ${start}-${end}/${audio.length}` };
 }
 
-/** Every visible song, newest first. */
-export async function listSongs(limit = 200): Promise<SongSummary[]> {
+/** Every visible song, newest first. `viewer`: the asking device's id (limits.deviceFromCookie), to mark its own songs. */
+export async function listSongs(limit = 200, viewer: string | null = null): Promise<SongSummary[]> {
   const songs = (await store().list(limit)).map((s) => normalize(s)!);
   return songs
     .filter((s) => s.sheet?.crowd)
@@ -301,6 +301,7 @@ export async function listSongs(limit = 200): Promise<SongSummary[]> {
       sung: Boolean(s.audio),
       audioVersion: s.audio?.createdAt ?? null,
       createdAt: s.createdAt,
+      mine: Boolean(viewer && s.owner === viewer),
     }));
 }
 

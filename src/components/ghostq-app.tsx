@@ -21,7 +21,7 @@ import { RemixOfLink } from "@/components/remix-links";
 import { SectionCollapsible } from "@/components/section-collapsible";
 import { describeAges, describeCrowd, type Brief, type Crowd, type Remix } from "@/lib/brief";
 import { possessive } from "@/lib/possessive";
-import { loadLastRun, saveLastRun } from "@/lib/last-run";
+import { clearLastRun, loadLastRun, saveLastRun } from "@/lib/last-run";
 import type { RunEvent } from "@/lib/run-events";
 import type { SongSheet } from "@/lib/song-sheet";
 
@@ -153,6 +153,8 @@ export function GhostQApp({
 
   function writeAnother() {
     if (!current.current) return;
+    // The last song is remembered until the next one starts: leave now and Write opens empty.
+    clearLastRun();
     void run({ ...current.current, avoid: written.current });
   }
 
@@ -162,6 +164,7 @@ export function GhostQApp({
       router.push("/write");
       return;
     }
+    clearLastRun();
     current.current = null;
     written.current = [];
     setInitial({ artist: "", story: "" });

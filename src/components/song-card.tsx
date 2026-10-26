@@ -10,7 +10,7 @@ import { AGE_BANDS } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { SongSummary } from "@/lib/song-summary";
 
-export type SongCardSong = Pick<SongSummary, "id" | "title" | "artist" | "featuring" | "remixOf" | "crowd" | "language" | "sung" | "audioVersion"> & { remixCount?: number };
+export type SongCardSong = Pick<SongSummary, "id" | "title" | "artist" | "featuring" | "remixOf" | "crowd" | "language" | "sung" | "audioVersion" | "mine"> & { remixCount?: number };
 
 /**
  * ONE song card (the DS's LibrarySongCard on shadcn Item), for Library rows and the recent and example strips: play
@@ -26,6 +26,8 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
     <div
       className={cn(
         "grid min-w-0 grid-cols-[36px_minmax(0,1fr)] items-start rounded-lg border bg-card text-foreground transition-colors hover:border-foreground",
+        // Written in this browser: outlined in graphite (lime stays Qloo's).
+        song.mine && "border-foreground ring-1 ring-foreground",
         compact ? "gap-3 px-3.5 py-3" : "gap-3.5 px-4 py-3.5",
       )}
     >
@@ -51,6 +53,7 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
             <Link href={`/song/${song.id}`} className="text-base leading-tight font-semibold tracking-[-0.01em] wrap-anywhere hover:underline">
               {song.title}
             </Link>
+            {song.mine && <Badge variant="strong">YOURS</Badge>}
             {song.remixOf && (
               <Badge variant="strong">
                 <GitFork aria-hidden />
