@@ -90,6 +90,11 @@ export function RemixGlyph({ size = 16, className }: { size?: number; className?
   return <DotGlyph bits={FEATURE_GLYPHS.remix} size={size} gap={Math.max(1, Math.round(size * 0.11 * 2) / 2)} dim={0.25} className={className} />;
 }
 
+/** CollabQ's icon, drawn the same way: the C glyph (the Ghost's feat. suggestions on Write). */
+export function CollabGlyph({ size = 16, className }: { size?: number; className?: string }) {
+  return <DotGlyph bits={FEATURE_GLYPHS.collab} size={size} gap={Math.max(1, Math.round(size * 0.11 * 2) / 2)} dim={0.25} className={className} />;
+}
+
 /** CollabQ sides as a disc: A is the left half filled, B the right half, Shared the full disc. Solo songs carry none. */
 export function SideMark({ side, size = 10, color = "currentColor", className }: { side: NonNullable<Signal["side"]>; size?: number; color?: string; className?: string }) {
   const background = side === "A" ? `linear-gradient(90deg, ${color} 50%, transparent 50%)` : side === "B" ? `linear-gradient(90deg, transparent 50%, ${color} 50%)` : color;
