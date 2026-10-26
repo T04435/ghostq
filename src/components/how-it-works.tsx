@@ -1,3 +1,4 @@
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { MeetTheGhost } from "@/components/brand/meet-the-ghost";
 import { CompareView } from "@/components/compare-view";
 import { cn } from "cn";
@@ -41,7 +42,10 @@ export function HowItWorks() {
   return (
     <section id="how" className="mx-auto flex w-full max-w-[1200px] scroll-mt-20 flex-col gap-14 border-t px-(--page-x) py-14 sm:py-18">
       <div className="flex max-w-[720px] flex-col gap-3">
-        <span className="font-mono text-[11px] tracking-[.06em] text-muted-foreground">HOW IT WORKS</span>
+        <span className="inline-flex items-center gap-2 self-start rounded-full bg-foreground py-1.5 pr-3.5 pl-2.5 text-[13px] font-semibold text-background">
+          <GhostMark size={GHOST_SIZES.tag} decorative />
+          How it works
+        </span>
         <h2 className="text-[clamp(28px,3.4vw,44px)] leading-none font-semibold tracking-[-0.04em] text-pretty">How a crowd becomes a song</h2>
         <p className="text-[17px] leading-normal text-pretty text-muted-foreground">Five steps, each one visible while it runs. Nothing is required of you except an artist’s name.</p>
       </div>
