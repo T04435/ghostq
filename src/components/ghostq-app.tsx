@@ -471,6 +471,33 @@ export function GhostQApp({
               note={budget ? "Writing is paused until the limit resets." : undefined}
             />
           )}
+          {/* What's next, once a song is written: right under the brief, not at the foot of the page (the user, 26 Oct). */}
+          {sheet && !busy && folded && (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" onClick={writeAnother}>
+                  <Sparkles aria-hidden />
+                  Write another
+                </Button>
+                <Button type="button" variant="outline" onClick={newArtist}>
+                  <RotateCcw aria-hidden />
+                  New artist
+                </Button>
+                {sheet.id && !sheet.featuring && (
+                  <Button variant="outline" asChild>
+                    <Link href={`/remix/${sheet.id}`}>
+                      <GitFork aria-hidden />
+                      Remix for another crowd
+                    </Link>
+                  </Button>
+                )}
+              </div>
+              <span className="px-1 text-xs leading-normal text-muted-foreground">
+                Write another keeps {sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song. Saved to the public Library with its
+                research. Anyone with the link can open it.
+              </span>
+            </div>
+          )}
           {budget && <BudgetNotice kind="qloo" message={budget.message} examples={examples} />}
         </div>
       </section>
@@ -483,34 +510,6 @@ export function GhostQApp({
           sheet={sheet}
           onSheetChange={rewritten}
           sticky
-          aside={
-            !busy && (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" onClick={writeAnother}>
-                    <Sparkles aria-hidden />
-                    Write another
-                  </Button>
-                  <Button type="button" variant="outline" onClick={newArtist}>
-                    <RotateCcw aria-hidden />
-                    New artist
-                  </Button>
-                  {sheet.id && !sheet.featuring && (
-                    <Button variant="outline" asChild>
-                      <Link href={`/remix/${sheet.id}`}>
-                        <GitFork aria-hidden />
-                        Remix for another crowd
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-                <span className="px-1 text-xs leading-normal text-muted-foreground">
-                  Write another keeps {sheet.featuring ? "both crowds" : `${possessive(sheet.artist)} crowd`} and writes a different song. Saved to the public Library with its
-                  research. Anyone with the link can open it.
-                </span>
-              </>
-            )
-          }
         />
       )}
 
