@@ -104,6 +104,25 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <Mark size={52} />
           <div style={{ fontSize: 38, fontWeight: 600, letterSpacing: "-0.04em" }}>GhostQ</div>
+          {sheet && (
+            // The invitation, top right (the user, 26 Oct): play a sung song, or sing one that isn't sung yet.
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, height: 56, padding: "0 26px 0 10px", borderRadius: 999, background: LIME, color: LIME_INK, fontSize: 24, fontWeight: 600 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 38, background: LIME_INK }}>
+                {song?.audio ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24">
+                    <path d="M7 4.5v15l12-7.5z" fill={LIME} />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <path d="M12 19v3" />
+                  </svg>
+                )}
+              </div>
+              {song?.audio ? "Play it in GhostQ" : "Sing it in GhostQ"}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 22, rowGap: 6 }}>
