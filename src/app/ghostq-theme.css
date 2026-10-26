@@ -155,14 +155,23 @@
 @utility pixel-circle {
   font-family: var(--font-pixel);
   font-variation-settings: var(--px-circle);
+  /* Geist Pixel has one weight: a semibold parent made the browser fake bold and the dots ran together (26 Oct). */
+  font-weight: 400;
+  font-synthesis: none;
 }
 @utility pixel-square {
   font-family: var(--font-pixel);
   font-variation-settings: var(--px-square);
+  /* Geist Pixel has one weight: a semibold parent made the browser fake bold and the dots ran together (26 Oct). */
+  font-weight: 400;
+  font-synthesis: none;
 }
 @utility pixel-grid {
   font-family: var(--font-pixel);
   font-variation-settings: var(--px-grid);
+  /* Geist Pixel has one weight: a semibold parent made the browser fake bold and the dots ran together (26 Oct). */
+  font-weight: 400;
+  font-synthesis: none;
 }
 
 @layer base {
