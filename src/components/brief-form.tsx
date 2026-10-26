@@ -1,13 +1,15 @@
 "use client";
 
 import { CircleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArtistSearch } from "@/components/artist-search";
+import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { EXAMPLE_BRIEFS, type Brief } from "@/lib/brief";
+import { AGENT_NAME_START } from "@/lib/agent-persona";
+import type { Brief } from "@/lib/brief";
 
 type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void; /** The line beside Write the song. */ note?: string };
 
@@ -21,6 +23,18 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
   const [brief, setBrief] = useState<Brief>({ ...EMPTY, ...initial });
   const [feat, setFeat] = useState<{ artist: string; spotifyId?: string }>({ artist: initial?.feat?.artist ?? "", spotifyId: initial?.feat?.spotifyId });
   const [error, setError] = useState<string | null>(null);
+  // "Try" examples: the Ghost picks two artists the Library has no song for yet (GET /api/examples).
+  const [examples, setExamples] = useState<{ label: string; brief: Brief }[] | null>(null);
+  useEffect(() => {
+    let on = true;
+    fetch("/api/examples")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((e: { label: string; brief: Brief }[]) => on && setExamples(e))
+      .catch(() => on && setExamples([]));
+    return () => {
+      on = false;
+    };
+  }, []);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -54,24 +68,32 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Try:</span>
-        {EXAMPLE_BRIEFS.map((example) => (
-          <Button
-            key={example.label}
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              setBrief({ ...EMPTY, ...example.brief });
-              setFeat({ artist: example.brief.feat?.artist ?? "", spotifyId: example.brief.feat?.spotifyId });
-            }}
-          >
-            {example.label}
-          </Button>
-        ))}
-      </div>
+      {examples?.length !== 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Try:</span>
+          {!examples && (
+            <span className="inline-flex h-8 items-center gap-2 text-muted-foreground" role="status">
+              <GhostMark size={GHOST_SIZES.tag} state="working" decorative />
+              {AGENT_NAME_START} is picking artists not in the Library yet…
+            </span>
+          )}
+          {examples?.map((example) => (
+            <Button
+              key={example.label}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setBrief({ ...EMPTY, ...example.brief });
+                setFeat({ artist: example.brief.feat?.artist ?? "", spotifyId: example.brief.feat?.spotifyId });
+              }}
+            >
+              {example.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="artist" className="text-[13px] font-semibold">
