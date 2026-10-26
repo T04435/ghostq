@@ -23,7 +23,8 @@ type Entry = { at: number; value: Promise<unknown> };
 const cache = new Map<string, Entry>();
 let nextSlot = 0;
 
-async function paced(): Promise<void> {
+/** Waits for this process's next Qloo slot (shared by plain calls and harness calls). */
+export async function paced(): Promise<void> {
   const now = Date.now();
   const at = Math.max(now, nextSlot);
   nextSlot = at + MIN_GAP_MS;

@@ -4,6 +4,7 @@ import { geohashPolygon } from "@/lib/geohash";
 import { countryCodeFor, type Place } from "@/lib/place";
 import { parseCompare, parseDemographics, parseEntities, parseHeatmap, parseSearch, parseTags, type QlooEntity } from "@/lib/qloo-parse";
 import { qlooGet, type CallLog, type QlooParams } from "./client";
+import { asInsights, harness } from "./harness";
 
 /** A Qloo crowd signal. No place: taste worldwide; no ages: all ages. */
 export type CrowdSignal = { place: Place | null; ages: AgeBand[] };
@@ -31,18 +32,23 @@ export async function genresFromWords(words: string, onCall?: OnCall) {
   );
 }
 
+// Through Qloo's harness: the three calls it expresses exactly as GhostQ makes them. The others below stay plain calls
+// to the same base URL: the harness has no field for tag types, a point plus radius, age bands, heatmap cells beyond
+// 20, a tag compare, audiences or locality search, and forcing them through it would change GhostQ's answers.
+
 /** Artists like this one. Some entities found by search are invalid as signals (probe 2c): that's a 400. */
 export async function soundAlikes(entityId: string, onCall?: OnCall) {
-  return parseEntities(await qlooGet("/v2/insights", { "filter.type": "urn:entity:artist", "signal.interests.entities": entityId, take: 10 }, onCall));
+  return parseEntities(asInsights(await harness("qloo_recommend", { target_type: "artist", signals: [entityId], limit: 10 }, onCall)));
 }
 
-/** Artists by genre tags, no location: location swamps tags (probe 5d), so rescore by crowd after. */
+/** Artists by genre tags, no location: location swamps tags (probe 5d), so rescore by crowd after. Intersection, the
+ * harness's default and what a plain call without an operator gets (checked 27 Oct: identical lists). */
 export async function artistsByTags(tagIds: string[], onCall?: OnCall) {
-  return parseEntities(await qlooGet("/v2/insights", { "filter.type": "urn:entity:artist", "signal.interests.tags": tagIds.join(","), take: 10 }, onCall));
+  return parseEntities(asInsights(await harness("qloo_recommend", { target_type: "artist", signal_tags: tagIds, signal_tags_operator: "intersection", limit: 10 }, onCall)));
 }
 
 export async function artistDemographics(entityId: string, onCall?: OnCall) {
-  return parseDemographics(await qlooGet("/v2/insights", { "filter.type": "urn:demographics", "signal.interests.entities": entityId }, onCall));
+  return parseDemographics({ results: { demographics: await harness("qloo_audience_demographics", { entity: entityId, entity_type: "artist" }, onCall) } });
 }
 
 /** Tags this crowd over-indexes on: theme (lyric subjects), style, or music genre. Optional act signal blends the act's fans in. */
