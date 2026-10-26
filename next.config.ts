@@ -17,6 +17,8 @@ const sha = process.env.APP_SHA || process.env.VERCEL_GIT_COMMIT_SHA || git("git
 const dirty = !process.env.VERCEL && git("git status --porcelain") !== "";
 
 const nextConfig: NextConfig = {
+  // Qloo's harness reads its own resources/ folder at runtime, so it stays a plain Node package (not bundled).
+  serverExternalPackages: ["@qloo/qloo-harness"],
   // A second build or dev server (checks, QA) can run beside `pnpm dev` in its own folder: NEXT_DIST_DIR=.next-check.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   env: {
