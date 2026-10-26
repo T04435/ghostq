@@ -41,7 +41,7 @@ export function buildSingPrompt(sheet: SongSheet, vocals: VocalLine): string {
   const genre = clean(vocals.genre || sheet.genre);
   const style = [`Key: ${sheet.key}. Tempo: ${sheet.tempo} BPM. Feel: ${clean(sheet.feel)}`, `Production: ${clean(sheet.productionBrief)}`];
   if (vocals.kind === "instrumental") {
-    return [`Create an original 2-minute instrumental ${genre ? `${genre} ` : ""}track. No vocals.`, ...style].join("\n");
+    return [`Create an original instrumental ${genre ? `${genre} ` : ""}track of about 3 minutes. No vocals.`, ...style].join("\n");
   }
   let verse = 0;
   const lyrics = sheet.sections
@@ -53,7 +53,7 @@ export function buildSingPrompt(sheet: SongSheet, vocals: VocalLine): string {
     .join("\n\n");
   const direction = clean(vocals.direction || sheet.vocalDirection);
   return [
-    `Create an original 2-minute song in ${sheet.language}${genre ? `. Genre: ${genre}` : ""}.`,
+    `Create an original song of about 3 minutes in ${sheet.language}${genre ? `. Genre: ${genre}` : ""}.`,
     `Performed by ${performers(vocals.voices)}.`,
     direction ? `Vocals: ${direction}` : "",
     ...style,

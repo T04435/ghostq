@@ -58,7 +58,7 @@ export function SongPlayer({
             Sing it
           </Button>
           <span className="min-w-40 flex-1 text-xs leading-[1.45] text-muted-foreground">
-            {canSing ? "About a minute. A 2-minute track from Google Lyria. Each sing costs credits." : "Choose a lead voice first."}
+            {canSing ? "About a minute. A track of about 3 minutes from Google Lyria. Each sing costs credits." : "Choose a lead voice first."}
           </span>
         </div>
       )}
@@ -78,7 +78,7 @@ export function SongPlayer({
           <div className="relative h-1.5 overflow-hidden rounded-[3px] bg-muted" aria-hidden>
             <div className="absolute inset-y-0 left-0 w-[38%] animate-pulse rounded-[3px] bg-signal" />
           </div>
-          <span className="text-xs text-muted-foreground">{voice} · 2-minute track · you can keep reading the sheet</span>
+          <span className="text-xs text-muted-foreground">{voice} · about 3 minutes · you can keep reading the sheet</span>
         </div>
       )}
 

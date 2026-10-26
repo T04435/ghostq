@@ -1,8 +1,11 @@
 import type { SungTiming } from "./lyric-align";
 import type { SongSheet } from "./song-sheet";
 
-/** The length GhostQ asks Lyria for ("an original 2-minute song"). */
-export const PLANNED_SECONDS = 120;
+/**
+ * The length GhostQ asks Lyria for ("an original song of about 3 minutes"). It was 2 until 26 Oct, when long sheets got
+ * their last lines cut; Lyria costs the same per song at any length.
+ */
+export const PLANNED_SECONDS = 180;
 
 export type TimedSection = { name: string; short: string; start: number; end: number; lyric: boolean };
 export type TimedLine = { section: number; line: number; start: number; end: number };
@@ -59,7 +62,7 @@ export function planTiming(sheet: Pick<SongSheet, "tempo" | "sections">, duratio
   return { duration, sections, lines };
 }
 
-/** The plan stretched to the real track (Lyria lands near, not on, two minutes). */
+/** The plan stretched to the real track (Lyria lands near, not on, the length it was asked for). */
 export function fitTiming(plan: SongTiming, duration: number): SongTiming {
   if (!duration || Math.abs(duration - plan.duration) < 0.01) return plan;
   const k = duration / plan.duration;
