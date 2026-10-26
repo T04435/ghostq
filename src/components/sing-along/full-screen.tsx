@@ -15,7 +15,7 @@ import { SongTitle } from "@/components/song-title";
 import { Logo } from "@/components/brand/logo";
 
 /**
- * The DS's full-screen sing-along (a phone, opened from the QPlayer): the section in lime Geist Pixel Grid, the line
+ * The DS's full-screen sing-along, its lyrics in Geist Pixel Circle (the user, 26 Oct: only here) (a phone, opened from the QPlayer): the section in lime Geist Pixel Grid, the line
  * before (muted), the line being sung large with its words lighting up, the count-in dots between lines, the line
  * after, the current line's receipts, the song map, then time · play · length and the draft label.
  */
@@ -52,16 +52,16 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
         </div>
         <span className="mt-2 pixel-grid text-[22px] leading-none sm:text-[32px] tracking-[.02em] text-foreground uppercase dark:text-signal">{timing.sections[position.section]?.name}</span>
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-[26px]" aria-live="polite">
-          {before >= 0 && text(before) && <span className="text-[17px] leading-[1.3] font-medium text-muted-foreground sm:text-2xl">{text(before)}</span>}
+          {before >= 0 && text(before) && <span className="pixel-circle text-[17px] leading-[1.3] text-muted-foreground sm:text-2xl">{text(before)}</span>}
           {current >= 0 ? (
-            <LiveWords text={text(current) ?? ""} line={timing.lines[current]} time={time} className="text-[28px] leading-[1.25] font-semibold sm:text-[44px]" />
+            <LiveWords text={text(current) ?? ""} line={timing.lines[current]} time={time} className="pixel-circle text-[28px] leading-[1.25] sm:text-[44px]" />
           ) : (
             <div className="flex flex-col gap-3.5">
               <span className="text-[15px] text-muted-foreground">{gapLabel(timing, time, position.section)}</span>
               <CountIn timing={timing} time={time} />
             </div>
           )}
-          {after >= 0 && text(after) && <span className="text-xl leading-[1.3] font-medium text-muted-foreground sm:text-[28px]">{text(after)}</span>}
+          {after >= 0 && text(after) && <span className="pixel-circle text-xl leading-[1.3] text-muted-foreground sm:text-[28px]">{text(after)}</span>}
         </div>
         <div className="flex min-h-7 flex-wrap items-center gap-1.5">
           {receipts.map((s) => (
