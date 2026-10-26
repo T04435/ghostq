@@ -166,6 +166,24 @@
   font-weight: 400;
   font-synthesis: none;
 }
+/*
+ * The Landing's feature titles: a lime copy of the text behind it, shifted 2 px up and left (the user, 26 Oct). A real
+ * second layer (attr(data-text)), not a text-shadow, so the lime keeps the pixel cut's dots. Needs data-text = the text.
+ */
+@utility pixel-echo {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    color: var(--signal);
+    transform: translate(-2px, -2px);
+    pointer-events: none;
+  }
+}
+
 @utility pixel-grid {
   font-family: var(--font-pixel);
   font-variation-settings: var(--px-grid);
