@@ -70,11 +70,14 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
     <form onSubmit={submit} className="flex flex-col gap-4">
       {examples?.length !== 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Try:</span>
+          {/* The Ghost's suggestions (the user, 26 Oct): its mark works while it picks, then rests. */}
+          <span className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap">
+            <GhostMark size={GHOST_SIZES.tag} state={examples ? "rest" : "working"} decorative />
+            <span className="font-semibold">{AGENT_NAME_START}&rsquo;s suggestions</span>
+          </span>
           {!examples && (
-            <span className="inline-flex h-8 items-center gap-2 text-muted-foreground" role="status">
-              <GhostMark size={GHOST_SIZES.tag} state="working" decorative />
-              {AGENT_NAME_START} is picking artists not in the Library yet…
+            <span className="text-muted-foreground" role="status">
+              picking artists not in the Library yet…
             </span>
           )}
           {examples?.map((example) => (
