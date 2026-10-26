@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fitTiming, planTiming, positionAt, shortName, timingForPrompt, wordAt } from "@/lib/song-timing";
+import { fitTiming, PLANNED_SECONDS, planTiming, positionAt, shortName, timingForPrompt, wordAt } from "@/lib/song-timing";
 
 const line = (text: string) => ({ text, chords: "Am F", signalIds: ["T1"] });
 const sheet = {
@@ -15,11 +15,11 @@ const sheet = {
 describe("planTiming", () => {
   const plan = planTiming(sheet);
 
-  it("fills exactly the planned two minutes, intro and outro around the sheet", () => {
+  it("fills exactly the planned length, intro and outro around the sheet", () => {
     expect(plan.sections[0].name).toBe("Intro");
     expect(plan.sections.at(-1)!.name).toBe("Outro");
     expect(plan.sections[0].start).toBe(0);
-    expect(plan.sections.at(-1)!.end).toBeCloseTo(120);
+    expect(plan.sections.at(-1)!.end).toBeCloseTo(PLANNED_SECONDS);
     plan.sections.slice(1).forEach((s, i) => expect(s.start).toBeCloseTo(plan.sections[i].end));
   });
 
@@ -35,8 +35,8 @@ describe("planTiming", () => {
   });
 
   it("stretches to the real track", () => {
-    const fit = fitTiming(plan, 132);
-    expect(fit.sections.at(-1)!.end).toBeCloseTo(132);
+    const fit = fitTiming(plan, PLANNED_SECONDS * 1.1);
+    expect(fit.sections.at(-1)!.end).toBeCloseTo(PLANNED_SECONDS * 1.1);
     expect(fit.lines[0].start / plan.lines[0].start).toBeCloseTo(1.1);
   });
 

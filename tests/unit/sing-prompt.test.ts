@@ -61,7 +61,7 @@ describe("buildSingPrompt", () => {
   it("names the voices, and drops the lyrics for an instrumental", () => {
     expect(prompt).toContain("Performed by one male vocalist");
     const instrumental = buildSingPrompt(sheet, { kind: "instrumental", genre: "" });
-    expect(instrumental).toContain("instrumental Pop punk with a garage edge (Garage Rock) track. No vocals.");
+    expect(instrumental).toContain("instrumental Pop punk with a garage edge (Garage Rock) track of about 3 minutes. No vocals.");
     expect(instrumental).not.toContain("Shoes in my hand");
   });
 

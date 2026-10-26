@@ -24,7 +24,7 @@ const SOURCES: { name: string; use: string }[] = [
   { name: "MusicBrainz", use: "the artist’s listed gender, members and home town, to set the lead voices and the language" },
   { name: "Wikipedia", use: "“How they sing”: a few words on the artist’s singing from their article (CC BY-SA, linked on the receipt)" },
   { name: "OpenStreetMap", use: "the name of the fans’ strongest area (Nominatim; © OpenStreetMap contributors)" },
-  { name: "Google Lyria", use: "sings and produces a 2-minute track, with an inaudible SynthID watermark" },
+  { name: "Google Lyria", use: "sings and produces a track of about 3 minutes, with an inaudible SynthID watermark" },
 ];
 
 const LIMITS = [

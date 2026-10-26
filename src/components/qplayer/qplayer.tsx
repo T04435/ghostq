@@ -108,7 +108,8 @@ export function QPlayer() {
         Open song
       </Link>
       {sheet && (
-        <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={icon}>
+        // Sing along: full screen on a phone; from 1024 px "Open song" already does what it would, so it hides there.
+        <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={`${icon} lg:hidden`}>
           <ChevronUp className="size-4" aria-hidden />
         </button>
       )}

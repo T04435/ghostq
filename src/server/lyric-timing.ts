@@ -4,7 +4,7 @@ import { alignLyrics, type SungTiming } from "@/lib/lyric-align";
 import type { SongSheet } from "@/lib/song-sheet";
 
 /**
- * When each line of a sung song is sung: Whisper (openai/whisper-1 through AI Gateway, about US$0.012 a 2-minute song)
+ * When each line of a sung song is sung: Whisper (openai/whisper-1 through AI Gateway, about US$0.018 a 3-minute song)
  * hears the MP3 and lyric-align matches its segments to the sheet. Lyria returns no timings, and a language model
  * asked for them guessed (probed 26 Oct: times past the end of the track); Whisper's segments matched the lines.
  */
