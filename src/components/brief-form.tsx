@@ -1,6 +1,7 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, GitFork } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArtistSearch } from "@/components/artist-search";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
@@ -15,6 +16,12 @@ type Props = { initial?: Brief; busy: boolean; onSubmit: (brief: Brief) => void;
 
 const EMPTY: Brief = { artist: "", story: "" };
 
+/** A Ghost suggestion (server/examples): a brief to fill in, or a link to a RemixQ with the new crowd filled in. */
+type Suggestion = { label: string; brief?: Brief; href?: string };
+
+/** What the Ghost says while it picks, per mode (/write?mode=feat from the Landing's CollabQ, ?mode=remix from RemixQ). */
+const PICKING = { solo: "picking artists not in the Songbook yet…", feat: "picking pairs for a feat.…", remix: "picking songs to remix…" } as const;
+
 /**
  * The only inputs before a run: the artist, an optional "feat." artist (CollabQ) and an optional "what it's about".
  * GhostQ reads each crowd from Qloo during the run.
@@ -23,13 +30,20 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
   const [brief, setBrief] = useState<Brief>({ ...EMPTY, ...initial });
   const [feat, setFeat] = useState<{ artist: string; spotifyId?: string }>({ artist: initial?.feat?.artist ?? "", spotifyId: initial?.feat?.spotifyId });
   const [error, setError] = useState<string | null>(null);
-  // "Try" examples: the Ghost picks two artists the Library has no song for yet (GET /api/examples).
-  const [examples, setExamples] = useState<{ label: string; brief: Brief }[] | null>(null);
+  // Ghost suggests: two artists the Songbook has no song for yet (GET /api/examples), or, from the Landing's CollabQ
+  // and RemixQ (?mode=feat, ?mode=remix), two feat. pairs or two songs to remix for another crowd (the user, 27 Oct).
+  const [mode, setMode] = useState<keyof typeof PICKING>("solo");
+  const [examples, setExamples] = useState<Suggestion[] | null>(null);
   useEffect(() => {
     let on = true;
-    fetch("/api/examples")
+    const m = new URLSearchParams(window.location.search).get("mode");
+    const picked = m === "feat" || m === "remix" ? m : "solo";
+    // Read from the address after hydration: Write is prerendered, so the server render can't know the mode.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- once per page load.
+    setMode(picked);
+    fetch(`/api/examples?mode=${picked}`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((e: { label: string; brief: Brief }[]) => on && setExamples(e))
+      .then((e: Suggestion[]) => on && setExamples(e))
       .catch(() => on && setExamples([]));
     return () => {
       on = false;
@@ -77,10 +91,18 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
           </span>
           {!examples && (
             <span className="text-muted-foreground" role="status">
-              picking artists not in the Songbook yet…
+              {PICKING[mode]}
             </span>
           )}
-          {examples?.map((example) => (
+          {examples?.map((example) =>
+            example.href ? (
+              <Button key={example.label} asChild variant="outline" size="sm" aria-disabled={busy}>
+                <Link href={example.href}>
+                  <GitFork aria-hidden />
+                  {example.label}
+                </Link>
+              </Button>
+            ) : (
             <Button
               key={example.label}
               type="button"
@@ -89,12 +111,13 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
               disabled={busy}
               onClick={() => {
                 setBrief({ ...EMPTY, ...example.brief });
-                setFeat({ artist: example.brief.feat?.artist ?? "", spotifyId: example.brief.feat?.spotifyId });
+                setFeat({ artist: example.brief?.feat?.artist ?? "", spotifyId: example.brief?.feat?.spotifyId });
               }}
             >
               {example.label}
             </Button>
-          ))}
+            ),
+          )}
         </div>
       )}
 

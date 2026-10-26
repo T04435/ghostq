@@ -81,7 +81,7 @@ export default function LandingPage() {
         icon={<FeatureGlyph bits={FEATURE_GLYPHS.collab} />}
         title="Artist A feat. Artist B. One song, two crowds."
         body="Verse 1 is written for A’s crowd and verse 2 for B’s, each in its artist’s language. The chorus is built on what both crowds share, from Qloo’s compare, and sung by both leads."
-        cta={{ href: "/write", label: "Write a feat." }}
+        cta={{ href: "/write?mode=feat", label: "Write a feat." }}
       >
         <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
           <CollabExample />
@@ -92,7 +92,7 @@ export default function LandingPage() {
         icon={<FeatureGlyph bits={FEATURE_GLYPHS.remix} />}
         title="The same song, for another crowd."
         body="Pick a new city, new ages, or both. GhostQ reads the new crowd from Qloo and rewrites the verses and bridge for it. The title, key, tempo, sections and hook stay, and every changed line is marked."
-        cta={{ href: "/library", label: "Pick a song to remix" }}
+        cta={{ href: "/write?mode=remix", label: "Pick a song to remix" }}
         flip
       >
         <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>

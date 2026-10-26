@@ -21,11 +21,22 @@ const MAX_AGES = 3;
  * RemixQ's only input: the new crowd for a finished song. A city (Qloo's locality search), up to three age bands, or
  * both; whatever is left out stays as Qloo reads it for the artist.
  */
-export function RemixForm({ original, busy, onSubmit }: { original: SongSheet; busy: boolean; onSubmit: (remix: Omit<Remix, "of">) => void }) {
+export function RemixForm({
+  original,
+  busy,
+  initial,
+  onSubmit,
+}: {
+  original: SongSheet;
+  busy: boolean;
+  /** Picks to fill in without running (a Ghost suggestion from Write): the run waits for Remix. */
+  initial?: Omit<Remix, "of">;
+  onSubmit: (remix: Omit<Remix, "of">) => void;
+}) {
   const [query, setQuery] = useState("");
   const [cities, setCities] = useState<{ status: "idle" | "searching" | "done" | "error"; results: Place[]; message?: string }>({ status: "idle", results: [] });
-  const [place, setPlace] = useState<Place | null>(null);
-  const [ages, setAges] = useState<AgeBand[]>([]);
+  const [place, setPlace] = useState<Place | null>(initial?.place ?? null);
+  const [ages, setAges] = useState<AgeBand[]>(initial?.ages ?? []);
   // Qloo's heatmap: where else this artist's fans are strongest (saved with songs written from 23 Oct).
   const quick = original.crowd.otherAreas ?? [];
 
