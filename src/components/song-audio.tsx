@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { AudioPlayer, AudioPlayerElement } from "@/components/ai-elements/audio-player";
 import { usePlayer, type QSong } from "@/components/qplayer/player-context";
 import { Button } from "@/components/ui/button";
+import { Tip } from "@/components/tip";
 
 /**
  * The DS player's ready row, on AI Elements' Audio Player (media-chrome): a 44 px lime play button, a 6 px lime
@@ -65,11 +66,13 @@ export default function SongAudio({ src, voice, fileName, song }: { src: string;
             <MediaDurationDisplay className="p-0 leading-none text-foreground [font-variation-settings:var(--px-circle)]" />
           </div>
         </div>
-        <Button variant="ghost" size="icon" asChild className="size-10 flex-none rounded-full text-foreground">
-          <a href={src} download={fileName} title="Download .mp3" aria-label="Download .mp3">
-            <Download aria-hidden />
-          </a>
-        </Button>
+        <Tip label="Download .mp3">
+          <Button variant="ghost" size="icon" asChild className="size-10 flex-none rounded-full text-foreground">
+            <a href={src} download={fileName} aria-label="Download .mp3">
+              <Download aria-hidden />
+            </a>
+          </Button>
+        </Tip>
       </div>
     </AudioPlayer>
   );

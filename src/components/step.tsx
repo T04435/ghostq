@@ -4,11 +4,9 @@ import { Check, ChevronDown, ChevronRight, Clock, Minus, X } from "lucide-react"
 import { cn } from "cn";
 import type { ReactNode } from "react";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
-import { InlineCitationCard, InlineCitationCardBody } from "@/components/ai-elements/inline-citation";
-import { isQloo, ReceiptCardBody, ReceiptChip, SideMark, SourceTag } from "@/components/brand/receipt";
+import { isQloo, ReceiptChip, SideMark, SourceTag } from "@/components/brand/receipt";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { HoverCardTrigger } from "@/components/ui/hover-card";
 import { AGENT_NAME_START } from "@/lib/agent-persona";
 import type { Signal } from "@/lib/signals";
 
@@ -53,22 +51,6 @@ export function StepNumber({ n, status = "pending" }: { n: number; status?: Step
   );
 }
 
-/**
- * A step's receipt with the sheet's hover card (the user, 27 Oct): id, kind and label, then where it came from on Qloo
- * and its score, as soon as the step has it.
- */
-export function SignalChip({ signal }: { signal: Signal }) {
-  return (
-    <InlineCitationCard openDelay={150}>
-      <HoverCardTrigger asChild>
-        <ReceiptChip signal={signal} title="" />
-      </HoverCardTrigger>
-      <InlineCitationCardBody className="w-auto max-w-[260px] px-[11px] py-[9px]">
-        <ReceiptCardBody signal={signal} />
-      </InlineCitationCardBody>
-    </InlineCitationCard>
-  );
-}
 
 /** The pill shows only the states the mark doesn't: running, failed, waiting. */
 export const hasPill = (status: StepStatus) => status !== "done" && status !== "nodata";
@@ -131,7 +113,7 @@ export function StepCard({
             <ul className="flex flex-wrap gap-1" aria-label="Signals from this step">
               {unique.map((s) => (
                 <li key={s.id}>
-                  <SignalChip signal={s} />
+                  <ReceiptChip signal={s} />
                 </li>
               ))}
             </ul>
@@ -162,7 +144,7 @@ export function StepCard({
                     {c.receipts.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {[...new Map(c.receipts.map((s) => [s.id, s])).values()].map((s) => (
-                          <SignalChip key={s.id} signal={s} />
+                          <ReceiptChip key={s.id} signal={s} />
                         ))}
                       </div>
                     )}
@@ -197,7 +179,7 @@ export function StepCard({
           {empty ? (
             <span className="text-xs text-muted-foreground">Nothing found</span>
           ) : unique.length ? (
-            unique.map((s) => <SignalChip key={s.id} signal={s} />)
+            unique.map((s) => <ReceiptChip key={s.id} signal={s} />)
           ) : (
             summary && <span className="line-clamp-1 text-xs text-muted-foreground">{summary}</span>
           )}

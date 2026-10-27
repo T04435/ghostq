@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { appVersion, envTag, versionText, type AppVersion } from "@/lib/version";
+import { Tip } from "@/components/tip";
 
 const link = "rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
@@ -12,17 +13,19 @@ export function VersionBadge({ v = appVersion }: { v?: AppVersion }) {
   const env = envTag(v);
   const extra = env === "preview" ? [env, v.branch] : env === "local" ? [env, ...(v.dirty ? ["dirty"] : [])] : [];
   return (
-    <Badge title={versionText(v)} className="font-mono">
-      <span>
-        <a href={v.releaseUrl} className={link}>
-          v{v.version}
-        </a>
-        {" @ "}
-        <a href={v.commitUrl} className={link}>
-          {v.shortSha}
-        </a>
-        {extra.filter(Boolean).map((part) => ` · ${part}`)}
-      </span>
-    </Badge>
+    <Tip label={versionText(v)}>
+      <Badge className="font-mono">
+        <span>
+          <a href={v.releaseUrl} className={link}>
+            v{v.version}
+          </a>
+          {" @ "}
+          <a href={v.commitUrl} className={link}>
+            {v.shortSha}
+          </a>
+          {extra.filter(Boolean).map((part) => ` · ${part}`)}
+        </span>
+      </Badge>
+    </Tip>
   );
 }

@@ -10,6 +10,7 @@ import { CountIn, gapLabel, LiveWords } from "@/components/sing-along/live-line"
 import { useSavedSheet, useSingAlong } from "@/components/sing-along/use-sing-along";
 import { draftLabel } from "@/lib/draft-label";
 import { SongTitle } from "@/components/song-title";
+import { Tip } from "@/components/tip";
 
 const NO_SHEET = { tempo: 90, sections: [] };
 const phone = () => window.matchMedia("(max-width: 639px)").matches;
@@ -56,9 +57,11 @@ export function QPlayer() {
       aria-label="QPlayer"
       className="sticky top-0 z-40 flex h-12 items-center gap-1 bg-foreground pr-2.5 pl-2 text-background sm:gap-3 sm:pr-(--page-x) sm:pl-[calc(var(--page-x)-6px)]"
     >
-      <button type="button" onClick={player.prev} title="Previous song" aria-label="Previous song" className={icon}>
-        <SkipBack className="size-3.5 fill-current" aria-hidden />
-      </button>
+      <Tip label="Previous song">
+        <button type="button" onClick={player.prev} aria-label="Previous song" className={icon}>
+          <SkipBack className="size-3.5 fill-current" aria-hidden />
+        </button>
+      </Tip>
       <button
         type="button"
         onClick={player.toggle}
@@ -67,9 +70,11 @@ export function QPlayer() {
       >
         {playing ? <Pause className="size-[13px] fill-current" aria-hidden /> : <Play className="size-[13px] fill-current" aria-hidden />}
       </button>
-      <button type="button" onClick={() => void player.next()} title="Next song" aria-label="Next song" className={icon}>
-        <SkipForward className="size-3.5 fill-current" aria-hidden />
-      </button>
+      <Tip label="Next song">
+        <button type="button" onClick={() => void player.next()} aria-label="Next song" className={icon}>
+          <SkipForward className="size-3.5 fill-current" aria-hidden />
+        </button>
+      </Tip>
       <Link href={`/song/${song.id}`} onClick={expand} className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-[1.15] outline-none focus-visible:underline">
         {/* Title and artist in Geist Pixel Circle, as on the Library card and the sheet (the user, 26 Oct). */}
         <span className="flex min-w-0 items-baseline gap-2 text-[13px]">
@@ -84,10 +89,12 @@ export function QPlayer() {
             <CountIn timing={sing!.timing} time={sing!.time} size={7} />
           </span>
         ) : (
-          <span title={label} className="truncate text-[10.5px] opacity-80">
-            <span className="sm:hidden">GhostQ draft · AI-generated · not affiliated</span>
-            <span className="hidden sm:inline">{label}</span>
-          </span>
+          <Tip label={label} side="bottom">
+            <span className="truncate text-[10.5px] opacity-80">
+              <span className="sm:hidden">GhostQ draft · AI-generated · not affiliated</span>
+              <span className="hidden sm:inline">{label}</span>
+            </span>
+          </Tip>
         )}
       </Link>
       <span
@@ -103,17 +110,23 @@ export function QPlayer() {
       <span className="hidden pixel-square text-[13px] whitespace-nowrap lg:inline">
         {clock(time)} <span className="opacity-60">/ {clock(duration)}</span>
       </span>
-      <Link href={`/song/${song.id}`} title="Open song" aria-label="Open song" className={`${icon} hidden lg:inline-flex`}>
-        <ArrowUpRight className="size-4" aria-hidden />
-      </Link>
+      <Tip label="Open song">
+        <Link href={`/song/${song.id}`} aria-label="Open song" className={`${icon} hidden lg:inline-flex`}>
+          <ArrowUpRight className="size-4" aria-hidden />
+        </Link>
+      </Tip>
       {sheet && (
-        <button type="button" onClick={() => expand()} title="Sing along" aria-label="Sing along" className={icon}>
-          <Maximize className="size-3.5" aria-hidden />
-        </button>
+        <Tip label="Sing along">
+          <button type="button" onClick={() => expand()} aria-label="Sing along" className={icon}>
+            <Maximize className="size-3.5" aria-hidden />
+          </button>
+        </Tip>
       )}
-      <button type="button" onClick={() => player.setMuted(!muted)} title={muted ? "Unmute" : "Mute"} aria-label={muted ? "Unmute" : "Mute"} aria-pressed={muted} className={icon}>
-        {muted ? <VolumeX className="size-3.5" aria-hidden /> : <Volume2 className="size-3.5" aria-hidden />}
-      </button>
+      <Tip label={muted ? "Unmute" : "Mute"}>
+        <button type="button" onClick={() => player.setMuted(!muted)} aria-label={muted ? "Unmute" : "Mute"} aria-pressed={muted} className={icon}>
+          {muted ? <VolumeX className="size-3.5" aria-hidden /> : <Volume2 className="size-3.5" aria-hidden />}
+        </button>
+      </Tip>
       {sheet && sing && <FullScreenSingAlong open={full} onOpenChange={setFull} sheet={sheet} sing={sing} />}
     </div>
   );

@@ -1,6 +1,8 @@
 import { cn } from "cn";
 import type { ComponentProps } from "react";
+import { InlineCitationCard, InlineCitationCardBody } from "@/components/ai-elements/inline-citation";
 import { Badge } from "@/components/ui/badge";
+import { HoverCardTrigger } from "@/components/ui/hover-card";
 import type { Signal, SignalKind } from "@/lib/signals";
 
 /**
@@ -125,16 +127,13 @@ export function FromQloo({ children = "FROM QLOO", className }: { children?: Rea
 
 type ChipSignal = Pick<Signal, "id" | "kind" | "label" | "source" | "side"> & { value?: Signal["value"] };
 
-/** "T3 · Theme · Saudade · Qloo … 0.83 · B": the chip's tooltip. */
-export function receiptTip(s: ChipSignal): string {
-  return [s.id, KIND_NAME[s.kind], s.label.trim(), `${s.source}${s.value != null ? ` ${s.value}` : ""}`, s.side ? (s.side === "shared" ? "Shared" : `${s.side}’s crowd`) : null].filter(Boolean).join(" · ");
-}
-
 /**
  * ONE receipt chip, everywhere a signal is cited (lyric lines, steps, the plan, compare): the kind's glyph and the
  * id, on lime when it came from Qloo, grey when derived. Active (hovered or pinned) inverts to graphite. A CollabQ
  * signal carries its side mark. Base: shadcn Badge (inside AI Elements' InlineCitation on the sheet).
  * `as="button"` makes it a control (the sheet pins a receipt on click); other props go to the root element.
+ * Hover or focus shows the receipt card (shadcn HoverCard, as on the sheet). `title=""` leaves the card to a caller
+ * that wraps the chip in its own trigger.
  */
 export function ReceiptChip({
   signal,
@@ -142,6 +141,7 @@ export function ReceiptChip({
   showLabel = false,
   as = "span",
   className,
+  title,
   ...props
 }: { signal: ChipSignal; active?: boolean; showLabel?: boolean; as?: "span" | "button" } & Omit<ComponentProps<"button">, "children">) {
   const q = isQloo(signal.source);
@@ -153,7 +153,7 @@ export function ReceiptChip({
       {signal.side && <SideMark side={signal.side} />}
     </>
   );
-  return (
+  const chip = (
     <Badge
       asChild
       variant="ghost"
@@ -165,15 +165,24 @@ export function ReceiptChip({
       )}
     >
       {as === "button" ? (
-        <button type="button" title={props.title ?? receiptTip(signal)} data-active={active || undefined} {...props}>
+        <button type="button" data-active={active || undefined} {...props}>
           {inner}
         </button>
       ) : (
-        <span title={props.title ?? receiptTip(signal)} data-active={active || undefined} {...(props as unknown as ComponentProps<"span">)}>
+        <span data-active={active || undefined} {...(props as unknown as ComponentProps<"span">)}>
           {inner}
         </span>
       )}
     </Badge>
+  );
+  if (title === "") return chip;
+  return (
+    <InlineCitationCard openDelay={150}>
+      <HoverCardTrigger asChild>{chip}</HoverCardTrigger>
+      <InlineCitationCardBody className="w-auto max-w-[260px] px-[11px] py-[9px]">
+        <ReceiptCardBody signal={signal} />
+      </InlineCitationCardBody>
+    </InlineCitationCard>
   );
 }
 
