@@ -13,6 +13,7 @@ import { AGENT_NAME_START, PERSONA_PROMPT } from "@/lib/agent-persona";
 import { craftProblems, MAX_CRAFT_FIXES, type CraftProblem } from "@/lib/craft";
 import { z } from "zod";
 import { idsIn } from "@/lib/signal-text";
+import { resumeBrief, type DoneCall } from "@/lib/research-resume";
 import type { VocalMatch } from "@/lib/voice";
 import { AGENT_PROVIDER_OPTIONS, LIMITS, MODELS } from "./models";
 import { nextAreas, readCrowd } from "@/server/crowd";
@@ -377,12 +378,47 @@ function collabBrief(state: RunState): string {
 Research BOTH crowds: pass artist "A" or "B" to the tools (at least crowd_tags kind "theme" for each, and the act's sound for each). The compare step already found what the crowds share (signals tagged {shared}). Choose signals from A, B and shared: verse 1 is A's crowd, verse 2 B's, the chorus what they share. About 9–13 calls.`;
 }
 
+/**
+ * The research agent. If the model service stops answering mid-way (the AI SDK's own retries already spent), it tries
+ * once more, told what already ran and what it found, with the steps it has left; the signals gathered so far are kept
+ * either way. If the second try fails too, the song is written from what was found, and the run says so.
+ */
 async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal): Promise<void> {
+  // One deadline for both tries.
+  const deadline = AbortSignal.any([AbortSignal.timeout(LIMITS.agentTimeoutMs), ...(abortSignal ? [abortSignal] : [])]);
+  // A CollabQ researches two crowds: a few more steps.
+  const budget = state.collab ? LIMITS.maxSteps + 4 : LIMITS.maxSteps;
+  const done: DoneCall[] = [];
+  let steps = 0;
+  for (let attempt = 1; ; attempt++) {
+    const failure = await researchOnce(state, emit, deadline, {
+      maxSteps: Math.max(3, budget - steps),
+      resume: attempt > 1 ? resumeBrief(done, state.signals.all()) : "",
+      onStep: () => steps++,
+      onCall: (call) => done.push(call),
+    });
+    if (!failure || state.chosen || deadline.aborted) return;
+    const found = state.signals.all().length;
+    if (attempt >= 2) {
+      emit({ type: "note", text: `The model service stopped answering again (${failure}), so the Ghost writes from the ${found} signals found so far.` });
+      return;
+    }
+    emit({ type: "note", text: `The model service stopped answering (${failure}). Picking the research up again from the ${found} signals found so far.` });
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+}
+
+/** One try of the research agent; returns why the model service failed, or null when the try ran to its end. */
+async function researchOnce(
+  state: RunState,
+  emit: Emit,
+  abortSignal: AbortSignal,
+  run: { maxSteps: number; resume: string; onStep: () => void; onCall: (call: DoneCall) => void },
+): Promise<string | null> {
   const tools = createTools(state);
   type Tools = typeof tools;
   const chosen: StopCondition<Tools> = () => state.chosen !== null;
-  // A CollabQ researches two crowds: a few more steps.
-  const maxSteps = state.collab ? LIMITS.maxSteps + 4 : LIMITS.maxSteps;
+  const { maxSteps } = run;
   const outOfSteps: StopCondition<Tools> = ({ steps }) => steps.length >= maxSteps;
   const agent = new ToolLoopAgent({
     model: MODELS.agent,
@@ -393,10 +429,16 @@ async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal):
     providerOptions: AGENT_PROVIDER_OPTIONS,
     prepareStep: ({ stepNumber }) => (stepNumber >= maxSteps - 1 ? { activeTools: ["ready_to_write"] } : {}),
   });
-  const result = await agent.stream({
-    prompt: `${describeBrief(state.brief, state.crowdInfo!)}\nQloo match: ${state.act?.name ?? `none; their sound in the user's words: "${state.brief.answers?.sound ?? ""}"`}. Genre signals so far: ${state.signals.all().filter((x) => x.kind === "genre").map(signalLine).join("; ") || "none"}.${collabBrief(state)}${remixResearch(state)}\nResearch ${state.collab ? "both crowds" : "this crowd"} and choose the signals for the song.${state.brief.avoid?.length ? `\nSongs already written for this brief (choose signals for a clearly different angle): ${state.brief.avoid.join(" | ")}` : ""}`,
-    abortSignal: AbortSignal.any([AbortSignal.timeout(LIMITS.agentTimeoutMs), ...(abortSignal ? [abortSignal] : [])]),
-  });
+  let result: Awaited<ReturnType<typeof agent.stream>>;
+  try {
+    result = await agent.stream({
+      prompt: `${describeBrief(state.brief, state.crowdInfo!)}\nQloo match: ${state.act?.name ?? `none; their sound in the user's words: "${state.brief.answers?.sound ?? ""}"`}. Genre signals so far: ${state.signals.all().filter((x) => x.kind === "genre").map(signalLine).join("; ") || "none"}.${collabBrief(state)}${remixResearch(state)}\nResearch ${state.collab ? "both crowds" : "this crowd"} and choose the signals for the song.${state.brief.avoid?.length ? `\nSongs already written for this brief (choose signals for a clearly different angle): ${state.brief.avoid.join(" | ")}` : ""}${run.resume}`,
+      abortSignal,
+    });
+  } catch (error) {
+    return abortSignal.aborted ? null : shortError(error);
+  }
+  let failure: string | null = null;
   // Notes stream as whole blocks: the reasoning summary and the sentence before each call.
   const buffers = new Map<string, string>();
   const flush = (key: string) => {
@@ -404,37 +446,57 @@ async function research(state: RunState, emit: Emit, abortSignal?: AbortSignal):
     buffers.delete(key);
     if (text) emit({ type: "note", text });
   };
-  for await (const part of result.fullStream) {
-    switch (part.type) {
-      case "reasoning-start":
-      case "text-start":
-        buffers.set(part.id, "");
-        break;
-      case "reasoning-delta":
-      case "text-delta":
-        if (buffers.has(part.id)) buffers.set(part.id, buffers.get(part.id)! + part.text);
-        break;
-      case "reasoning-end":
-      case "text-end":
-        flush(part.id);
-        break;
-      case "tool-call":
-        if (part.invalid) break;
-        for (const key of [...buffers.keys()]) flush(key);
-        emit({ type: "step-start", id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, input: part.input, ...whose(state, (part.input as { artist?: "A" | "B" } | null)?.artist ?? "A") });
-        break;
-      case "tool-result": {
-        const out = part.output as ToolOutput;
-        emit({ type: "step-end", id: part.toolCallId, ok: out.ok, summary: out.summary, signals: out.signals, raw: out.raw ?? null });
-        break;
-      }
-      case "tool-error": {
-        const message = part.error instanceof Error ? part.error.message : String(part.error);
-        emit({ type: "step-end", id: part.toolCallId, ok: false, summary: message.slice(0, 300), signals: [], raw: null });
-        break;
+  try {
+    for await (const part of result.fullStream) {
+      switch (part.type) {
+        case "reasoning-start":
+        case "text-start":
+          buffers.set(part.id, "");
+          break;
+        case "reasoning-delta":
+        case "text-delta":
+          if (buffers.has(part.id)) buffers.set(part.id, buffers.get(part.id)! + part.text);
+          break;
+        case "reasoning-end":
+        case "text-end":
+          flush(part.id);
+          break;
+        case "tool-call":
+          if (part.invalid) break;
+          for (const key of [...buffers.keys()]) flush(key);
+          emit({ type: "step-start", id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, input: part.input, ...whose(state, (part.input as { artist?: "A" | "B" } | null)?.artist ?? "A") });
+          break;
+        case "tool-result": {
+          const out = part.output as ToolOutput;
+          if (part.toolName !== "ready_to_write") run.onCall({ tool: part.toolName, input: part.input });
+          emit({ type: "step-end", id: part.toolCallId, ok: out.ok, summary: out.summary, signals: out.signals, raw: out.raw ?? null });
+          break;
+        }
+        case "tool-error": {
+          const message = part.error instanceof Error ? part.error.message : String(part.error);
+          emit({ type: "step-end", id: part.toolCallId, ok: false, summary: message.slice(0, 300), signals: [], raw: null });
+          break;
+        }
+        case "finish-step":
+          run.onStep();
+          break;
+        case "error":
+          failure = shortError(part.error);
+          break;
       }
     }
+  } catch (error) {
+    if (abortSignal.aborted) return null;
+    failure = shortError(error);
   }
+  for (const key of [...buffers.keys()]) flush(key);
+  return failure;
+}
+
+/** The model service's failure in a few words, for the run's notes. */
+function shortError(error: unknown): string {
+  const message = error instanceof Error ? (error.cause instanceof Error ? error.cause.message : error.message) : String(error);
+  return message.split("\n")[0].slice(0, 160);
 }
 
 /** The voices are data (MusicBrainz now; Qloo first once it has them), never the model's choice. */
