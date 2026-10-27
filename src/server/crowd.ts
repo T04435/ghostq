@@ -68,7 +68,7 @@ export async function readCrowd(
   answers: Brief["answers"],
   onCall?: OnCall,
   remix?: Pick<Remix, "place" | "ages">,
-): Promise<{ crowd: Pick<Crowd, "from" | "place" | "placeRank" | "ages">; missing: AskField[]; area: TopArea | null }> {
+): Promise<{ crowd: Pick<Crowd, "from" | "place" | "placeRank" | "ages">; missing: AskField[]; area: TopArea | null; agesGenres?: string[] }> {
   // A RemixQ's picked city or ages replace Qloo's, so those Qloo calls are skipped.
   const [demo, area] = artist
     ? await Promise.all([remix?.ages ? null : artistDemographics(artist.id, onCall).catch(noData), remix?.place ? null : topArea(artist, onCall)])
@@ -86,5 +86,7 @@ export async function readCrowd(
     },
     missing,
     area: remix?.place ? null : area,
+    // NotOnQ's basis for the ages, when they are its similar artists' genre audience rather than the artist's own fans.
+    ...(qlooAges.length && demo?.genres?.length ? { agesGenres: demo.genres } : {}),
   };
 }

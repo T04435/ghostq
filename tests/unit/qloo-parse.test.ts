@@ -139,3 +139,15 @@ describe("NotOnQ records", () => {
     expect(throughStandIns({ act: parseSearch({ results: [{ entity_id: "E2", name: "Known" }] })[0] })).toBe("");
   });
 });
+
+describe("NotOnQ's basis on demographics", () => {
+  it("reads the genres NotOnQ answered with, when the ages are the similar artists' genre audience", () => {
+    const json = { results: { demographics: [{ query: { age: { "25_to_29": 0.7 }, gender: { female: 0.6 } }, "notonq:basis": { stand_ins: ["Act A"], genres: ["urn:tag:genre:music:reggaeton"] } }] } };
+    expect(parseDemographics(json)).toEqual({ age: { "25_to_29": 0.7 }, gender: { female: 0.6 }, genres: ["reggaeton"] });
+  });
+
+  it("leaves Qloo's own demographics as they are", () => {
+    expect(parseDemographics({ results: { demographics: [{ query: { age: { "25_to_29": 0.7 } } }] } })).toEqual({ age: { "25_to_29": 0.7 }, gender: {} });
+  });
+});
+
