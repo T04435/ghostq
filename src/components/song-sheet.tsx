@@ -191,7 +191,6 @@ export function SongSheet({
                           key={li}
                           data-singing={now || undefined}
                           onClick={at ? (e) => !(e.target as HTMLElement).closest("button") && sing!.seek(Math.max(0, at.start - 0.1)) : undefined}
-                          title={at ? "Play from this line" : undefined}
                           className={cn("min-w-0 rounded-md px-2.5 py-1.5", diff && "border-l-[3px] border-transparent", isChanged && "border-foreground bg-muted", at && "cursor-pointer hover:bg-muted/60")}
                         >
                           {/* Every line's receipts as AI Elements' Inline Citation: hover or focus a chip for its signal, click to pin it. */}

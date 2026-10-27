@@ -11,6 +11,7 @@ import { AGE_BANDS } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import type { SongSummary } from "@/lib/song-summary";
 import { SongTitle } from "@/components/song-title";
+import { Tip } from "@/components/tip";
 
 export type SongCardSong = Pick<SongSummary, "id" | "title" | "artist" | "featuring" | "remixOf" | "crowd" | "language" | "sung" | "audioVersion" | "mine"> &
   Partial<Pick<SongSummary, "key" | "tempo" | "receiptCount" | "receipts">> & { remixCount?: number };
@@ -65,10 +66,12 @@ export function SongCard({ song, compact = false, actions = false }: { song: Son
               </Badge>
             )}
             {song.remixOf && (
-              <Badge variant="strong" className="self-center" title={`Remix of ${song.remixOf}`}>
-                <RemixGlyph size={12} />
-                REMIX
-              </Badge>
+              <Tip label={`Remix of ${song.remixOf}`}>
+                <Badge variant="strong" className="self-center">
+                  <RemixGlyph size={12} />
+                  REMIX
+                </Badge>
+              </Tip>
             )}
           </span>
           <span className="text-[11px] leading-[1.4] text-pretty text-muted-foreground">{draftLabel(song.artist, song.featuring ?? undefined)}</span>

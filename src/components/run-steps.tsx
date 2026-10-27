@@ -2,8 +2,9 @@
 
 import { Plan, PlanContent, PlanDescription, PlanFooter, PlanHeader, PlanTitle, PlanTrigger } from "@/components/ai-elements/plan";
 import { AgentTag } from "@/components/brand/agent-tag";
+import { ReceiptChip } from "@/components/brand/receipt";
 import { AGENT_NAME_INLINE, AGENT_NAME_START } from "@/lib/agent-persona";
-import { AgentNote, SignalChip, StatusLine, StatusPill, StepCard, StepNumber, type StepStatus } from "@/components/step";
+import { AgentNote, StatusLine, StatusPill, StepCard, StepNumber, type StepStatus } from "@/components/step";
 import { Trace } from "@/components/ui/trace";
 import type { RunEvent } from "@/lib/run-events";
 import type { Signal } from "@/lib/signals";
@@ -198,7 +199,7 @@ function PickPlan({ n, item, pick }: { n: number; item: Step; pick: Pick }) {
         <ul className="flex flex-wrap gap-1 border-t pt-2.5" aria-label="Chosen signals">
           {ids.map((id) => {
             const s = byId.get(id);
-            return <li key={id}>{s ? <SignalChip signal={s} /> : <span className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 font-mono text-[11px] font-semibold">{id}</span>}</li>;
+            return <li key={id}>{s ? <ReceiptChip signal={s} /> : <span className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 font-mono text-[11px] font-semibold">{id}</span>}</li>;
           })}
         </ul>
       </PlanContent>
