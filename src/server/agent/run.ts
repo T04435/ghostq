@@ -163,6 +163,14 @@ const HOME_SOURCE: Record<Home["source"], (artist: string) => string> = {
   notonq: (a) => `NotOnQ: where ${a} is from (MusicBrainz; Qloo has no record of ${a})`,
 };
 
+/** Where the crowd's ages came from: the artist's fans in Qloo, or (via NotOnQ) the similar artists' fans, or, when
+ * Qloo has no ages for those either, the audience of their music genre, said as such. */
+function agesSource(artistName: string, x: ArtistRun, genres?: string[]) {
+  if (!genres?.length) return `Qloo insights: ${artistName}'s fans (demographics)${throughStandIns(x)}`;
+  const similar = x.act?.notonq?.standIns.length ? `: ${x.act.notonq.standIns.join(", ")}` : "";
+  return `Qloo insights: the audience of ${genres.join(", ")}, the genre of the similar artists Qloo knows${similar} (Qloo has no age data for ${artistName} or them; via NotOnQ)`;
+}
+
 /** The artist is one Qloo has no record of, filled by NotOnQ from open data. */
 const filledByNotOnQ = (x: ArtistRun) => x.act?.notonq?.kind === "filled";
 
@@ -250,7 +258,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   // The crowd (Qloo) and the artist's profile (MusicBrainz: voice and home) are read in parallel.
   // How they sing (Wikipedia, by Qloo's Wikidata id), read alongside the crowd; it lands as its own step below.
   const singing = vocalStyle(x.act?.wikidataId, languageFor(countryFromDescription(qlooDescription(x))?.countryCode ?? x.act?.notonq?.home?.countryCode ?? (x.homeFromTags ? countryCodeFor(x.homeFromTags) : null)));
-  const [{ crowd: read, missing: crowdMissing, area }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null, { spotifyId: x.spotifyId, name: x.act?.name ?? x.name })]);
+  const [{ crowd: read, missing: crowdMissing, area, agesGenres }, profile] = await Promise.all([readCrowd(x.act, answers, state.onCall, x.key === "A" ? state.brief.remix : undefined), artistProfile(x.act?.musicbrainzId ?? null, { spotifyId: x.spotifyId, name: x.act?.name ?? x.name })]);
   // Qloo has no gender or member data for artists (probed 23 Oct), so the voices are MusicBrainz's. If MusicBrainz's
   // country disagrees with Qloo's description of the act, it's another artist of the same name: don't use its voices.
   const qlooCountry = countryFromDescription(qlooDescription(x))?.countryCode ?? x.act?.notonq?.home?.countryCode ?? undefined;
@@ -292,7 +300,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const crowdSignals = [
     ...(home ? [state.signals.add("home", describeHome(home), HOME_SOURCE[home.source](artistName), null, side)] : []),
     ...(crowd.place ? [state.signals.add("crowd", `Crowd around ${describePlace(crowd.place)}`, crowd.from.place === "qloo" ? `Qloo insights: ${artistName}'s fans' strongest area (heatmap; place named by OpenStreetMap)${throughStandIns(x)}` : "Your answer", null, side)] : []),
-    ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? `Qloo insights: ${artistName}'s fans (demographics)${throughStandIns(x)}` : "Your answer", a.skew, side)),
+    ...crowd.ages.map((a) => state.signals.add("crowd", `Crowd aged ${AGE_BANDS[a.age]}`, crowd.from.ages === "qloo" ? agesSource(artistName, x, agesGenres) : "Your answer", a.skew, side)),
   ];
   const yours = [crowd.from.place === "you" && "the city", crowd.from.ages === "you" && "the ages"].filter(Boolean).join(" and ");
   const picked = [crowd.from.place === "remix" && "the city", crowd.from.ages === "remix" && "the ages"].filter(Boolean).join(" and ");

@@ -189,7 +189,12 @@ export function parseCompare(json: unknown): Comparison {
   };
 }
 
-export type Demographics = { age: Record<string, number>; gender: Record<string, number> };
+export type Demographics = {
+  age: Record<string, number>;
+  gender: Record<string, number>;
+  /** NotOnQ answered with the audience of these music genres (its similar artists' genres), not the artist's own. */
+  genres?: string[];
+};
 
 /** GET /v2/insights?filter.type=urn:demographics. Small acts come back empty (probe 3b). */
 export function parseDemographics(json: unknown): Demographics | null {
@@ -197,14 +202,20 @@ export function parseDemographics(json: unknown): Demographics | null {
     .object({
       results: z.object({
         demographics: z
-          .array(z.object({ query: z.object({ age: z.record(z.string(), z.number()).optional(), gender: z.record(z.string(), z.number()).optional() }) }))
+          .array(
+            z.object({
+              query: z.object({ age: z.record(z.string(), z.number()).optional(), gender: z.record(z.string(), z.number()).optional() }),
+              "notonq:basis": z.object({ genres: z.array(z.string()).optional() }).partial().optional(),
+            }),
+          )
           .default([]),
       }),
     })
     .parse(json);
   const first = parsed.results.demographics[0];
   if (!first?.query.age && !first?.query.gender) return null;
-  return { age: first.query.age ?? {}, gender: first.query.gender ?? {} };
+  const genres = first["notonq:basis"]?.genres?.map((g) => g.split(":").pop()!).filter(Boolean);
+  return { age: first.query.age ?? {}, gender: first.query.gender ?? {}, ...(genres?.length ? { genres } : {}) };
 }
 
 /** Genre tags for a city carry noise such as "Drag Race" (probe 4d): keep music genres only. */
