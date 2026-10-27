@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // The judging-day switch, with no redeploy (GhostQ reads it within 30 s):
-//   node --env-file=.env.local scripts/limits.mjs off 2026-10-31T15:00+11:00   limits off until then
-//   node --env-file=.env.local scripts/limits.mjs on                           limits back on now
-//   node --env-file=.env.local scripts/limits.mjs status
+//   VERCEL_ENV=production node --env-file=.env.local scripts/limits.mjs off 2026-10-31T15:00+11:00   limits off until then
+//   VERCEL_ENV=production node --env-file=.env.local scripts/limits.mjs on                           limits back on now
+//   VERCEL_ENV=production node --env-file=.env.local scripts/limits.mjs status
 // While off, per-device and per-network limits are skipped and the daily budgets use their judging figures
 // (GHOSTQ_LYRIA_PER_DAY_JUDGING, GHOSTQ_QLOO_PER_DAY_JUDGING): the money cap on singing stays.
 import { neon } from "@neondatabase/serverless";
 
 const [cmd, when] = process.argv.slice(2);
-if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL isn't set: run with --env-file=.env.local");
+if (process.env.VERCEL_ENV !== "production" || !process.env.DATABASE_URL) {
+  console.error("This switches the production limits: run it with VERCEL_ENV=production node --env-file=.env.local");
   process.exit(1);
 }
 const sql = neon(process.env.DATABASE_URL);
