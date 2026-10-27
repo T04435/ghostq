@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, Clock, Minus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Clock, Minus, X } from "lucide-react";
 import { cn } from "cn";
 import type { ReactNode } from "react";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
@@ -59,8 +59,9 @@ export type StepCall = { key: string; who: string; side?: Signal["side"]; summar
 /**
  * ONE step card for the agent's research (the DS's StepCard on AI Elements' Trace step): number, title, status pill;
  * the summary, the receipts it found, and the source. Repeated calls to one tool fold into one step with a call count,
- * and "Show each of the N calls" opens them, each with its side. `collapsed`: the header only (a finished run's steps,
- * once the sheet is there).
+ * and "Show each of the N calls" opens them, each with its side. `collapsed`: a finished run's steps, once the sheet is
+ * there: closed, with the step's receipts (or "Nothing found") under its title, and the header opens the rest (the user,
+ * 27 Oct: every step's data stays one click away). `retried`: a failed call this step retried folded into it.
  */
 export function StepCard({
   n,
@@ -71,6 +72,7 @@ export function StepCard({
   receipts = [],
   calls = [],
   collapsed = false,
+  retried = false,
   children,
 }: {
   n: number;
@@ -81,27 +83,31 @@ export function StepCard({
   receipts?: Signal[];
   calls?: StepCall[];
   collapsed?: boolean;
+  retried?: boolean;
   children?: ReactNode;
 }) {
   const grouped = calls.length > 1;
   const unique = [...new Map(receipts.map((s) => [s.id, s])).values()];
-  return (
-    <div className={cn("flex flex-col gap-2.5 rounded-lg border bg-card px-4 py-3.5 text-foreground", status === "pending" && "opacity-60")}>
-      <div className="flex items-center justify-between gap-2.5">
-        <span className="inline-flex min-w-0 items-center gap-2.5">
-          <StepNumber n={n} status={status} />
-          <span className="truncate text-sm font-semibold tracking-[-0.01em]">{title}</span>
-          {grouped && (
-            <span className="inline-flex flex-none items-baseline gap-1 text-xs whitespace-nowrap text-muted-foreground">
-              · <span className="pixel-square text-[13px] text-foreground">{calls.length}</span> calls
-            </span>
-          )}
-        </span>
-        {hasPill(status) && <StatusPill status={status} qloo={isQloo(source)} />}
-      </div>
-      {status !== "pending" && !collapsed && (
+  const card = cn("flex flex-col gap-2.5 rounded-lg border bg-card px-4 py-3.5 text-foreground", status === "pending" && "opacity-60");
+  const head = (
+    <>
+      <span className="inline-flex min-w-0 items-center gap-2.5">
+        <StepNumber n={n} status={status} />
+        <span className="truncate text-sm font-semibold tracking-[-0.01em]">{title}</span>
+        {grouped && (
+          <span className="inline-flex flex-none items-baseline gap-1 text-xs whitespace-nowrap text-muted-foreground">
+            · <span className="pixel-square text-[13px] text-foreground">{calls.length}</span> calls
+          </span>
+        )}
+        {retried && <span className="flex-none text-xs whitespace-nowrap text-muted-foreground">· retried</span>}
+      </span>
+      {hasPill(status) && <StatusPill status={status} qloo={isQloo(source)} />}
+    </>
+  );
+  const empty = status === "nodata" && unique.length === 0;
+  const body = status !== "pending" && (
         <>
-          {summary && <p className="text-sm leading-[1.45]">{summary}</p>}
+          {summary ? <p className="text-sm leading-[1.45]">{summary}</p> : empty && <p className="text-sm text-muted-foreground">Nothing found.</p>}
           {unique.length > 0 && (
             <ul className="flex flex-wrap gap-1" aria-label="Signals from this step">
               {unique.map((s) => (
@@ -151,8 +157,35 @@ export function StepCard({
             {grouped && <span className="text-[11px] text-muted-foreground">one step, {calls.length} calls</span>}
           </div>
         </>
-      )}
-    </div>
+  );
+  if (!collapsed) {
+    return (
+      <div className={card}>
+        <div className="flex items-center justify-between gap-2.5">{head}</div>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <Collapsible className={cn(card, "group/step")}>
+      <CollapsibleTrigger className="-mx-2 -my-1.5 flex cursor-pointer flex-col gap-2.5 rounded-md px-2 py-1.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring">
+        <span className="flex w-full items-center justify-between gap-2.5">
+          {head}
+          <ChevronDown className="ml-auto size-4 flex-none text-muted-foreground transition-transform group-data-[state=open]/step:rotate-180" aria-hidden />
+        </span>
+        {/* Closed: what the step found at a glance (its receipts, else its summary). Open: the full step below. */}
+        <span className="flex flex-wrap items-center gap-1 group-data-[state=open]/step:hidden">
+          {empty ? (
+            <span className="text-xs text-muted-foreground">Nothing found</span>
+          ) : unique.length ? (
+            unique.map((s) => <ReceiptChip key={s.id} signal={s} />)
+          ) : (
+            summary && <span className="line-clamp-1 text-xs text-muted-foreground">{summary}</span>
+          )}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="flex flex-col gap-2.5">{body}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
