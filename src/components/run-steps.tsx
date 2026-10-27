@@ -15,7 +15,7 @@ type Pick = { angle: string; signalIds: string[] };
 
 export type StepItem =
   | { kind: "note"; key: string; text: string }
-  | { kind: "step"; key: string; tool: string; label: string; artist?: string; status: "running" | "ok" | "failed"; summary?: string; signals: Signal[]; pick?: Pick }
+  | { kind: "step"; key: string; tool: string; label: string; artist?: string; status: "running" | "ok" | "failed"; summary?: string; signals: Signal[]; pick?: Pick; retried?: boolean; /** The call's input, to tell a retry from a different question. */ call?: string }
   | { kind: "writing"; key: string; signalCount: number; done: boolean };
 
 function pickOf(event: Extract<RunEvent, { type: "step-start" }>): Pick | undefined {
@@ -30,7 +30,7 @@ export function applyStepEvent(items: StepItem[], event: RunEvent, n: number): S
     case "note":
       return [...items, { kind: "note", key: `n${n}`, text: event.text }];
     case "step-start":
-      return [...items, { kind: "step", key: event.id, tool: event.tool, label: event.label, artist: event.artist, status: "running", signals: [], pick: pickOf(event) }];
+      return [...items, { kind: "step", key: event.id, tool: event.tool, label: event.label, artist: event.artist, status: "running", signals: [], pick: pickOf(event), call: JSON.stringify(event.input ?? null) }];
     case "step-end":
       return items.map((x) => (x.kind === "step" && x.key === event.id ? { ...x, status: event.ok ? "ok" : "failed", summary: event.summary, signals: event.signals } : x));
     case "writing":
@@ -49,10 +49,33 @@ type Row = Exclude<StepItem, Step> | Step | { kind: "group"; key: string; tool: 
 const GROUP_LABELS: Record<string, string> = { find_artist: "Find the artists on Qloo", read_crowd: "Read both crowds" };
 
 /**
+ * A call that failed and was called again folds into the newer call, so a run shows one "Who you sound like · retried"
+ * instead of a red step and a second one (the user, 27 Oct): an error (a timeout, a refusal) folds into the next call to
+ * that tool for that artist; an empty result only into the same call asked again, since a different question (genre
+ * tags after no style tags) is its own step.
+ */
+function foldRetries(items: StepItem[]): StepItem[] {
+  const out: StepItem[] = [];
+  for (const item of items) {
+    if (item.kind === "step") {
+      const at = out.findLastIndex((x) => x.kind === "step" && x.tool === item.tool && x.artist === item.artist && x.status === "failed" && (statusOf(x) === "failed" || x.call === item.call));
+      if (at >= 0) {
+        out.splice(at, 1);
+        out.push({ ...item, retried: true });
+        continue;
+      }
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+/**
  * Calls to the same tool between two of the agent's notes fold into one step (a CollabQ calls each tool once per
  * artist, and the agent often calls one tool twice in parallel), shown where the first call was.
  */
-function groupSteps(items: StepItem[]): Row[] {
+function groupSteps(all: StepItem[]): Row[] {
+  const items = foldRetries(all);
   const rows: Row[] = [];
   let byTool = new Map<string, number>();
   for (const item of items) {
@@ -128,7 +151,9 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
               status={STATUS[status]}
               source={sourceOf(item.tool)}
               calls={item.steps.map((x) => ({ key: x.key, who: x.artist ?? x.label, summary: x.summary, receipts: x.signals, side: x.signals.find((s) => s.side)?.side }))}
+              receipts={item.steps.flatMap((x) => x.signals)}
               collapsed={collapsed && status !== "running"}
+              retried={item.steps.some((x) => x.retried)}
             />
           );
         }
@@ -143,6 +168,7 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
             source={sourceOf(item.tool)}
             receipts={item.signals}
             collapsed={collapsed && item.status !== "running"}
+            retried={item.retried}
           />
         );
       })}
