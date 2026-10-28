@@ -278,7 +278,14 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const chosen = answers?.language;
   const language = chosen?.primary ?? candidates[0] ?? "English";
   const languageFrom = chosen ? "you" : home?.countryCode && language === languageFor(home.countryCode) ? "home" : "city";
-  const crowd: Crowd = { ...read, home, language, languageFrom, ...(chosen?.mix && chosen.mix !== chosen.primary ? { mix: chosen.mix } : {}) };
+  const crowd: Crowd = {
+    ...read,
+    home,
+    language,
+    languageFrom,
+    ...(chosen?.mix && chosen.mix !== chosen.primary ? { mix: chosen.mix } : {}),
+    ...(x.act?.notonq?.kind === "filled" ? { standIns: x.act.notonq.standIns } : {}),
+  };
   missing.push(...crowdMissing);
   if (!chosen && candidates.length > 1) missing.push("language");
   if (missing.length) {

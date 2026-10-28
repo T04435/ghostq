@@ -53,12 +53,13 @@ export function CrowdCard({
   const all = sides.map((s) => normalizeCrowd(s.crowd));
   const fromQloo = all.length > 0 && all.every((c) => c.from.place === "qloo" && c.from.ages === "qloo");
   const remixed = all.some((c) => c.from.place === "remix" || c.from.ages === "remix");
+  const viaNotOnQ = all.some((c) => c.standIns);
   return (
     <Card className="gap-3.5 p-[18px]" role="group" aria-label={`The crowd for ${artist}`}>
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-[15px] font-semibold">{heading ?? (partner ? "Two crowds" : featured ? `Featuring ${artist}` : "The crowd")}</h3>
         {fromQloo ? (
-          <FromQloo />
+          <FromQloo>{viaNotOnQ ? "FROM QLOO · VIA NOTONQ" : "FROM QLOO"}</FromQloo>
         ) : (
           <span className="font-mono text-[10px] tracking-[.04em] whitespace-nowrap text-muted-foreground">{remixed ? "REMIX · YOUR PICK AND QLOO" : "QLOO AND YOUR ANSWERS"}</span>
         )}
@@ -125,6 +126,8 @@ function Row({ label, value, note, muted }: { label: string; value: string; note
 function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: Crowd; side?: Side; labelled: boolean }) {
   const qlooPlace = crowd.from.place === "qloo";
   const qlooAges = crowd.from.ages === "qloo";
+  // NotOnQ filled the artist: Qloo's answers are for fans of the similar artists Qloo knows.
+  const via = crowd.standIns ? `fans of similar artists Qloo knows${crowd.standIns.length ? ` (${crowd.standIns.join(", ")})` : ""}, via NotOnQ` : null;
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {labelled && (
@@ -145,7 +148,7 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
             )}
           </div>
           <span className="text-xs text-muted-foreground">
-            {describePlace(crowd.place)} · {crowd.from.place === "remix" ? "your pick for this remix" : crowd.from.place === "you" ? "your answer: Qloo had no location data" : "the fans' strongest area on Qloo"}
+            {describePlace(crowd.place)} · {crowd.from.place === "remix" ? "your pick for this remix" : crowd.from.place === "you" ? "your answer: Qloo had no location data" : via ? `the strongest area on Qloo for ${via}` : "the fans' strongest area on Qloo"}
           </span>
         </div>
       ) : (
@@ -165,6 +168,7 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
               </div>
             );
           })}
+          {qlooAges && via && <span className="col-span-full text-muted-foreground">Ages on Qloo of {via}</span>}
           {!qlooAges && <span className="col-span-full text-muted-foreground">{crowd.from.ages === "remix" ? "Your pick for this remix" : "Your answer: Qloo had no age data"}</span>}
         </div>
       ) : (
