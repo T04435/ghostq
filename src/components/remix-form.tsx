@@ -82,8 +82,13 @@ export function RemixForm({
           <div className="flex flex-col gap-2">
             <p className="flex flex-wrap items-center gap-2 text-xs font-semibold">
               {possessive(original.artist)} next-strongest fan areas
-              <span className="rounded-full bg-signal px-[7px] py-0.5 font-mono text-[10px] font-normal text-signal-foreground">QLOO</span>
+              <span className="rounded-full bg-signal px-[7px] py-0.5 font-mono text-[10px] font-normal text-signal-foreground">{original.crowd.standIns ? "QLOO · VIA NOTONQ" : "QLOO"}</span>
             </p>
+            {original.crowd.standIns && (
+              <p className="-mt-1 text-xs text-muted-foreground">
+                On Qloo, for fans of similar artists Qloo knows{original.crowd.standIns.length ? ` (${original.crowd.standIns.join(", ")})` : ""}: Qloo has no record of {original.artist}.
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5">
               {quick.map((p, i) => (
                 <Button
