@@ -132,6 +132,16 @@ describe("NotOnQ records", () => {
     expect(throughStandIns({ act: e })).toBe(" (through similar artists Qloo knows: Act A, Act B, Act C; via NotOnQ)");
   });
 
+  it("reads NotOnQ's list of similar artists first, when it sends one", () => {
+    const n = notonqOf("Not in Qloo: filled by NotOnQ from open sources. Taste answers use similar artists Qloo knows: A.GIRL, Hope D, Greta Stanley.", undefined, [
+      { entity_id: "E1", name: "A.GIRL" },
+      { entity_id: "E2", name: "Hope D" },
+      { entity_id: "E3", name: "Greta Stanley" },
+      { entity_id: "E4", name: "Asha Jefferies" },
+    ]);
+    expect(n?.standIns).toEqual(["A.GIRL", "Hope D", "Greta Stanley", "Asha Jefferies"]);
+  });
+
   it("keeps a similar artist's name whole when it has dots of its own", () => {
     const n = notonqOf("Not in Qloo: filled by NotOnQ from open sources. Taste answers use similar artists Qloo knows: A.GIRL, Hope D, Greta Stanley. From Perth, Australia (MusicBrainz).");
     expect(n?.standIns).toEqual(["A.GIRL", "Hope D", "Greta Stanley"]);
