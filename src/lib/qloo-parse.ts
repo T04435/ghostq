@@ -59,7 +59,8 @@ export function notonqOf(description: string | null | undefined, home?: z.infer<
   const d = description ?? "";
   const kind = d.startsWith("Not in Qloo") ? "filled" : d.startsWith("Picked by NotOnQ") ? "picked" : d.startsWith("Matched by NotOnQ") ? "matched" : null;
   if (!kind) return null;
-  const standIns = (/similar artists Qloo knows: ([^.]+)\./.exec(d)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  // The list ends at a full stop followed by a space or the end: names can carry dots of their own ("A.GIRL").
+  const standIns = (/similar artists Qloo knows: (.+?)\.(?:\s|$)/.exec(d)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   return { kind, standIns, home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null };
 }
 

@@ -132,6 +132,11 @@ describe("NotOnQ records", () => {
     expect(throughStandIns({ act: e })).toBe(" (through similar artists Qloo knows: Act A, Act B, Act C; via NotOnQ)");
   });
 
+  it("keeps a similar artist's name whole when it has dots of its own", () => {
+    const n = notonqOf("Not in Qloo: filled by NotOnQ from open sources. Taste answers use similar artists Qloo knows: A.GIRL, Hope D, Greta Stanley. From Perth, Australia (MusicBrainz).");
+    expect(n?.standIns).toEqual(["A.GIRL", "Hope D", "Greta Stanley"]);
+  });
+
   it("tells Qloo's own records NotOnQ chose apart from fills, and leaves Qloo's own alone", () => {
     expect(notonqOf("Picked by NotOnQ: Qloo returned 0 artists for this request; this is Qloo's own record.")?.kind).toBe("picked");
     expect(notonqOf("Matched by NotOnQ: Qloo has this artist but not under this Spotify ID.")?.kind).toBe("matched");
