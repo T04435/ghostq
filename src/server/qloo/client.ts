@@ -17,6 +17,13 @@ export class QlooError extends Error {
   }
 }
 
+/**
+ * NotOnQ didn't answer or failed (a timeout, a network error, a 5xx): the same call goes straight to Qloo, so a run
+ * never stops on NotOnQ. Qloo's own answers (a 400, a 401, a 404) are passed on as they are.
+ */
+export const fallsBack = (error: unknown) => !(error instanceof QlooError) || error.status === 0 || error.status >= 500;
+export const hasFallback = () => env.QLOO_API_BASE_URL !== env.QLOO_DIRECT_BASE_URL;
+
 export type QlooParams = Record<string, string | number | boolean | undefined>;
 
 type Entry = { at: number; value: Promise<unknown> };
@@ -44,6 +51,7 @@ export async function qlooGet<T>(path: string, params: QlooParams, onCall?: (log
     if (value !== undefined && value !== "") query.set(key, String(value));
   }
   const url = `${env.QLOO_API_BASE_URL}${path}?${query}`;
+  const direct = `${env.QLOO_DIRECT_BASE_URL}${path}?${query}`;
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
     const value = (await hit.value) as T;
@@ -51,7 +59,9 @@ export async function qlooGet<T>(path: string, params: QlooParams, onCall?: (log
     return value;
   }
   const started = Date.now();
-  const value = fetchWithRetry(url, env.QLOO_API_KEY);
+  const key = env.QLOO_API_KEY;
+  // Through NotOnQ with no retry of its own when Qloo itself is the fallback (Qloo then gets the retry).
+  const value = hasFallback() ? fetchWithRetry(url, key, 1).catch((error) => (fallsBack(error) ? fetchWithRetry(direct, key) : Promise.reject(error))) : fetchWithRetry(url, key);
   cache.set(url, { at: started, value });
   try {
     const result = (await value) as T;

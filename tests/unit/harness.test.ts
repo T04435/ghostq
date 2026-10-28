@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/server/env", () => ({ env: { QLOO_API_KEY: "k", QLOO_API_BASE_URL: "http://notonq.test/q/app/ghostq" } }));
+vi.mock("@/server/env", () => ({ env: { QLOO_API_KEY: "k", QLOO_API_BASE_URL: "http://notonq.test/q/app/ghostq", QLOO_DIRECT_BASE_URL: "http://qloo.test" } }));
 
 // Qloo's harness, faked: synthetic results in its envelope (real Qloo responses stay out of the repo).
 const calls: { name: string; input: unknown }[] = [];
 let envSeen: Record<string, string | undefined> = {};
+const bases: string[] = [];
+let notonqDown = false;
 const envelope = (name: string, input: Record<string, unknown>) => {
   if (input.entity === "BAD") return { status: "error", summary: "Qloo rejected the request", error: { code: "QLOO_CONTRACT" }, results: [] };
   if (name === "qloo_audience_demographics") return { status: "ok", results: [{ entity_id: "S1", query: { age: { "25_to_29": 0.4 }, gender: { female: 0.2 } } }] };
@@ -13,10 +15,12 @@ const envelope = (name: string, input: Record<string, unknown>) => {
 };
 vi.mock("@qloo/qloo-harness", () => ({
   createQlooToolsFromEnvironment: ({ env }: { env: Record<string, string | undefined> }) => {
-    envSeen = env;
+    if (env.QLOO_BASE_URL?.includes("notonq")) envSeen = env;
     return ["qloo_recommend", "qloo_audience_demographics"].map((name) => ({
       name,
       execute: async (_id: string, input: Record<string, unknown>) => {
+        bases.push(env.QLOO_BASE_URL!);
+        if (notonqDown && env.QLOO_BASE_URL?.includes("notonq")) throw new TypeError("fetch failed");
         calls.push({ name, input });
         return { details: envelope(name, input) };
       },
@@ -30,6 +34,8 @@ const { harness } = await import("@/server/qloo/harness");
 describe("Qloo calls through the harness", () => {
   beforeEach(() => {
     calls.length = 0;
+    bases.length = 0;
+    notonqDown = false;
   });
 
   it("points the harness at GhostQ's own base URL (NotOnQ) and trusts only that URL with the key", async () => {
@@ -62,5 +68,17 @@ describe("Qloo calls through the harness", () => {
 
   it("turns a rejected request into the 400 GhostQ reads as 'not usable as a signal'", async () => {
     await expect(harness("qloo_audience_demographics", { entity: "BAD", entity_type: "artist" })).rejects.toMatchObject({ name: "QlooError", status: 400 });
+  });
+
+  it("goes straight to Qloo, with the same key, when NotOnQ doesn't answer", async () => {
+    notonqDown = true;
+    const alikes = await api.soundAlikes("A4");
+    expect(alikes).toEqual([expect.objectContaining({ id: "E1" })]);
+    expect(bases).toEqual(["http://notonq.test/q/app/ghostq", "http://qloo.test"]);
+  });
+
+  it("passes Qloo's own refusals on, without asking Qloo again", async () => {
+    await expect(harness("qloo_audience_demographics", { entity: "BAD", entity_type: "artist" })).rejects.toMatchObject({ status: 400 });
+    expect(bases).toEqual(["http://notonq.test/q/app/ghostq"]);
   });
 });

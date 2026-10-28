@@ -19,6 +19,8 @@ const schema = z.object({
   // Qloo's data through NotOnQ (Qloo's answers unchanged; artists Qloo has no record of filled from open data). Set
   // it to https://hackathon.api.qloo.com to call Qloo directly; locally, http://localhost:3400/q/app/ghostq-dev.
   QLOO_API_BASE_URL: z.url().default("https://notonq.vercel.app/q/app/ghostq"),
+  /** Where a call goes when NotOnQ doesn't answer or fails (a 5xx): straight to Qloo, with the same key. */
+  QLOO_DIRECT_BASE_URL: z.url().default("https://hackathon.api.qloo.com"),
   AI_GATEWAY_API_KEY: secret,
   GEMINI_API_KEY: secret,
   SPOTIFY_CLIENT_ID: secret,
