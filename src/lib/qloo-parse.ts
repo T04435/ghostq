@@ -15,11 +15,13 @@ function idsOf(value: unknown): string[] {
 
 /** Where the artist is from, on artists NotOnQ filled (Qloo's own artist records have no such field). */
 const notonqHome = z.object({ name: z.string(), country: z.string().optional(), country_code: z.string().optional() });
+/** The similar artists Qloo knows that answer for an artist NotOnQ filled, in order (NotOnQ v0.4.3 on). */
+const notonqStandIns = z.array(z.object({ entity_id: z.string().optional(), name: z.string() }));
 
 const entity = z.object({
   entity_id: z.string(),
   properties: z
-    .object({ external: external.optional(), short_description: z.string().nullable().optional(), "notonq:home": notonqHome.optional() })
+    .object({ external: external.optional(), short_description: z.string().nullable().optional(), "notonq:home": notonqHome.optional(), "notonq:standIns": notonqStandIns.optional() })
     .partial()
     .optional(),
   external: external.optional(),
@@ -55,12 +57,13 @@ export const throughStandIns = (x: { act?: Pick<QlooEntity, "notonq"> | null }) 
 
 /** NotOnQ's label leads short_description; a filled artist's label names the similar artists Qloo knows that answer
  * taste questions for it. */
-export function notonqOf(description: string | null | undefined, home?: z.infer<typeof notonqHome>): QlooEntity["notonq"] {
+export function notonqOf(description: string | null | undefined, home?: z.infer<typeof notonqHome>, listed?: z.infer<typeof notonqStandIns>): QlooEntity["notonq"] {
   const d = description ?? "";
   const kind = d.startsWith("Not in Qloo") ? "filled" : d.startsWith("Picked by NotOnQ") ? "picked" : d.startsWith("Matched by NotOnQ") ? "matched" : null;
   if (!kind) return null;
   // The list ends at a full stop followed by a space or the end: names can carry dots of their own ("A.GIRL").
-  const standIns = (/similar artists Qloo knows: (.+?)\.(?:\s|$)/.exec(d)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  // NotOnQ's own list first; the names in its label before v0.4.3.
+  const standIns = listed?.length ? listed.map((s) => s.name.trim()).filter(Boolean) : (/similar artists Qloo knows: (.+?)\.(?:\s|$)/.exec(d)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   return { kind, standIns, home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null };
 }
 
@@ -75,7 +78,7 @@ function toEntity(e: z.infer<typeof entity>): QlooEntity {
     description: e.properties?.short_description ?? null,
     // Qloo writes it in lower case ("q13476175"); Wikidata's ids are "Q…".
     wikidataId: [...idsOf(e.properties?.external?.wikidata), ...idsOf(e.external?.wikidata)][0]?.toUpperCase() ?? null,
-    notonq: notonqOf(e.properties?.short_description, e.properties?.["notonq:home"]),
+    notonq: notonqOf(e.properties?.short_description, e.properties?.["notonq:home"], e.properties?.["notonq:standIns"]),
     tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
   };
 }
