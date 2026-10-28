@@ -97,6 +97,9 @@ export type Crowd = {
   languageFrom: "home" | "city" | "you";
   /** A bilingual song: the second language, mixed with `language` (the user's pick when sources disagreed). */
   mix?: Language;
+  /** Qloo has no record of the artist and NotOnQ filled it: Qloo's place and ages are its fans', read through these
+   * similar artists Qloo knows. */
+  standIns?: string[];
 };
 
 /** A crowd as stored. Songs saved before 22 Oct kept a city id and no home: read them into today's shape. */
@@ -112,6 +115,7 @@ export function normalizeCrowd(raw: unknown): Crowd {
     language: c.language ?? "English",
     languageFrom: c.languageFrom ?? "city",
     ...(c.mix ? { mix: c.mix } : {}),
+    ...(c.standIns ? { standIns: c.standIns } : {}),
   };
 }
 
