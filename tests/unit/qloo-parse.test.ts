@@ -209,3 +209,13 @@ describe("NotOnQ field gaps on thin Qloo records (v0.6.0)", () => {
     expect(d?.genres).toEqual(["mathcore"]);
   });
 });
+
+describe("pickArtist: the exact name over a near match", () => {
+  const e = (id: string, name: string) => ({ id, name, popularity: null, affinity: null, tags: [], spotifyIds: [], musicbrainzId: null });
+  it("takes NotOnQ's ANORAK! over Qloo's Anorak", () => {
+    expect(pickArtist([e("Q", "Anorak"), e("N", "ANORAK!")], "ANORAK!")?.id).toBe("N");
+  });
+  it("still takes Qloo's entry when it's the only one by that name", () => {
+    expect(pickArtist([e("Q", "Anorak")], "ANORAK!")?.id).toBe("Q");
+  });
+});
