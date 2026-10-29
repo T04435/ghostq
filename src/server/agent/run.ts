@@ -20,7 +20,7 @@ import { nextAreas, readCrowd } from "@/server/crowd";
 import { vocalStyle } from "@/server/vocal-style";
 import { artistProfile } from "@/server/musicbrainz";
 import { getSong, newSongId, saveSong } from "@/server/store/songs";
-import { compareArtists, genresFromWords, searchArtist } from "@/server/qloo/api";
+import { compareArtists, entityById, genresFromWords, searchArtist } from "@/server/qloo/api";
 import { QlooError } from "@/server/qloo/client";
 import { ArtistRun, createTools, RunState, type ToolOutput } from "./tools";
 
@@ -207,7 +207,10 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   let ownTags: string[] = [];
   const results = await searchArtist(x.name, state.onCall);
   // The user's pick among Qloo's candidates (asked below when there's no exact match), else the Spotify id or exact name.
-  const match = (answers?.qlooId ? results.find((r) => r.id === answers.qlooId) : undefined) ?? (answers?.noQloo ? undefined : pickArtist(results, x.name, x.spotifyId));
+  const userPick = answers?.qlooId ? results.find((r) => r.id === answers.qlooId) : undefined;
+  // A NotOnQ candidate the user chose is filled by its id.
+  const filled = userPick?.notonq?.kind === "candidate" ? await entityById(userPick.id, state.onCall).catch(() => undefined) : userPick;
+  const match = filled ?? (answers?.noQloo ? undefined : pickArtist(results, x.name, x.spotifyId));
   // Qloo's look-alikes worth offering: they share a real word with the name ("Yomil y El Dany" for "Yomil"), not just
   // "El" (El-P for "El Yonki").
   const words = (n: string) => n.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3 && !STOPWORDS.has(w));

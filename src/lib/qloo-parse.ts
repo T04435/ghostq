@@ -55,9 +55,11 @@ export type QlooEntity = {
   wikidataId?: string | null;
   /**
    * Set when the record came from NotOnQ (GhostQ's Qloo data goes through it): "filled" for an artist Qloo has no
-   * record of, built from open data; "picked" or "matched" for Qloo's own record that NotOnQ chose for this request.
+   * record of, built from open data; "picked" or "matched" for Qloo's own record that NotOnQ chose for this request;
+   * "candidate" for a possible match NotOnQ offers when it can't tell which artist it is (filled only once chosen, by
+   * its id on /entities).
    */
-  notonq?: { kind: "filled" | "picked" | "matched"; standIns: string[]; home: { name: string; country: string | null; countryCode: string | null } | null } | null;
+  notonq?: { kind: "filled" | "picked" | "matched" | "candidate"; standIns: string[]; home: { name: string; country: string | null; countryCode: string | null } | null } | null;
   /**
    * What NotOnQ filled in on a thin Qloo record (no MusicBrainz id, Wikidata id or genre tag; v0.6.0 on): where the
    * artist is from, the languages of their releases (most used first), and which ids are NotOnQ's. Null when none.
@@ -73,7 +75,7 @@ export const throughStandIns = (x: { act?: Pick<QlooEntity, "notonq"> | null }) 
  * taste questions for it. */
 export function notonqOf(description: string | null | undefined, home?: z.infer<typeof notonqHome>, listed?: z.infer<typeof notonqStandIns>): QlooEntity["notonq"] {
   const d = description ?? "";
-  const kind = d.startsWith("Not in Qloo") ? "filled" : d.startsWith("Picked by NotOnQ") ? "picked" : d.startsWith("Matched by NotOnQ") ? "matched" : null;
+  const kind = d.startsWith("Not in Qloo: a possible match") ? "candidate" : d.startsWith("Not in Qloo") ? "filled" : d.startsWith("Picked by NotOnQ") ? "picked" : d.startsWith("Matched by NotOnQ") ? "matched" : null;
   if (!kind) return null;
   // The list ends at a full stop followed by a space or the end: names can carry dots of their own ("A.GIRL").
   // NotOnQ's own list first; the names in its label before v0.4.3.
@@ -137,7 +139,9 @@ function nameKey(name: string): string {
  * one name containing the other, 5+ letters). Never just the top result: a made-up "Zorvex Halloway Ensemble" got
  * "Disco Ensemble" that way (22 Oct). No match means Qloo doesn't know the artist, and the run asks.
  */
-export function pickArtist(results: QlooEntity[], name: string, spotifyId?: string): QlooEntity | undefined {
+export function pickArtist(all: QlooEntity[], name: string, spotifyId?: string): QlooEntity | undefined {
+  // NotOnQ's candidates are for the user to choose from, never picked here.
+  const results = all.filter((r) => r.notonq?.kind !== "candidate");
   const byId = spotifyId ? results.find((r) => r.spotifyIds.includes(spotifyId)) : undefined;
   if (byId) return byId;
   // Named exactly as asked, punctuation included, before a match that ignores it: NotOnQ lists its fill of "ANORAK!"
