@@ -219,3 +219,13 @@ describe("pickArtist: the exact name over a near match", () => {
     expect(pickArtist([e("Q", "Anorak")], "ANORAK!")?.id).toBe("Q");
   });
 });
+
+describe("NotOnQ candidates", () => {
+  const cand = { entity_id: "C1", name: "ANORAK!", properties: { short_description: "Not in Qloo: a possible match from open data." }, tags: [] };
+  it("reads them as candidates, not fills", () => {
+    expect(parseSearch({ results: [cand] })[0].notonq?.kind).toBe("candidate");
+  });
+  it("never picks one on its own", () => {
+    expect(pickArtist(parseSearch({ results: [cand] }), "ANORAK!")).toBeUndefined();
+  });
+});

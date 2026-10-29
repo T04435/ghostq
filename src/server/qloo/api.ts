@@ -25,6 +25,11 @@ export async function searchArtist(name: string, onCall?: OnCall): Promise<QlooE
   return parseSearch(await qlooGet("/search", { query: name, types: "urn:entity:artist", take: 5 }, onCall));
 }
 
+/** One artist by its id: NotOnQ fills a candidate the user chose this way. */
+export async function entityById(id: string, onCall?: OnCall): Promise<QlooEntity | undefined> {
+  return parseSearch(await qlooGet("/entities", { entity_ids: id }, onCall))[0];
+}
+
 /** "My sound is…" words to music genre tags. Plain search needs the whole phrase to match, so semantic search (probe 5b). */
 export async function genresFromWords(words: string, onCall?: OnCall) {
   return parseTags(
