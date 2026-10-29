@@ -93,13 +93,16 @@ export type Crowd = {
   /** Where the artist is from (MusicBrainz, else Qloo's country tags); null when neither knows. */
   home: Home | null;
   language: Language;
-  /** The language follows the artist's home when known, else the crowd's city. */
-  languageFrom: "home" | "city" | "you";
+  /** The language follows the artist's home when known, else the crowd's city; "releases": the language of their
+   * releases, from NotOnQ (a thin Qloo record). */
+  languageFrom: "home" | "city" | "you" | "releases";
   /** A bilingual song: the second language, mixed with `language` (the user's pick when sources disagreed). */
   mix?: Language;
   /** Qloo has no record of the artist and NotOnQ filled it: Qloo's place and ages are its fans', read through these
    * similar artists Qloo knows. */
   standIns?: string[];
+  /** Qloo has no age data for the artist's own fans: the ages are Qloo's audience for these genres of theirs, via NotOnQ. */
+  agesGenres?: string[];
 };
 
 /** A crowd as stored. Songs saved before 22 Oct kept a city id and no home: read them into today's shape. */
@@ -116,6 +119,7 @@ export function normalizeCrowd(raw: unknown): Crowd {
     languageFrom: c.languageFrom ?? "city",
     ...(c.mix ? { mix: c.mix } : {}),
     ...(c.standIns ? { standIns: c.standIns } : {}),
+    ...(c.agesGenres?.length ? { agesGenres: c.agesGenres } : {}),
   };
 }
 

@@ -6,22 +6,30 @@ import { z } from "zod";
 const tagRef = z.object({ id: z.string().optional(), tag_id: z.string().optional(), name: z.string().optional(), type: z.string().optional() });
 
 /** Spotify id: under properties.external on /search, top-level external on insights. Its shape varies (an object, a list, other fields), so it's read leniently. */
-const external = z.object({ spotify: z.unknown(), musicbrainz: z.unknown(), wikidata: z.unknown() }).partial();
+const external = z.object({ spotify: z.unknown(), musicbrainz: z.unknown(), wikidata: z.unknown(), "notonq:musicbrainz": z.unknown(), "notonq:wikidata": z.unknown() }).partial();
 
 function idsOf(value: unknown): string[] {
   const items = Array.isArray(value) ? value : [value];
   return items.flatMap((x) => (x && typeof x === "object" && "id" in x && typeof x.id === "string" ? [x.id] : []));
 }
 
-/** Where the artist is from, on artists NotOnQ filled (Qloo's own artist records have no such field). */
+/** Where the artist is from: on artists NotOnQ filled, and (v0.6.0 on) on thin Qloo records that don't say. */
 const notonqHome = z.object({ name: z.string(), country: z.string().optional(), country_code: z.string().optional() });
+/** The languages of a thin Qloo record's releases, most used first (NotOnQ v0.6.0 on). */
+const notonqLanguages = z.array(z.object({ code: z.string().optional(), name: z.string(), releases: z.number().optional() }));
 /** The similar artists Qloo knows that answer for an artist NotOnQ filled, in order (NotOnQ v0.4.3 on). */
 const notonqStandIns = z.array(z.object({ entity_id: z.string().optional(), name: z.string() }));
 
 const entity = z.object({
   entity_id: z.string(),
   properties: z
-    .object({ external: external.optional(), short_description: z.string().nullable().optional(), "notonq:home": notonqHome.optional(), "notonq:standIns": notonqStandIns.optional() })
+    .object({
+      external: external.optional(),
+      short_description: z.string().nullable().optional(),
+      "notonq:home": notonqHome.optional(),
+      "notonq:standIns": notonqStandIns.optional(),
+      "notonq:languages": notonqLanguages.optional(),
+    })
     .partial()
     .optional(),
   external: external.optional(),
@@ -36,7 +44,8 @@ export type QlooEntity = {
   name: string;
   popularity: number | null;
   affinity: number | null;
-  tags: { id: string; name: string; type: string }[];
+  /** `notonq`: a genre NotOnQ added from open data because Qloo's record has none. */
+  tags: { id: string; name: string; type: string; notonq?: true }[];
   spotifyIds: string[];
   /** MusicBrainz artist id, for the voice match (server/musicbrainz.ts). */
   musicbrainzId: string | null;
@@ -49,6 +58,11 @@ export type QlooEntity = {
    * record of, built from open data; "picked" or "matched" for Qloo's own record that NotOnQ chose for this request.
    */
   notonq?: { kind: "filled" | "picked" | "matched"; standIns: string[]; home: { name: string; country: string | null; countryCode: string | null } | null } | null;
+  /**
+   * What NotOnQ filled in on a thin Qloo record (no MusicBrainz id, Wikidata id or genre tag; v0.6.0 on): where the
+   * artist is from, the languages of their releases (most used first), and which ids are NotOnQ's. Null when none.
+   */
+  gaps?: { home: { name: string; country: string | null; countryCode: string | null } | null; languages: string[]; musicbrainzId: boolean; wikidataId: boolean } | null;
 };
 
 /** How a taste answer about an artist NotOnQ filled was made: Qloo, through the similar artists Qloo knows. */
@@ -67,19 +81,43 @@ export function notonqOf(description: string | null | undefined, home?: z.infer<
   return { kind, standIns, home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null };
 }
 
+/** NotOnQ marks a genre it added as "notonq:urn:tag:genre:…": the Qloo tag id is the rest. */
+const NOTONQ_TAG = "notonq:";
+
 function toEntity(e: z.infer<typeof entity>): QlooEntity {
+  const ext = { ...e.external, ...e.properties?.external };
+  const musicbrainz = [...idsOf(e.properties?.external?.musicbrainz), ...idsOf(e.external?.musicbrainz)][0];
+  const wikidata = [...idsOf(e.properties?.external?.wikidata), ...idsOf(e.external?.wikidata)][0];
+  // Qloo's own ids first; NotOnQ's only where Qloo has none.
+  const mbGap = musicbrainz ? undefined : idsOf(ext["notonq:musicbrainz"])[0];
+  const wdGap = wikidata ? undefined : idsOf(ext["notonq:wikidata"])[0];
+  const notonq = notonqOf(e.properties?.short_description, e.properties?.["notonq:home"], e.properties?.["notonq:standIns"]);
+  const home = notonq?.kind === "filled" ? undefined : e.properties?.["notonq:home"];
+  const languages = (e.properties?.["notonq:languages"] ?? []).map((l) => l.name.trim()).filter(Boolean);
   return {
     id: e.entity_id,
     name: e.name,
     popularity: e.popularity ?? null,
     affinity: e.query?.affinity ?? null,
     spotifyIds: [...idsOf(e.properties?.external?.spotify), ...idsOf(e.external?.spotify)],
-    musicbrainzId: [...idsOf(e.properties?.external?.musicbrainz), ...idsOf(e.external?.musicbrainz)][0] ?? null,
+    musicbrainzId: musicbrainz ?? mbGap ?? null,
     description: e.properties?.short_description ?? null,
     // Qloo writes it in lower case ("q13476175"); Wikidata's ids are "Q…".
-    wikidataId: [...idsOf(e.properties?.external?.wikidata), ...idsOf(e.external?.wikidata)][0]?.toUpperCase() ?? null,
-    notonq: notonqOf(e.properties?.short_description, e.properties?.["notonq:home"], e.properties?.["notonq:standIns"]),
-    tags: e.tags.flatMap((t) => (t.name && (t.id ?? t.tag_id) ? [{ id: (t.id ?? t.tag_id)!, name: t.name, type: t.type ?? "" }] : [])),
+    wikidataId: (wikidata ?? wdGap)?.toUpperCase() ?? null,
+    notonq,
+    gaps:
+      home || languages.length || mbGap || wdGap
+        ? { home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null, languages, musicbrainzId: Boolean(mbGap), wikidataId: Boolean(wdGap) }
+        : null,
+    tags: e.tags.flatMap((t) => {
+      const raw = t.id ?? t.tag_id;
+      if (!t.name || !raw) return [];
+      const added = raw.startsWith(NOTONQ_TAG);
+      const id = added ? raw.slice(NOTONQ_TAG.length) : raw;
+      // NotOnQ's genres may come without a type: the id says it.
+      const type = t.type ?? (added && id.startsWith("urn:tag:genre") ? "urn:tag:genre:music" : "");
+      return [{ id, name: t.name, type, ...(added ? { notonq: true as const } : {}) }];
+    }),
   };
 }
 
