@@ -53,7 +53,7 @@ export function CrowdCard({
   const all = sides.map((s) => normalizeCrowd(s.crowd));
   const fromQloo = all.length > 0 && all.every((c) => c.from.place === "qloo" && c.from.ages === "qloo");
   const remixed = all.some((c) => c.from.place === "remix" || c.from.ages === "remix");
-  const viaNotOnQ = all.some((c) => c.standIns);
+  const viaNotOnQ = all.some((c) => c.standIns || c.agesGenres);
   return (
     <Card className="gap-3.5 p-[18px]" role="group" aria-label={`The crowd for ${artist}`}>
       <div className="flex items-center justify-between gap-2">
@@ -169,6 +169,9 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
             );
           })}
           {qlooAges && via && <span className="col-span-full text-muted-foreground">Ages on Qloo of {via}</span>}
+          {qlooAges && !via && crowd.agesGenres && (
+            <span className="col-span-full text-muted-foreground">Qloo&apos;s audience for {crowd.agesGenres.join(", ")}, via NotOnQ: Qloo has no age data for {artist}&apos;s own fans</span>
+          )}
           {!qlooAges && <span className="col-span-full text-muted-foreground">{crowd.from.ages === "remix" ? "Your pick for this remix" : "Your answer: Qloo had no age data"}</span>}
         </div>
       ) : (
@@ -178,7 +181,7 @@ function CrowdSide({ artist, crowd, side, labelled }: { artist: string; crowd: C
         <Row
           label="Language"
           value={crowd.mix ? `${crowd.language} and ${crowd.mix}` : crowd.language}
-          note={crowd.languageFrom === "you" ? "your pick" : crowd.languageFrom === "home" ? "the artist's own" : "from the city"}
+          note={crowd.languageFrom === "you" ? "your pick" : crowd.languageFrom === "home" ? "the artist's own" : crowd.languageFrom === "releases" ? "their releases, via NotOnQ" : "from the city"}
         />
         {/* GhostQ's addition (not in the DS): where the artist is from, which sets the voice. */}
         <Row

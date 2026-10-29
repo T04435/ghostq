@@ -17,7 +17,7 @@ describe("parseSearch", () => {
       ],
     };
     expect(parseSearch(json)).toEqual([
-      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, description: null, wikidataId: null, notonq: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
+      { id: "E1", name: "Some Band", popularity: 0.9, affinity: null, spotifyIds: [], musicbrainzId: null, description: null, wikidataId: null, notonq: null, gaps: null, tags: [{ id: "urn:tag:genre:psychedelic", name: "Psychedelic", type: "urn:tag:genre" }] },
     ]);
   });
 
@@ -166,3 +166,46 @@ describe("NotOnQ's basis on demographics", () => {
   });
 });
 
+
+describe("NotOnQ field gaps on thin Qloo records (v0.6.0)", () => {
+  const thin = {
+    entity_id: "T1",
+    name: "Thin Act",
+    properties: {
+      short_description: "A Japanese band.",
+      external: { "notonq:wikidata": [{ id: "q42" }], "notonq:musicbrainz": [{ id: "mb-1" }] },
+      "notonq:home": { name: "Tokyo", country: "Japan", country_code: "JP", source: "musicbrainz" },
+      "notonq:languages": [
+        { code: "jpn", name: "Japanese", releases: 9 },
+        { code: "eng", name: "English", releases: 2 },
+      ],
+    },
+    tags: [{ tag_id: "notonq:urn:tag:genre:music:mathcore", name: "Mathcore" }],
+  };
+
+  it("reads NotOnQ's home, languages, ids and genres, and marks them", () => {
+    const [e] = parseSearch({ results: [thin] });
+    expect(e.notonq).toBeNull();
+    expect(e.gaps).toEqual({ home: { name: "Tokyo", country: "Japan", countryCode: "JP" }, languages: ["Japanese", "English"], musicbrainzId: true, wikidataId: true });
+    expect(e.wikidataId).toBe("Q42");
+    expect(e.musicbrainzId).toBe("mb-1");
+    expect(e.tags).toEqual([{ id: "urn:tag:genre:music:mathcore", name: "Mathcore", type: "urn:tag:genre:music", notonq: true }]);
+  });
+
+  it("keeps Qloo's own ids over NotOnQ's", () => {
+    const [e] = parseSearch({ results: [{ ...thin, properties: { ...thin.properties, external: { ...thin.properties.external, wikidata: [{ id: "q1" }], musicbrainz: [{ id: "mb-q" }] } } }] });
+    expect(e.wikidataId).toBe("Q1");
+    expect(e.musicbrainzId).toBe("mb-q");
+    expect(e.gaps).toMatchObject({ musicbrainzId: false, wikidataId: false });
+  });
+
+  it("has no gaps when NotOnQ added nothing", () => {
+    const [e] = parseSearch({ results: [{ entity_id: "Q", name: "Full", tags: [] }] });
+    expect(e.gaps).toBeNull();
+  });
+
+  it("reads the genres behind a genre-audience answer", () => {
+    const d = parseDemographics({ results: { demographics: [{ query: { age: { "35_and_younger": 0.2 } }, "notonq:basis": { stand_ins: [], genres: ["urn:tag:genre:music:mathcore"] } }] } });
+    expect(d?.genres).toEqual(["mathcore"]);
+  });
+});
