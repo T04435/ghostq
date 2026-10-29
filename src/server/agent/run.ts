@@ -284,18 +284,19 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
   const home = homeFor(x, profile.home);
   // The language: the artist's home, the languages their own Qloo tags point to, and the crowd's city. When these
   // disagree (or there's no home and the tags point elsewhere), the run asks: one of them, or a mix of two.
-  // NotOnQ's languages of their releases (a thin Qloo record), most used first: the artist's own, so the top one leads
-  // and settles it.
+  // NotOnQ's languages of their releases (a thin Qloo record), most used first: one settles it; more than one are the
+  // choices, in that order, and the run asks (the user's rule, 29 Oct). Only the languages GhostQ writes in count.
   const released = (x.act?.gaps?.languages ?? []).filter((l): l is Language => (LANGUAGES as readonly string[]).includes(l));
-  const candidates = [
-    ...released.slice(0, 1),
-    ...(home?.countryCode ? [languageFor(home.countryCode)] : []),
-    ...languagesFromTags(ownTags),
-    ...(read.place?.countryCode ? [languageFor(read.place.countryCode)] : []),
-  ].filter((l, i, all) => all.indexOf(l) === i);
+  const candidates = released.length
+    ? released
+    : [
+        ...(home?.countryCode ? [languageFor(home.countryCode)] : []),
+        ...languagesFromTags(ownTags),
+        ...(read.place?.countryCode ? [languageFor(read.place.countryCode)] : []),
+      ].filter((l, i, all) => all.indexOf(l) === i);
   const chosen = answers?.language;
   const language = chosen?.primary ?? candidates[0] ?? "English";
-  const languageFrom = chosen ? "you" : released[0] && language === released[0] ? "releases" : home?.countryCode && language === languageFor(home.countryCode) ? "home" : "city";
+  const languageFrom = chosen ? "you" : released.length === 1 ? "releases" : home?.countryCode && language === languageFor(home.countryCode) ? "home" : "city";
   const crowd: Crowd = {
     ...read,
     home,
@@ -306,7 +307,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     ...(agesGenres?.length && read.from.ages === "qloo" ? { agesGenres } : {}),
   };
   missing.push(...crowdMissing);
-  if (!chosen && !released.length && candidates.length > 1) missing.push("language");
+  if (!chosen && candidates.length > 1) missing.push("language");
   if (missing.length) {
     // Stop and ask: the page shows the question inline and sends the brief again with the answers.
     const gaps = crowdMissing.map((f) => (f === "place" ? "where the fans are" : "how old the fans are")).join(" or ");
@@ -315,7 +316,7 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
       type: "ask",
       fields: missing,
       artist: artistName,
-      message: askMessage(artistName, missing),
+      message: askMessage(artistName, missing, released.length > 1),
       ...(missing.includes("language") ? { languages: candidates.slice(0, 4) } : {}),
       ...(state.collab ? { who: x.key } : {}),
     });
@@ -379,12 +380,14 @@ async function readWhatTheyShare(state: RunState, emit: Emit): Promise<void> {
   }
 }
 
-function askMessage(artist: string, fields: AskField[]): string {
+function askMessage(artist: string, fields: AskField[], releases = false): string {
   const parts = fields.map((f) => ({ language: "choose the song's language", qlooArtist: "pick the right artist", sound: `describe ${artist}'s sound in a few words`, place: "find the city of the crowd you're writing for", ages: "pick up to three age bands" })[f]);
   const lead = fields.includes("sound")
     ? `Neither Qloo nor NotOnQ knows ${artist} yet.`
     : fields.every((f) => f === "language")
-      ? `${artist}'s home, Qloo tags and crowd point to different languages.`
+      ? releases
+        ? `${artist} has releases in more than one language (NotOnQ, from open data).`
+        : `${artist}'s home, Qloo tags and crowd point to different languages.`
       : `Qloo has no data on part of ${artist}'s crowd.`;
   return `${lead} To carry on, ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}.`;
 }
