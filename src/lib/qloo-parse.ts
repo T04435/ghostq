@@ -140,6 +140,11 @@ function nameKey(name: string): string {
 export function pickArtist(results: QlooEntity[], name: string, spotifyId?: string): QlooEntity | undefined {
   const byId = spotifyId ? results.find((r) => r.spotifyIds.includes(spotifyId)) : undefined;
   if (byId) return byId;
+  // Named exactly as asked, punctuation included, before a match that ignores it: NotOnQ lists its fill of "ANORAK!"
+  // after Qloo's "Anorak", another band (29 Oct).
+  const literal = (n: string) => n.normalize("NFC").trim().toLowerCase();
+  const asked = results.find((r) => literal(r.name) === literal(name));
+  if (asked) return asked;
   const want = nameKey(name);
   const exact = results.find((r) => nameKey(r.name) === want);
   if (exact) return exact;
