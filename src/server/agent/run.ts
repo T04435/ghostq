@@ -235,12 +235,13 @@ async function readOne(state: RunState, x: ArtistRun, emit: Emit): Promise<boole
     x.homeFromTags = genreTags.map((t) => t.name).find((n) => countryCodeFor(n)) ?? null;
     const genres = genreTags.filter((t) => !countryCodeFor(t.name)).slice(0, 6);
     x.genreTagIds = genres.map((g) => g.id);
-    // A filled record's own tags are NotOnQ's; a Qloo record's are Qloo's.
-    const ownOrigin: Origin = filledByNotOnQ(x) ? "notonq" : "qloo";
+    // A filled record's own tags are NotOnQ's, a Qloo record's are Qloo's; when NotOnQ's answer doesn't say which
+    // record is which ("unknown", an older NotOnQ), they are other, never Qloo's by guess.
+    const ownOrigin: Origin = filledByNotOnQ(x) ? "notonq" : match.notonq?.kind === "unknown" ? "other" : "qloo";
     const own = filledByNotOnQ(x) ? `NotOnQ: ${match.name}'s genres from open data, as Qloo's own tags (Qloo has no record of ${match.name})` : `Qloo: ${match.name}'s own tags (voice)`;
     const added = `NotOnQ: ${match.name}'s genre from open data (Qloo's record has no genre)`;
     const signals = [
-      ...genres.map((g) => state.signals.add("genre", g.name, g.notonq || filledByNotOnQ(x) ? "notonq" : "qloo", g.notonq ? added : own, null, side)),
+      ...genres.map((g) => state.signals.add("genre", g.name, g.notonq ? "notonq" : ownOrigin, g.notonq ? added : own, null, side)),
       ...match.tags.filter((t) => t.type === "urn:tag:theme:qloo").slice(0, 5).map((t) => state.signals.add("theme", t.name, ownOrigin, own, null, side)),
       // Specific styles first ("Raw Cuban Rap" over "Energetic"): Qloo lists the generic ones first.
       ...match.tags

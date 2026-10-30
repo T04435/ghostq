@@ -115,43 +115,53 @@ describe("musicbrainz id", () => {
   });
 });
 
-describe("NotOnQ records", () => {
+describe("NotOnQ records (keyed blocks, structured only)", () => {
+  const id = "5e23e428-0000-4000-a000-000000000001";
+  // The description is written to mislead: the parser must never read it.
   const filled = {
-    entity_id: "5e23e428-0000-4000-a000-000000000001",
+    entity_id: id,
     name: "Small Act",
     properties: {
-      short_description: "Not in Qloo: filled by NotOnQ from open sources. Taste answers (recommendations, maps, audiences) use similar artists Qloo knows: Act A, Act B, Act C. From Leeds, United Kingdom (MusicBrainz). Small Act is an English band.",
+      short_description: "Picked by NotOnQ: says the text, which is never read.",
       "notonq:home": { name: "Leeds", country: "United Kingdom", country_code: "GB", source: "musicbrainz" },
     },
     tags: [{ name: "Indie Pop", tag_id: "urn:tag:genre:music:indie_pop", type: "urn:tag:genre:music" }],
   };
+  const block = (kind: string, standIns: string[] = []) => ({ served_by: "fallback", kind, proxy: { replaced: [], stand_ins: standIns.map((name, i) => ({ entity_id: `S${i}`, name, weight: 1, source: "lastfm" })) } });
 
-  it("reads a filled artist's label, similar artists and home", () => {
-    const [e] = parseSearch({ results: [filled] });
-    expect(e.notonq).toEqual({ kind: "filled", standIns: ["Act A", "Act B", "Act C"], home: { name: "Leeds", country: "United Kingdom", countryCode: "GB" } });
-    expect(throughStandIns({ act: e })).toBe(" (through similar artists Qloo knows: Act A, Act B, Act C; via NotOnQ)");
+  it("reads a fill, its similar artists and its home from the block keyed by its id", () => {
+    const [e] = parseSearch({ results: [filled], notonq: { served_by: "mixed", [id]: block("filled", ["Act A", "A.GIRL", "Act C"]) } });
+    expect(e.notonq).toEqual({ kind: "filled", standIns: ["Act A", "A.GIRL", "Act C"], home: { name: "Leeds", country: "United Kingdom", countryCode: "GB" } });
+    expect(throughStandIns({ act: e })).toBe(" (through similar artists Qloo knows: Act A, A.GIRL, Act C; via NotOnQ)");
   });
 
-  it("reads NotOnQ's list of similar artists first, when it sends one", () => {
-    const n = notonqOf("Not in Qloo: filled by NotOnQ from open sources. Taste answers use similar artists Qloo knows: A.GIRL, Hope D, Greta Stanley.", undefined, [
-      { entity_id: "E1", name: "A.GIRL" },
-      { entity_id: "E2", name: "Hope D" },
-      { entity_id: "E3", name: "Greta Stanley" },
-      { entity_id: "E4", name: "Asha Jefferies" },
-    ]);
-    expect(n?.standIns).toEqual(["A.GIRL", "Hope D", "Greta Stanley", "Asha Jefferies"]);
+  it("reads the record's own list of similar artists first, when it sends one", () => {
+    const withList = { ...filled, properties: { ...filled.properties, "notonq:standIns": [{ entity_id: "E1", name: "Hope D" }, { entity_id: "E2", name: "Greta Stanley" }] } };
+    expect(parseSearch({ results: [withList], notonq: { served_by: "mixed", [id]: block("filled", ["Other"]) } })[0].notonq?.standIns).toEqual(["Hope D", "Greta Stanley"]);
   });
 
-  it("keeps a similar artist's name whole when it has dots of its own", () => {
-    const n = notonqOf("Not in Qloo: filled by NotOnQ from open sources. Taste answers use similar artists Qloo knows: A.GIRL, Hope D, Greta Stanley. From Perth, Australia (MusicBrainz).");
-    expect(n?.standIns).toEqual(["A.GIRL", "Hope D", "Greta Stanley"]);
+  it("reads picked, matched and candidate the same way, and only for the keyed record", () => {
+    const q = { entity_id: "Q1", name: "Qloo's own", tags: [] };
+    const json = (kind: string) => ({ results: [q, filled], notonq: { served_by: "mixed", [id]: block(kind) } });
+    for (const kind of ["picked", "matched", "candidate"]) {
+      const [own, ours] = parseSearch(json(kind));
+      expect(ours.notonq?.kind).toBe(kind);
+      expect(own.notonq).toBeNull();
+    }
+    expect(parseEntities({ results: { entities: [filled] }, notonq: { served_by: "fallback", [id]: block("filled") } })[0].notonq?.kind).toBe("filled");
   });
 
-  it("tells Qloo's own records NotOnQ chose apart from fills, and leaves Qloo's own alone", () => {
-    expect(notonqOf("Picked by NotOnQ: Qloo returned 0 artists for this request; this is Qloo's own record.")?.kind).toBe("picked");
-    expect(notonqOf("Matched by NotOnQ: Qloo has this artist but not under this Spotify ID.")?.kind).toBe("matched");
-    expect(notonqOf("An American singer-songwriter.")).toBeNull();
+  it("an answer Qloo gave as it is (or no notonq at all) is Qloo's: no kind", () => {
+    expect(parseSearch({ results: [filled], notonq: { served_by: "qloo", attribution: [] } })[0].notonq).toBeNull();
+    expect(parseSearch({ results: [filled] })[0].notonq).toBeNull();
     expect(throughStandIns({ act: parseSearch({ results: [{ entity_id: "E2", name: "Known" }] })[0] })).toBe("");
+  });
+
+  it("an older NotOnQ answer with no keyed blocks is unknown for every record, never a guess from the text", () => {
+    const flat = { results: [{ entity_id: "Q1", name: "Qloo's own", tags: [] }, filled], notonq: { served_by: "mixed", gap: { kind: "missing" }, proxy: { replaced: [], stand_ins: [] } } };
+    expect(parseSearch(flat).map((e) => e.notonq?.kind)).toEqual(["unknown", "unknown"]);
+    expect(notonqOf({ served_by: "mixed" }, "X")?.kind).toBe("unknown");
+    expect(notonqOf({ served_by: "mixed", [id]: { kind: "made-up" } }, id)?.kind).toBe("unknown");
   });
 });
 
@@ -222,10 +232,11 @@ describe("pickArtist: the exact name over a near match", () => {
 
 describe("NotOnQ candidates", () => {
   const cand = { entity_id: "C1", name: "ANORAK!", properties: { short_description: "Not in Qloo: a possible match from open data." }, tags: [] };
+  const json = { results: [cand], notonq: { served_by: "needs_choice", C1: { kind: "candidate" } } };
   it("reads them as candidates, not fills", () => {
-    expect(parseSearch({ results: [cand] })[0].notonq?.kind).toBe("candidate");
+    expect(parseSearch(json)[0].notonq?.kind).toBe("candidate");
   });
   it("never picks one on its own", () => {
-    expect(pickArtist(parseSearch({ results: [cand] }), "ANORAK!")).toBeUndefined();
+    expect(pickArtist(parseSearch(json), "ANORAK!")).toBeUndefined();
   });
 });
