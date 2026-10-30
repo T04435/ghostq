@@ -66,6 +66,12 @@ describe("Ghost suggests", () => {
     expect(second.some((e) => e.fresh)).toBe(false);
   });
 
+  it("drops a brief too long for What's it about? (280 characters)", async () => {
+    ai.output = { examples: [{ artist: "Too Long", story: "x".repeat(281), label: "long" }, ...known], moments };
+    const { first } = await twoVisits();
+    expect(first.some((e) => e.brief?.artist === "Too Long")).toBe(false);
+  });
+
   it("never waits on ListenBrainz: three normal ones while it's down", async () => {
     listenBrainz = async () => {
       throw new Error("ListenBrainz down");

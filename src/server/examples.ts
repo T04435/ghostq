@@ -21,16 +21,16 @@ const ideas = z.object({
     .array(
       z.object({
         artist: z.string().describe("A real, currently active music artist, exactly as named on Spotify"),
-        story: z.string().describe("What the song could be about: one everyday, specific moment in 4 to 9 words"),
-        label: z.string().describe("The story in 2 to 5 lowercase words, for a chip"),
+        story: z.string().describe("What the song could be about, as a writer's brief in 2 or 3 short sentences, under 180 characters: one everyday, specific moment; who it's sung to; how it turns by the end"),
+        label: z.string().describe("The moment in 2 to 5 lowercase words, for a chip"),
       }),
     )
     .describe("8 examples"),
   moments: z
     .array(
       z.object({
-        story: z.string().describe("What a song could be about: one everyday, specific moment in 4 to 9 words"),
-        label: z.string().describe("The story in 2 to 5 lowercase words, for a chip"),
+        story: z.string().describe("What a song could be about, as a writer's brief in 2 or 3 short sentences, under 180 characters: one everyday, specific moment; who it's sung to; how it turns by the end"),
+        label: z.string().describe("The moment in 2 to 5 lowercase words, for a chip"),
       }),
     )
     .describe("3 more moments, for artists the app picks"),
@@ -42,16 +42,16 @@ const pairs = z.object({
       z.object({
         artist: z.string().describe("A real, currently active music artist, exactly as named on Spotify"),
         feat: z.string().describe("A second real artist for a duet with the first, exactly as named on Spotify"),
-        story: z.string().describe("What the duet could be about: one everyday, specific moment in 4 to 9 words"),
-        label: z.string().describe("The story in 2 to 4 lowercase words, for a chip"),
+        story: z.string().describe("What the duet could be about, as a writer's brief in 2 or 3 short sentences, under 180 characters: one everyday, specific moment; who the two voices sing to or about; how it turns by the end"),
+        label: z.string().describe("The moment in 2 to 4 lowercase words, for a chip"),
       }),
     )
     .describe("8 examples"),
   moments: z
     .array(
       z.object({
-        story: z.string().describe("What a song could be about: one everyday, specific moment in 4 to 9 words"),
-        label: z.string().describe("The story in 2 to 5 lowercase words, for a chip"),
+        story: z.string().describe("What a song could be about, as a writer's brief in 2 or 3 short sentences, under 180 characters: one everyday, specific moment; who it's sung to; how it turns by the end"),
+        label: z.string().describe("The moment in 2 to 5 lowercase words, for a chip"),
       }),
     )
     .describe("3 more moments, for artists the app picks"),
@@ -70,6 +70,8 @@ let fresh: { at: number; artists: { name: string; id: string }[] | null } | unde
 
 const key = (name: string) => name.trim().toLowerCase();
 const shuffle = <T>(all: T[]) => [...all].sort(() => Math.random() - 0.5);
+/** A brief the form takes as it is (What's it about? holds 280 characters). */
+const fits = (story: string) => story.trim().length > 0 && story.length <= 280;
 
 /** The exact Spotify artist for a suggested name, or null (the form needs a Spotify pick). */
 async function pin(name: string): Promise<{ name: string; id: string } | null> {
@@ -120,7 +122,7 @@ async function generate(): Promise<Pool> {
   const result = await generateText({
     model: MODELS.agent,
     output: Output.object({ schema: ideas }),
-    maxOutputTokens: 2000,
+    maxOutputTokens: 3000,
     abortSignal: AbortSignal.timeout(30_000),
     prompt: [
       "Suggest 8 examples for a songwriting app: a real music artist and a small everyday moment the song could be about.",
@@ -133,7 +135,7 @@ async function generate(): Promise<Pool> {
   const output = parsed(result);
   const picked = await Promise.all(
     output.examples
-      .filter((e) => !taken.has(key(e.artist)))
+      .filter((e) => !taken.has(key(e.artist)) && fits(e.story))
       .map(async (e): Promise<Example | null> => {
         const match = (await searchSpotifyArtists(e.artist).catch(() => [])).find((a) => key(a.name) === key(e.artist));
         return match && !taken.has(key(match.name)) ? { label: `${match.name} · ${e.label}`, brief: { artist: match.name, spotifyId: match.id, story: e.story } } : null;
@@ -141,7 +143,7 @@ async function generate(): Promise<Pool> {
   );
   const examples = picked.filter((e): e is Example => e !== null);
   if (examples.length < 2) throw new Error("too few examples");
-  return { examples, moments: output.moments ?? [] };
+  return { examples, moments: (output.moments ?? []).filter((m) => fits(m.story)) };
 }
 
 /**
@@ -154,7 +156,7 @@ async function generatePairs(): Promise<Pool> {
   const result = await generateText({
     model: MODELS.agent,
     output: Output.object({ schema: pairs }),
-    maxOutputTokens: 2400,
+    maxOutputTokens: 3400,
     abortSignal: AbortSignal.timeout(30_000),
     prompt: [
       "Suggest 8 duets for a songwriting app: two real music artists whose crowds would meet in one song, and a small everyday moment it could be about.",
@@ -167,7 +169,7 @@ async function generatePairs(): Promise<Pool> {
   const output = parsed(result);
   const picked = await Promise.all(
     output.examples
-      .filter((e) => key(e.artist) !== key(e.feat) && !(taken.has(key(e.artist)) && taken.has(key(e.feat))))
+      .filter((e) => key(e.artist) !== key(e.feat) && !(taken.has(key(e.artist)) && taken.has(key(e.feat))) && fits(e.story))
       .map(async (e): Promise<Example | null> => {
         const [a, b] = await Promise.all([pin(e.artist), pin(e.feat)]);
         return a && b && a.id !== b.id
@@ -177,7 +179,7 @@ async function generatePairs(): Promise<Pool> {
   );
   const examples = picked.filter((e): e is Example => e !== null);
   if (examples.length < 2) throw new Error("too few pairs");
-  return { examples, moments: output.moments ?? [] };
+  return { examples, moments: (output.moments ?? []).filter((m) => fits(m.story)) };
 }
 
 /**

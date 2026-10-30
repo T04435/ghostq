@@ -124,9 +124,9 @@ export function normalizeCrowd(raw: unknown): Crowd {
 }
 
 export const EXAMPLE_BRIEFS: { label: string; brief: Brief }[] = [
-  { label: "Teenage Joans · last tram home", brief: { artist: "Teenage Joans", spotifyId: "6i78AQeGl4IGuGePiz3woE", story: "Last tram home after a share-house party" } },
-  { label: "Natalia Lafourcade · rain on the metro", brief: { artist: "Natalia Lafourcade", spotifyId: "1hcdI2N1023RvSwLzTtdsp", story: "Rain on the metro, going home to my mother's" } },
-  { label: "Radiohead · night bus in the rain", brief: { artist: "Radiohead", spotifyId: "4Z8W4fKeB5YxbusRsdQVPb", story: "Waiting for the night bus in the rain" } },
+  { label: "Teenage Joans · last tram home", brief: { artist: "Teenage Joans", spotifyId: "6i78AQeGl4IGuGePiz3woE", story: "Last tram home after a share-house party. Singing to the friend who stayed till the end. By the last stop, we're planning the next one." } },
+  { label: "Natalia Lafourcade · rain on the metro", brief: { artist: "Natalia Lafourcade", spotifyId: "1hcdI2N1023RvSwLzTtdsp", story: "Rain on the metro, going home to my mother's. Singing to her before I get there. By the last chorus, I'm the one bringing the umbrella." } },
+  { label: "Radiohead · night bus in the rain", brief: { artist: "Radiohead", spotifyId: "4Z8W4fKeB5YxbusRsdQVPb", story: "Waiting for the night bus in the rain. Singing to the stranger at the stop. By the end, we share the last seat without a word." } },
 ];
 
 /** "25–29" or "24 and under, 25–29 and 30–34", in Qloo's order. */

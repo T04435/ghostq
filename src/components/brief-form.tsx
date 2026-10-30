@@ -165,7 +165,7 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="story" className="flex items-baseline justify-between gap-2.5 text-[13px] font-semibold">
           <span className="inline-flex items-baseline gap-[5px]">
-            Story seed <span className="font-normal text-muted-foreground">optional</span>
+            What&apos;s it about? <span className="font-normal text-muted-foreground">optional</span>
           </span>
           <span className="font-mono text-[11px] font-normal text-muted-foreground">
             {(brief.story ?? "").length}/280
@@ -173,7 +173,7 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
         </Label>
         <Textarea
           id="story"
-          placeholder="One line about the story, if you have one"
+          placeholder="One moment, who it's to, how it turns"
           value={brief.story ?? ""}
           maxLength={280}
           rows={2}

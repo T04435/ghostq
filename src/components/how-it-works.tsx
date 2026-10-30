@@ -4,7 +4,7 @@ import { cn } from "cn";
 
 /** The five steps, each with where its data comes from (lime only for Qloo). */
 const STEPS = [
-  { title: "Your sound", body: "You name an artist and pick them from Spotify’s results. A story seed and a “feat.” artist are optional; nothing else is asked.", src: "Spotify" },
+  { title: "Your sound", body: "You name an artist and pick them from Spotify’s results. What it’s about and a “feat.” artist are optional; nothing else is asked.", src: "Spotify" },
   { title: "Your crowd", body: "Qloo tells us where their fans’ taste is strongest and which ages they skew to. The language is the artist’s own, else the city’s.", src: "Qloo" },
   { title: "Their world", body: "What that crowd loves across music, film, books and lifestyle, each with its affinity score.", src: "Qloo" },
   { title: "The Ghost chooses", body: "It decides which Qloo call to make next from what it has found, then picks the signals the song rests on and says why as it goes.", src: "Agent" },
