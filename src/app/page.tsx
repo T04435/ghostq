@@ -26,15 +26,13 @@ export const metadata: Metadata = {
 const allSongs = cache(() => listSongs());
 
 /**
- * The Landing's real example: a pinned, sung song (Lorde's "Last Light on the Shore Road", the one the demos use; the
- * user, 22 Oct: no Cuban act on demo screens), else the newest sung solo song in the Library.
+ * The Landing's real example: the song sung last (the user, 30 Oct), else the newest song in the Library. audioVersion
+ * is when its recording was made.
  */
-const EXAMPLE_SONG_ID = "angrczhmel";
 const exampleSong = cache(async () => {
-  const pinned = await getSong(EXAMPLE_SONG_ID);
-  if (pinned?.audio) return pinned;
   const songs = await allSongs();
-  const pick = songs.find((s) => s.sung && !s.featuring && !s.remixOf) ?? songs.find((s) => !s.featuring) ?? songs[0];
+  const sung = songs.filter((s) => s.sung && s.audioVersion).sort((a, b) => b.audioVersion!.localeCompare(a.audioVersion!));
+  const pick = sung[0] ?? songs[0];
   return pick ? getSong(pick.id) : null;
 });
 
