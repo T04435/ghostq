@@ -7,7 +7,6 @@ import { ArtistSearch } from "@/components/artist-search";
 import { Logo } from "@/components/brand/logo";
 import { CollabGlyph, RemixGlyph } from "@/components/brand/receipt";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
@@ -21,9 +20,9 @@ const EMPTY: Brief = { artist: "", story: "" };
 
 /**
  * A Ghost suggestion (server/examples): a brief to fill in, or a link to a RemixQ with the new crowd filled in.
- * `newToQloo` names an artist Qloo has no record of, whom NotOnQ fills from open data.
+ * `fresh` names an artist with a release in the last two weeks: Qloo may not know them yet.
  */
-type Suggestion = { label: string; brief?: Brief; href?: string; newToQloo?: string };
+type Suggestion = { label: string; brief?: Brief; href?: string; fresh?: string };
 
 /** What the Ghost says while it picks, per mode (/write?mode=feat from the Landing's CollabQ, ?mode=remix from RemixQ). */
 const PICKING = { solo: "picking artists not in the Songbook yet…", feat: "picking pairs for a feat.…", remix: "picking songs to remix…" } as const;
@@ -36,8 +35,8 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
   const [brief, setBrief] = useState<Brief>({ ...EMPTY, ...initial });
   const [feat, setFeat] = useState<{ artist: string; spotifyId?: string }>({ artist: initial?.feat?.artist ?? "", spotifyId: initial?.feat?.spotifyId });
   const [error, setError] = useState<string | null>(null);
-  // Ghost suggests: three artists the Songbook has no song for yet (GET /api/examples), one of them new to Qloo when
-  // NotOnQ fills one (30 Oct), or, from the Landing's CollabQ and RemixQ (?mode=feat, ?mode=remix), three feat. pairs
+  // Ghost suggests: three artists the Songbook has no song for yet (GET /api/examples), one of them with a release in
+  // the last two weeks (30 Oct), or, from the Landing's CollabQ and RemixQ (?mode=feat, ?mode=remix), three feat. pairs
   // or three songs to remix for another crowd (the user, 27 Oct).
   const [mode, setMode] = useState<keyof typeof PICKING>("solo");
   const [examples, setExamples] = useState<Suggestion[] | null>(null);
@@ -121,13 +120,9 @@ export function BriefForm({ initial, busy, onSubmit, note = "About a minute. The
                 setFeat({ artist: example.brief?.feat?.artist ?? "", spotifyId: example.brief?.feat?.spotifyId });
               }}
             >
-              {example.brief?.feat ? <CollabGlyph size={14} /> : <Logo size={14} />}
+              {/* A fresh release (ListenBrainz) gets the Ghost's mark animated, no label (the user, 30 Oct). */}
+              {example.fresh ? <GhostMark size={14} state="working" decorative /> : example.brief?.feat ? <CollabGlyph size={14} /> : <Logo size={14} />}
               {example.label}
-              {example.newToQloo && (
-                <Badge variant="outline" title={`Qloo has no record of ${example.newToQloo} yet: NotOnQ fills them in from open data`}>
-                  New to Qloo
-                </Badge>
-              )}
             </Button>
             ),
           )}
