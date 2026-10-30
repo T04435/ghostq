@@ -59,7 +59,7 @@ export type QlooEntity = {
    * "candidate" for a possible match NotOnQ offers when it can't tell which artist it is (filled only once chosen, by
    * its id on /entities).
    */
-  notonq?: { kind: "filled" | "picked" | "matched" | "candidate"; standIns: string[]; home: { name: string; country: string | null; countryCode: string | null } | null } | null;
+  notonq?: { kind: NotOnQKind; standIns: string[]; home: { name: string; country: string | null; countryCode: string | null } | null } | null;
   /**
    * What NotOnQ filled in on a thin Qloo record (no MusicBrainz id, Wikidata id or genre tag; v0.6.0 on): where the
    * artist is from, the languages of their releases (most used first), and which ids are NotOnQ's. Null when none.
@@ -71,29 +71,44 @@ export type QlooEntity = {
 export const throughStandIns = (x: { act?: Pick<QlooEntity, "notonq"> | null }) =>
   x.act?.notonq?.kind === "filled" ? ` (through similar artists Qloo knows${x.act.notonq.standIns.length ? `: ${x.act.notonq.standIns.join(", ")}` : ""}; via NotOnQ)` : "";
 
-/** NotOnQ's label leads short_description; a filled artist's label names the similar artists Qloo knows that answer
- * taste questions for it. */
-export function notonqOf(description: string | null | undefined, home?: z.infer<typeof notonqHome>, listed?: z.infer<typeof notonqStandIns>): QlooEntity["notonq"] {
-  const d = description ?? "";
-  const kind = d.startsWith("Not in Qloo: a possible match") ? "candidate" : d.startsWith("Not in Qloo") ? "filled" : d.startsWith("Picked by NotOnQ") ? "picked" : d.startsWith("Matched by NotOnQ") ? "matched" : null;
+/**
+ * What NotOnQ did with a record, from its structured answer only (the user, 31 Oct: never from the description text):
+ * its block keyed by the record's id in the response's `notonq` object, `{ kind: "filled" | "candidate" | "picked" |
+ * "matched", proxy: { stand_ins } }`. "unknown": NotOnQ answered (`served_by` isn't "qloo") but keyed no record, as
+ * an older NotOnQ did, so nothing says which result is Qloo's: its signals are "other", never Qloo's by guess.
+ */
+export type NotOnQKind = "filled" | "picked" | "matched" | "candidate" | "unknown";
+const KINDS = new Set(["filled", "picked", "matched", "candidate"]);
+type Top = Record<string, unknown> | undefined;
+type Block = { kind?: string; proxy?: { stand_ins?: { name?: string }[] } };
+
+const blockOf = (top: Top, id: string): Block | undefined => {
+  const b = top?.[id];
+  return b && typeof b === "object" && KINDS.has((b as Block).kind ?? "") ? (b as Block) : undefined;
+};
+const keysAny = (top: Top) => Object.keys(top ?? {}).some((k) => blockOf(top, k));
+/** NotOnQ answered this request itself (fully or in part), as opposed to passing Qloo's answer through. */
+const notonqAnswered = (top: Top) => typeof top?.served_by === "string" && top.served_by !== "qloo";
+
+export function notonqOf(top: Top, id: string, home?: z.infer<typeof notonqHome>, listed?: z.infer<typeof notonqStandIns>): QlooEntity["notonq"] {
+  const block = blockOf(top, id);
+  const kind: NotOnQKind | null = block ? (block.kind as NotOnQKind) : notonqAnswered(top) && !keysAny(top) ? "unknown" : null;
   if (!kind) return null;
-  // The list ends at a full stop followed by a space or the end: names can carry dots of their own ("A.GIRL").
-  // NotOnQ's own list first; the names in its label before v0.4.3.
-  const standIns = listed?.length ? listed.map((s) => s.name.trim()).filter(Boolean) : (/similar artists Qloo knows: (.+?)\.(?:\s|$)/.exec(d)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  return { kind, standIns, home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null };
+  const names = listed?.length ? listed.map((x) => x.name) : (block?.proxy?.stand_ins ?? []).map((x) => x.name ?? "");
+  return { kind, standIns: names.map((n) => n.trim()).filter(Boolean), home: home ? { name: home.name, country: home.country ?? null, countryCode: home.country_code ?? null } : null };
 }
 
 /** NotOnQ marks a genre it added as "notonq:urn:tag:genre:…": the Qloo tag id is the rest. */
 const NOTONQ_TAG = "notonq:";
 
-function toEntity(e: z.infer<typeof entity>): QlooEntity {
+function toEntity(e: z.infer<typeof entity>, top?: Top): QlooEntity {
   const ext = { ...e.external, ...e.properties?.external };
   const musicbrainz = [...idsOf(e.properties?.external?.musicbrainz), ...idsOf(e.external?.musicbrainz)][0];
   const wikidata = [...idsOf(e.properties?.external?.wikidata), ...idsOf(e.external?.wikidata)][0];
   // Qloo's own ids first; NotOnQ's only where Qloo has none.
   const mbGap = musicbrainz ? undefined : idsOf(ext["notonq:musicbrainz"])[0];
   const wdGap = wikidata ? undefined : idsOf(ext["notonq:wikidata"])[0];
-  const notonq = notonqOf(e.properties?.short_description, e.properties?.["notonq:home"], e.properties?.["notonq:standIns"]);
+  const notonq = notonqOf(top, e.entity_id, e.properties?.["notonq:home"], e.properties?.["notonq:standIns"]);
   const home = notonq?.kind === "filled" ? undefined : e.properties?.["notonq:home"];
   const languages = (e.properties?.["notonq:languages"] ?? []).map((l) => l.name.trim()).filter(Boolean);
   return {
@@ -164,14 +179,17 @@ export function pickArtist(all: QlooEntity[], name: string, spotifyId?: string):
 /** GET /search */
 
 export function parseSearch(json: unknown): QlooEntity[] {
-  const parsed = z.object({ results: z.array(entity).default([]) }).parse(json);
-  return parsed.results.map(toEntity);
+  const parsed = z.object({ results: z.array(entity).default([]), notonq: topSchema }).parse(json);
+  return parsed.results.map((e) => toEntity(e, parsed.notonq));
 }
 
 /** GET /v2/insights with an entity filter.type */
+/** The response's `notonq` object, when NotOnQ answered (GhostQ reads Qloo through it). */
+const topSchema = z.record(z.string(), z.unknown()).optional();
+
 export function parseEntities(json: unknown): QlooEntity[] {
-  const parsed = z.object({ results: z.object({ entities: z.array(entity).default([]) }) }).parse(json);
-  return parsed.results.entities.map(toEntity);
+  const parsed = z.object({ results: z.object({ entities: z.array(entity).default([]) }), notonq: topSchema }).parse(json);
+  return parsed.results.entities.map((e) => toEntity(e, parsed.notonq));
 }
 
 export type QlooTag = { id: string; name: string; affinity: number | null; popularity: number | null };
