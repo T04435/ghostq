@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { GLYPHS, isQloo } from "@/components/brand/receipt";
+import { GLYPHS } from "@/components/brand/receipt";
 import { AGE_BANDS, describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
-import type { Signal } from "@/lib/signals";
+import { originOf, type Origin, type Signal } from "@/lib/signals";
 import { getSong, topReceipts } from "@/server/store/songs";
 
 export const alt = "A GhostQ song";
@@ -19,6 +19,10 @@ const INK = "#eef0f2";
 const MUTED = "#a3a9b2";
 const LIME = "#dbec36";
 const LIME_INK = "#20240c";
+/** NotOnQ's amber (its DS --fill) and the dark ink on it, for values NotOnQ filled in. */
+const AMBER = "#f5b841";
+const AMBER_INK = "#2b1f05";
+const TONE: Record<Origin, { bg: string; ink: string }> = { qloo: { bg: LIME, ink: LIME_INK }, notonq: { bg: AMBER, ink: AMBER_INK }, other: { bg: CHIP, ink: INK } };
 
 /**
  * The image renderer can't switch a variable font's axes, so Geist Pixel ships here as static Circle (ELSH 20) and Grid
@@ -75,13 +79,12 @@ function Word({ size: s }: { size: number }) {
   );
 }
 
-/** A receipt chip as on the Library card: the kind's glyph, the id in mono and the label; lime when Qloo's. */
+/** A receipt chip as on the Library card: the kind's glyph, the id in mono and the label, in its origin's colour. */
 function Receipt({ signal }: { signal: Signal }) {
-  const q = isQloo(signal.source);
-  const ink = q ? LIME_INK : INK;
+  const { bg, ink } = TONE[originOf(signal)];
   const bits = GLYPHS[signal.kind].split("");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, height: 44, padding: "0 18px 0 14px", borderRadius: 999, background: q ? LIME : CHIP, color: ink }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, height: 44, padding: "0 18px 0 14px", borderRadius: 999, background: bg, color: ink }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, width: 18, height: 18 }}>
         {[0, 1, 2].map((r) => (
           <div key={r} style={{ display: "flex", gap: 2 }}>

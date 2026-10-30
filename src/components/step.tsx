@@ -4,7 +4,8 @@ import { Check, ChevronDown, ChevronRight, Clock, Minus, X } from "lucide-react"
 import { cn } from "cn";
 import type { ReactNode } from "react";
 import { GHOST_SIZES, GhostMark } from "@/components/brand/ghost-mark";
-import { isQloo, ReceiptChip, SideMark, SourceTag } from "@/components/brand/receipt";
+import { ReceiptChip, SideMark, SourceTag } from "@/components/brand/receipt";
+import type { Origin } from "@/lib/signals";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AGENT_NAME_START } from "@/lib/agent-persona";
@@ -70,6 +71,7 @@ export function StepCard({
   status,
   summary,
   source,
+  origin,
   receipts = [],
   calls = [],
   collapsed = false,
@@ -81,6 +83,8 @@ export function StepCard({
   status: StepStatus;
   summary?: string;
   source: string;
+  /** Whose work the step is (typed, from the tool and its receipts), for its colour. */
+  origin: Origin;
   receipts?: Signal[];
   calls?: StepCall[];
   collapsed?: boolean;
@@ -102,7 +106,7 @@ export function StepCard({
         )}
         {retried && <span className="flex-none text-xs whitespace-nowrap text-muted-foreground">· retried</span>}
       </span>
-      {hasPill(status) && <StatusPill status={status} qloo={isQloo(source)} />}
+      {hasPill(status) && <StatusPill status={status} qloo={origin === "qloo"} />}
     </>
   );
   const empty = status === "nodata" && unique.length === 0;
@@ -154,7 +158,7 @@ export function StepCard({
             </Collapsible>
           )}
           <div className="flex items-center justify-between gap-2 border-t pt-2">
-            <SourceTag source={source} />
+            <SourceTag source={source} origin={origin} />
             {grouped && <span className="text-[11px] text-muted-foreground">one step, {calls.length} calls</span>}
           </div>
         </>

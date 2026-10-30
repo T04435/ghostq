@@ -40,6 +40,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-signal: var(--signal);
   --color-signal-foreground: var(--signal-foreground);
+  --color-notonq: var(--notonq);
+  --color-notonq-foreground: var(--notonq-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -81,6 +83,9 @@
   --accent-foreground: oklch(0.26 0.06 115);
   --signal: oklch(0.9 0.19 115);
   --signal-foreground: oklch(0.26 0.06 115);
+  /* NotOnQ's amber (its DS --fill) for values NotOnQ filled in; dark ink on it is about 9:1. */
+  --notonq: #f5b841;
+  --notonq-foreground: #2b1f05;
   --destructive: oklch(0.55 0.19 25);
   --destructive-foreground: #fff;
   --destructive-soft: oklch(0.94 0.03 25);
@@ -133,6 +138,8 @@
     --accent-foreground: oklch(0.9 0.19 115);
     --signal: oklch(0.9 0.19 115);
     --signal-foreground: oklch(0.18 0.03 115);
+    --notonq: #f5b841;
+    --notonq-foreground: #2b1f05;
     --destructive: oklch(0.7 0.17 25);
     --destructive-foreground: oklch(0.15 0.03 25);
     --destructive-soft: oklch(0.26 0.04 25);

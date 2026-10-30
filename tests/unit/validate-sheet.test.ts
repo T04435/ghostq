@@ -4,9 +4,9 @@ import type { WrittenSong } from "@/lib/song-sheet";
 import { dropUnknownIds, validateSong } from "@/lib/validate-sheet";
 
 const registry = new SignalRegistry();
-const love = registry.add("theme", "Love", "Qloo insights", 0.75);
-const film = registry.add("movie", "Little Women", "Qloo insights", 0.8);
-registry.add("theme", "love", "Qloo insights", 0.7); // same label: no new signal
+const love = registry.add("theme", "Love", "qloo", "Qloo insights", 0.75);
+const film = registry.add("movie", "Little Women", "qloo", "Qloo insights", 0.8);
+registry.add("theme", "love", "qloo", "Qloo insights", 0.7); // same label: no new signal
 
 function song(lines: { text: string; signalIds: string[] }[]): WrittenSong {
   return {
@@ -50,9 +50,9 @@ describe("validateSong", () => {
 describe("film and book titles", () => {
   it("flags a title from the signals in a lyric, but not a short one-word title", () => {
     const r = new SignalRegistry();
-    r.add("theme", "Love", "Qloo", 0.7);
-    r.add("movie", "Little Women", "Qloo", 0.9);
-    r.add("movie", "Up", "Qloo", 0.8);
+    r.add("theme", "Love", "qloo", "Qloo", 0.7);
+    r.add("movie", "Little Women", "qloo", "Qloo", 0.9);
+    r.add("movie", "Up", "qloo", "Qloo", 0.8);
     const problems = validateSong(song([{ text: "Like little women on the stairs", signalIds: ["T1"] }, { text: "We go up the hill", signalIds: ["T1"] }]), r.all(), []);
     expect(problems.map((p) => p.issue)).toEqual(["names a film or book (Little Women); use its mood, not its title"]);
   });
@@ -67,8 +67,8 @@ describe("dropUnknownIds", () => {
 
 describe("genre and vocal direction", () => {
   const r = new SignalRegistry();
-  const pop = r.add("style", "Minimalist Indie Pop", "Qloo", null);
-  const muse = r.add("artist", "Lana Del Rey", "Qloo", 0.9);
+  const pop = r.add("style", "Minimalist Indie Pop", "qloo", "Qloo", null);
+  const muse = r.add("artist", "Lana Del Rey", "qloo", "Qloo", 0.9);
   const base = song([{ text: "a", signalIds: [pop.id] }]);
   const check = (genre: string, vocalDirection: string) => validateSong({ ...base, genre, vocalDirection }, r.all(), ["Lana Del Rey"]).map((p) => `${p.where}: ${p.issue}`);
 
