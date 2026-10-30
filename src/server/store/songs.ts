@@ -5,6 +5,7 @@ import path from "node:path";
 import { neon } from "@neondatabase/serverless";
 import type { Brief, Crowd } from "@/lib/brief";
 import type { SungTiming } from "@/lib/lyric-align";
+import { backfillOrigins } from "@/lib/origin-backfill";
 import { publicEvent, type RunEvent } from "@/lib/run-events";
 import { normalizeSheet, type SongSheet } from "@/lib/song-sheet";
 import type { Signal } from "@/lib/signals";
@@ -235,11 +236,16 @@ const fileStore: Store = {
 
 // ---- The store the app uses ---------------------------------------------------------------------------------------
 
-/** Older songs read into today's shape: the sheet by normalizeSheet, the sung vocals by toVocalLine. */
+/**
+ * Older songs read into today's shape: the sheet by normalizeSheet, the sung vocals by toVocalLine, and signals saved
+ * before they had an origin get one from the song's own structured data (backfillOrigins), on every read, never saved.
+ */
 function normalize(song: SavedSong | null): SavedSong | null {
   if (!song) return null;
   const audio = song.audio && "voice" in song.audio ? { vocals: toVocalLine(String(song.audio.voice)), createdAt: song.audio.createdAt, timing: song.audio.timing } : song.audio;
-  return { ...song, audio, sheet: normalizeSheet(song.sheet) };
+  let sheet = normalizeSheet(song.sheet);
+  if (sheet.signals.some((s) => !s.origin)) sheet = backfillOrigins({ createdAt: song.createdAt, sheet, research: song.research ?? [] }).sheet;
+  return { ...song, audio, sheet };
 }
 
 function store(): Store {

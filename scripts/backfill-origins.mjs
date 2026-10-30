@@ -1,14 +1,21 @@
-// One-time backfill (31 Oct): sets `origin` on the signals of songs saved before signals had one, from the structured
-// data saved with each song (src/lib/origin-backfill.ts), never from a signal's source text. A dry run by default: it
-// reads and reports. --write saves, and only with VERCEL_ENV=production (it runs once, at the release that ships origin).
+// Backfill (31 Oct): sets `origin` on the signals of songs saved before signals had one, from the structured data saved
+// with each song (src/lib/origin-backfill.ts), never from a signal's source text. The app already derives the same on
+// every read (normalize in src/server/store/songs.ts), so no release runs this. A dry run by default: it reads and
+// reports. --write saves, only with VERCEL_ENV=production and only to the production database (ep-bitter-queen).
 // Run: node --env-file=.env.local scripts/backfill-origins.mjs              (report)
 //      VERCEL_ENV=production node --env-file=.env.local scripts/backfill-origins.mjs --write
 import { neon } from "@neondatabase/serverless";
 import { backfillOrigins } from "../src/lib/origin-backfill.ts";
 
+const PRODUCTION_HOST = "ep-bitter-queen";
 const write = process.argv.includes("--write");
 if (write && process.env.VERCEL_ENV !== "production") {
-  console.error("--write saves to the production database: run it with VERCEL_ENV=production, at the release (see the comment at the top).");
+  console.error("--write saves to the production database: run it with VERCEL_ENV=production (see the comment at the top).");
+  process.exit(1);
+}
+const host = URL.canParse(process.env.DATABASE_URL ?? "") ? new URL(process.env.DATABASE_URL).hostname : "";
+if (write && !host.startsWith(`${PRODUCTION_HOST}-`) && !host.startsWith(`${PRODUCTION_HOST}.`)) {
+  console.error(`--write only saves to the production database (${PRODUCTION_HOST}); DATABASE_URL points at ${host || "nothing"}.`);
   process.exit(1);
 }
 const sql = neon(process.env.DATABASE_URL);
