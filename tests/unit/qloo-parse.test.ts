@@ -165,6 +165,46 @@ describe("NotOnQ records (keyed blocks, structured only)", () => {
   });
 });
 
+describe("NotOnQ's keyed blocks, its real shape (feat/keyed-notonq-blocks, 31 Oct)", () => {
+  const SFB = "221af8ba-bce4-48f1-a19b-d9562274dc0f";
+  const qloo = [{ entity_id: "Q-BR", name: "Blonde Redhead" }, { entity_id: "Q-YM", name: "You Me at Six" }, { entity_id: "Q-TF", name: "Thousand Foot Krutch" }];
+  const standIns = [{ entity_id: "Q-HB", name: "Honey Butter", weight: 0.93, source: "lastfm" }, { entity_id: "Q-CE", name: "Claire Ernst", weight: 0.9, source: "lastfm" }];
+  const fillBlock = { kind: "filled", served_by: "fallback", gap: { kind: "G1", qloo_status: 200 }, proxy: { replaced: [], stand_ins: standIns } };
+
+  it("Example 1: the fill is keyed by its id; the flat gap's kind is not a block", () => {
+    const json = {
+      results: [...qloo, { entity_id: SFB, name: "Six Foot Blonde", properties: { "notonq:standIns": standIns } }],
+      notonq: { served_by: "mixed", gap: { kind: "G1", qloo_status: 200 }, proxy: { replaced: [], stand_ins: standIns }, [SFB]: fillBlock },
+    };
+    const all = parseSearch(json);
+    expect(all.map((e) => e.notonq?.kind ?? null)).toEqual([null, null, null, "filled"]);
+    expect(all[3].notonq?.standIns).toEqual(["Honey Butter", "Claire Ernst"]);
+    expect(pickArtist(all, "Six Foot Blonde")?.id).toBe(SFB);
+  });
+
+  it("Example 2: candidates keyed beside the fill; one never picked on its own", () => {
+    const json = {
+      results: [...qloo, { entity_id: SFB, name: "Six Foot Blonde" }, { entity_id: "a68731a4", name: "6 foot 4" }, { entity_id: "39053243", name: "6 Foot 7 Foot" }],
+      notonq: {
+        served_by: "needs_choice",
+        gap: { kind: "G1", qloo_status: 200 },
+        candidates: [{ key: "mb:x", name: "Six Foot Blonde", entity_id: SFB }],
+        [SFB]: fillBlock,
+        a68731a4: { kind: "candidate", key: "lf:6-foot-4", name: "6 foot 4", next: "Send this entity_id to /entities." },
+        "39053243": { kind: "candidate", key: "lf:6-foot-7-foot", name: "6 Foot 7 Foot", next: "…" },
+      },
+    };
+    const all = parseSearch(json);
+    expect(all.map((e) => e.notonq?.kind ?? null)).toEqual([null, null, null, "filled", "candidate", "candidate"]);
+    expect(pickArtist(all, "6 foot 4")).toBeUndefined();
+  });
+
+  it("picked and matched blocks mark Qloo's own records", () => {
+    const json = { results: qloo, notonq: { served_by: "mixed", "Q-BR": { kind: "matched", query: "Blonde Redhead", note: "…" }, "Q-YM": { kind: "picked", ranked_by_qloo: true } } };
+    expect(parseSearch(json).map((e) => e.notonq?.kind ?? null)).toEqual(["matched", "picked", null]);
+  });
+});
+
 describe("NotOnQ's basis on demographics", () => {
   it("reads the genres NotOnQ answered with, when the ages are the similar artists' genre audience", () => {
     const json = { results: { demographics: [{ query: { age: { "25_to_29": 0.7 }, gender: { female: 0.6 } }, "notonq:basis": { stand_ins: ["Act A"], genres: ["urn:tag:genre:music:reggaeton"] } }] } };
