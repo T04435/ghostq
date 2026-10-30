@@ -241,9 +241,9 @@
 }
 
 /*
- * The Ghost's working mark (components/brand/ghost-mark.tsx): the eight graphite dots light in turn, in reading order,
- * on a 1.4 s loop; each dot (--ghost-i, 0..7) starts 1.4 s / 8 after the one before and fades back to a quarter. Reduced
- * motion holds one frame with every dot on (the missing tail still says "working").
+ * The Ghost's working mark (components/brand/ghost-mark.tsx): seven graphite dots and the lime tail light in turn, in
+ * reading order, on a 1.4 s loop; each part (--ghost-i, 0..7) starts 1.4 s / 8 after the one before and fades back to a
+ * quarter. Reduced motion holds every part on: the label or the text beside it says "working".
  */
 @keyframes ghost-dot {
   0%,
