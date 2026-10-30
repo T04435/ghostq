@@ -1,6 +1,6 @@
 "use client";
 
-import { Minimize, Pause, Play } from "lucide-react";
+import { Minimize, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { ReceiptChip } from "@/components/brand/receipt";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -17,9 +17,24 @@ import { Logo } from "@/components/brand/logo";
 /**
  * The DS's full-screen sing-along, its lyrics in Geist Pixel Circle (the user, 26 Oct: only here) (a phone, opened from the QPlayer): the section in lime Geist Pixel Grid, the line
  * before (muted), the line being sung large with its words lighting up, the count-in dots between lines, the line
- * after, the current line's receipts, the song map, then time · play · length and the draft label.
+ * after, the current line's receipts, the song map, then time · previous, play, next · length and the draft label.
+ * Previous and Next are the QPlayer's own (the user, 30 Oct: the full-screen player had no < >).
  */
-export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open: boolean; onOpenChange: (open: boolean) => void; sheet: SongSheet; sing: SingAlong }) {
+export function FullScreenSingAlong({
+  open,
+  onOpenChange,
+  sheet,
+  sing,
+  onPrev,
+  onNext,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sheet: SongSheet;
+  sing: SingAlong;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
   const { position, timing, time } = sing;
   const text = (i: number) => {
     const at = timing.lines[i];
@@ -74,14 +89,22 @@ export function FullScreenSingAlong({ open, onOpenChange, sheet, sing }: { open:
         <SongMap timing={timing} time={time} onSeek={sing.seek} />
         <div className="flex items-center justify-between gap-3">
           <span className="w-16 pixel-square text-lg">{clock(time)}</span>
-          <button
-            type="button"
-            onClick={sing.toggle}
-            aria-label={sing.playing ? "Pause" : "Play"}
-            className="inline-flex size-16 cursor-pointer sm:size-20 items-center justify-center rounded-full bg-signal text-signal-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring"
-          >
-            {sing.playing ? <Pause className="size-6 fill-current" aria-hidden /> : <Play className="size-6 fill-current" aria-hidden />}
-          </button>
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Button variant="secondary" size="icon" className="size-11 rounded-full" onClick={onPrev} aria-label="Previous song">
+              <SkipBack className="fill-current" aria-hidden />
+            </Button>
+            <button
+              type="button"
+              onClick={sing.toggle}
+              aria-label={sing.playing ? "Pause" : "Play"}
+              className="inline-flex size-16 cursor-pointer sm:size-20 items-center justify-center rounded-full bg-signal text-signal-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring"
+            >
+              {sing.playing ? <Pause className="size-6 fill-current" aria-hidden /> : <Play className="size-6 fill-current" aria-hidden />}
+            </button>
+            <Button variant="secondary" size="icon" className="size-11 rounded-full" onClick={onNext} aria-label="Next song">
+              <SkipForward className="fill-current" aria-hidden />
+            </Button>
+          </div>
           <span className="w-16 text-right pixel-square text-lg text-muted-foreground">{clock(timing.duration)}</span>
         </div>
         <span className="text-center font-mono text-[11px] text-muted-foreground">{draftLabel(sheet.artist, sheet.featuring?.artist)} · watermarked</span>

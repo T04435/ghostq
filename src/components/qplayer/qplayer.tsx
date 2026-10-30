@@ -127,7 +127,7 @@ export function QPlayer() {
           {muted ? <VolumeX className="size-3.5" aria-hidden /> : <Volume2 className="size-3.5" aria-hidden />}
         </button>
       </Tip>
-      {sheet && sing && <FullScreenSingAlong open={full} onOpenChange={setFull} sheet={sheet} sing={sing} />}
+      {sheet && sing && <FullScreenSingAlong open={full} onOpenChange={setFull} sheet={sheet} sing={sing} onPrev={player.prev} onNext={() => void player.next()} />}
     </div>
   );
 }
