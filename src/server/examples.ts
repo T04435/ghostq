@@ -4,12 +4,17 @@ import { z } from "zod";
 import { EXAMPLE_BRIEFS, type Brief } from "@/lib/brief";
 import { LANGUAGES } from "@/lib/place";
 import { remixParams } from "@/lib/remix-params";
+import { pickArtist } from "@/lib/qloo-parse";
 import { MODELS } from "@/server/agent/models";
+import { searchArtist } from "@/server/qloo/api";
 import { searchSpotifyArtists } from "@/server/spotify/client";
 import { listSongs } from "@/server/store/songs";
 
-/** A Ghost suggestion: a brief to fill in on Write, or (RemixQ) a link to a song's remix with the new crowd filled in. */
-export type Example = { label: string; brief: Brief; href?: never } | { label: string; href: string; brief?: never };
+/**
+ * A Ghost suggestion: a brief to fill in on Write, or (RemixQ) a link to a song's remix with the new crowd filled in.
+ * `newToQloo` names the artist Qloo has no record of, whom NotOnQ fills from open data (the chip says so).
+ */
+export type Example = { label: string; brief: Brief; newToQloo?: string; href?: never } | { label: string; href: string; brief?: never; newToQloo?: never };
 /** Write's suggestion modes: a solo song, a CollabQ pair (the Landing's Write a feat.) or a RemixQ (Pick a song to remix). */
 export type ExampleMode = "solo" | "feat" | "remix";
 
@@ -23,6 +28,15 @@ const ideas = z.object({
       }),
     )
     .describe("8 examples"),
+  newcomers: z
+    .array(
+      z.object({
+        artist: z.string().describe("A real artist who broke out in the last two years or is still small, exactly as named on Spotify"),
+        story: z.string().describe("What the song could be about: one everyday, specific moment in 4 to 9 words"),
+        label: z.string().describe("The story in 2 to 5 lowercase words, for a chip"),
+      }),
+    )
+    .describe("6 newcomers"),
 });
 
 const pairs = z.object({
@@ -36,7 +50,21 @@ const pairs = z.object({
       }),
     )
     .describe("8 examples"),
+  newcomers: z
+    .array(
+      z.object({
+        artist: z.string().describe("A real, currently active music artist, exactly as named on Spotify"),
+        feat: z.string().describe("A real artist who broke out in the last two years or is still small, exactly as named on Spotify"),
+        story: z.string().describe("What the duet could be about: one everyday, specific moment in 4 to 9 words"),
+        label: z.string().describe("The story in 2 to 4 lowercase words, for a chip"),
+      }),
+    )
+    .describe("6 duets with a newcomer"),
 });
+
+const NEWCOMERS = "Also suggest 6 newcomers: real artists who broke out in the last two years or are still small (a few thousand to tens of thousands of listeners), likely too new for big music databases.";
+/** How long the pool waits on NotOnQ for one newcomer: past it, the suggestion is a normal one or none. */
+const NEW_CHECK_MS = 8_000;
 
 const POOL_MS = 10 * 60 * 1000;
 const pools: Partial<Record<"solo" | "feat", { at: number; examples: Promise<Example[]> }>> = {};
@@ -47,6 +75,19 @@ const key = (name: string) => name.trim().toLowerCase();
 async function pin(name: string): Promise<{ name: string; id: string } | null> {
   const match = (await searchSpotifyArtists(name).catch(() => [])).find((a) => key(a.name) === key(name));
   return match ? { name: match.name, id: match.id } : null;
+}
+
+/**
+ * True only when NotOnQ answers that Qloo has no record of the artist and fills them (the user, 30 Oct: one suggestion
+ * new to Qloo). Qloo knowing them, no fill, an error or no answer in time all count as not new: the label is never faked.
+ */
+async function newToQloo(name: string, spotifyId: string): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<undefined>((resolve) => (timer = setTimeout(() => resolve(undefined), NEW_CHECK_MS)));
+  const match = await Promise.race([searchArtist(name).then((all) => pickArtist(all, name, spotifyId)), timeout])
+    .catch(() => undefined)
+    .finally(() => clearTimeout(timer));
+  return match?.notonq?.kind === "filled";
 }
 
 /**
@@ -65,6 +106,7 @@ async function generate(): Promise<Example[]> {
     prompt: [
       "Suggest 8 examples for a songwriting app: a real music artist and a small everyday moment the song could be about.",
       `Mix genres, countries and eras, and artists who sing in these languages: ${LANGUAGES.join(", ")}. Some well known, some cult.`,
+      NEWCOMERS,
       "Don't suggest any of these artists (they already have songs):",
       [...taken].join(", ") || "(none)",
     ].join("\n"),
@@ -77,9 +119,18 @@ async function generate(): Promise<Example[]> {
         return match && !taken.has(key(match.name)) ? { label: `${match.name} · ${e.label}`, brief: { artist: match.name, spotifyId: match.id, story: e.story } } : null;
       }),
   );
+  const fresh = await Promise.all(
+    (output.newcomers ?? [])
+      .filter((e) => !taken.has(key(e.artist)))
+      .map(async (e): Promise<Example | null> => {
+        const match = await pin(e.artist);
+        if (!match || taken.has(key(match.name)) || !(await newToQloo(match.name, match.id))) return null;
+        return { label: `${match.name} · ${e.label}`, brief: { artist: match.name, spotifyId: match.id, story: e.story }, newToQloo: match.name };
+      }),
+  );
   const examples = picked.filter((e): e is Example => e !== null);
   if (examples.length < 2) throw new Error("too few examples");
-  return examples;
+  return [...examples, ...fresh.filter((e): e is Example => e !== null)];
 }
 
 /**
@@ -97,6 +148,7 @@ async function generatePairs(): Promise<Example[]> {
     prompt: [
       "Suggest 8 duets for a songwriting app: two real music artists whose crowds would meet in one song, and a small everyday moment it could be about.",
       `Mix genres, countries and eras, and artists who sing in these languages: ${LANGUAGES.join(", ")}. Pairs can cross genres or countries; some well known, some cult.`,
+      `${NEWCOMERS} Pair each newcomer, as the featured artist, with an artist whose crowd would meet theirs.`,
       "At least one artist in each pair must not be one of these (they already have songs):",
       [...taken].join(", ") || "(none)",
     ].join("\n"),
@@ -111,9 +163,18 @@ async function generatePairs(): Promise<Example[]> {
           : null;
       }),
   );
+  const fresh = await Promise.all(
+    (output.newcomers ?? [])
+      .filter((e) => key(e.artist) !== key(e.feat) && !taken.has(key(e.feat)))
+      .map(async (e): Promise<Example | null> => {
+        const [a, b] = await Promise.all([pin(e.artist), pin(e.feat)]);
+        if (!a || !b || a.id === b.id || !(await newToQloo(b.name, b.id))) return null;
+        return { label: `${a.name} feat. ${b.name} · ${e.label}`, brief: { artist: a.name, spotifyId: a.id, story: e.story, feat: { artist: b.name, spotifyId: b.id } }, newToQloo: b.name };
+      }),
+  );
   const examples = picked.filter((e): e is Example => e !== null);
   if (examples.length < 2) throw new Error("too few pairs");
-  return examples;
+  return [...examples, ...fresh.filter((e): e is Example => e !== null)];
 }
 
 /**
@@ -133,11 +194,18 @@ async function remixIdeas(): Promise<Example[]> {
   return ideas;
 }
 
-const pick2 = (all: Example[]) => [...all].sort(() => Math.random() - 0.5).slice(0, 2);
+const shuffle = <T>(all: T[]) => [...all].sort(() => Math.random() - 0.5);
 
-/** Two suggestions for the mode, at random; for solo and feat the fixed solo pair when the Ghost can't suggest any. */
+/** Three suggestions at random, one of them new to Qloo when the pool has one (the user, 30 Oct). */
+export function pickSuggestions(all: Example[], n = 3): Example[] {
+  const fresh = shuffle(all.filter((e) => e.newToQloo));
+  const known = shuffle(all.filter((e) => !e.newToQloo));
+  return shuffle([...fresh.slice(0, 1), ...known, ...fresh.slice(1)].slice(0, n));
+}
+
+/** Three suggestions for the mode; for solo and feat the fixed solo ones when the Ghost can't suggest any. */
 export async function freshExamples(mode: ExampleMode = "solo"): Promise<Example[]> {
-  if (mode === "remix") return pick2(await remixIdeas());
+  if (mode === "remix") return pickSuggestions(await remixIdeas());
   const current = pools[mode];
   const pool = current && Date.now() - current.at <= POOL_MS ? current : { at: Date.now(), examples: mode === "feat" ? generatePairs() : generate() };
   if (pool !== current) {
@@ -150,5 +218,5 @@ export async function freshExamples(mode: ExampleMode = "solo"): Promise<Example
     console.error(`${mode} examples failed`, e instanceof Error ? e.message : e);
     return EXAMPLE_BRIEFS;
   });
-  return pick2(all);
+  return pickSuggestions(all);
 }
