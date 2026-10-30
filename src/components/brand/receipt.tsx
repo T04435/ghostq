@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { InlineCitationCard, InlineCitationCardBody } from "@/components/ai-elements/inline-citation";
 import { Badge } from "@/components/ui/badge";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
-import type { Signal, SignalKind } from "@/lib/signals";
+import { originOf, type Origin, type Signal, type SignalKind } from "@/lib/signals";
 
 /**
  * Receipt glyphs: each signal kind is a letter drawn on the logo's 3×3 grid, so kinds are told apart without colour.
@@ -44,8 +44,15 @@ export const KIND_NAME: Record<SignalKind, string> = {
 /** The receipts rail's order: the DS's eight, then the app's two extra kinds. */
 export const KIND_ORDER: SignalKind[] = ["crowd", "theme", "genre", "style", "artist", "movie", "book", "audience", "home", "voice"];
 
-/** Only Qloo-sourced things get the signal colour; every other source is plain mono. */
-export const isQloo = (source: string | undefined) => /qloo/i.test(source ?? "");
+/**
+ * Each origin's colours (the user, 31 Oct): Qloo's data is lime, what NotOnQ filled in is NotOnQ's amber, anything else
+ * is muted. Read from the signal's typed origin, never from its source text.
+ */
+export const ORIGIN_TONE: Record<Origin, { chip: string; active: string; pill: string }> = {
+  qloo: { chip: "bg-signal text-signal-foreground hover:bg-signal hover:text-signal-foreground", active: "bg-signal-foreground text-signal hover:bg-signal-foreground hover:text-signal", pill: "bg-signal px-[7px] text-signal-foreground" },
+  notonq: { chip: "bg-notonq text-notonq-foreground hover:bg-notonq hover:text-notonq-foreground", active: "bg-notonq-foreground text-notonq hover:bg-notonq-foreground hover:text-notonq", pill: "bg-notonq px-[7px] text-notonq-foreground" },
+  other: { chip: "bg-muted text-foreground hover:bg-muted hover:text-foreground", active: "bg-foreground text-background hover:bg-foreground hover:text-background", pill: "text-muted-foreground" },
+};
 
 /**
  * Any 3×3 dot glyph on the brand's grid: nine bits in reading order, lit at full ink, unlit at `dim`. Cell 9 is the
@@ -105,11 +112,10 @@ export function SideMark({ side, size = 10, color = "currentColor", className }:
 
 export const SIDE_SHORT: Record<NonNullable<Signal["side"]>, string> = { A: "A", B: "B", shared: "A+B" };
 
-/** A source as a tag: Qloo is a lime pill, every other source plain mono text. */
-export function SourceTag({ source, className, children }: { source: string; className?: string; children?: React.ReactNode }) {
-  const q = isQloo(source);
+/** A source as a tag, in its origin's colour: Qloo a lime pill, NotOnQ an amber one, any other source plain mono. */
+export function SourceTag({ source, origin, className, children }: { source: string; origin: Origin; className?: string; children?: React.ReactNode }) {
   return (
-    <span className={cn("rounded-full font-mono text-[10px] tracking-[.04em] whitespace-nowrap uppercase", q ? "bg-signal px-[7px] py-0.5 text-signal-foreground" : "py-0.5 text-muted-foreground", className)}>
+    <span className={cn("rounded-full py-0.5 font-mono text-[10px] tracking-[.04em] whitespace-nowrap uppercase", ORIGIN_TONE[origin].pill, className)}>
       {children ?? source}
     </span>
   );
@@ -125,11 +131,11 @@ export function FromQloo({ children = "FROM QLOO", className }: { children?: Rea
   );
 }
 
-type ChipSignal = Pick<Signal, "id" | "kind" | "label" | "source" | "side"> & { value?: Signal["value"] };
+type ChipSignal = Pick<Signal, "id" | "kind" | "label" | "source" | "side" | "origin"> & { value?: Signal["value"] };
 
 /**
  * ONE receipt chip, everywhere a signal is cited (lyric lines, steps, the plan, compare): the kind's glyph and the
- * id, on lime when it came from Qloo, grey when derived. Active (hovered or pinned) inverts to graphite. A CollabQ
+ * id, in its origin's colour: lime when it's Qloo's, amber when NotOnQ filled it in, grey otherwise. Active (hovered or pinned) inverts to graphite. A CollabQ
  * signal carries its side mark. Base: shadcn Badge (inside AI Elements' InlineCitation on the sheet).
  * `as="button"` makes it a control (the sheet pins a receipt on click); other props go to the root element.
  * Hover or focus shows the receipt card (shadcn HoverCard, as on the sheet). `title=""` leaves the card to a caller
@@ -144,7 +150,7 @@ export function ReceiptChip({
   title,
   ...props
 }: { signal: ChipSignal; active?: boolean; showLabel?: boolean; as?: "span" | "button" } & Omit<ComponentProps<"button">, "children">) {
-  const q = isQloo(signal.source);
+  const tone = ORIGIN_TONE[originOf(signal)];
   const inner = (
     <>
       <KindGlyph kind={signal.kind} />
@@ -159,7 +165,7 @@ export function ReceiptChip({
       variant="ghost"
       className={cn(
         "h-6 gap-[5px] rounded-full border-0 pr-[9px] pl-[7px] leading-none transition-colors duration-100 [&>svg]:size-auto!",
-        active ? (q ? "bg-signal-foreground text-signal hover:bg-signal-foreground hover:text-signal" : "bg-foreground text-background hover:bg-foreground hover:text-background") : q ? "bg-signal text-signal-foreground hover:bg-signal hover:text-signal-foreground" : "bg-muted text-foreground hover:bg-muted hover:text-foreground",
+        active ? tone.active : tone.chip,
         as === "button" && "cursor-pointer outline-none focus-visible:ring-3 focus-visible:ring-ring",
         className,
       )}

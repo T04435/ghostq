@@ -40,16 +40,16 @@ describe("parseCompare", () => {
 describe("signal sides", () => {
   it("keeps a side, and makes a label found for both crowds shared", () => {
     const r = new SignalRegistry();
-    const a = r.add("theme", "Heartbreak", "Qloo", 0.8, "A");
-    const b = r.add("theme", "Road trips", "Qloo", 0.6, "B");
-    r.add("theme", "heartbreak", "Qloo", 0.7, "B");
+    const a = r.add("theme", "Heartbreak", "qloo", "Qloo", 0.8, "A");
+    const b = r.add("theme", "Road trips", "qloo", "Qloo", 0.6, "B");
+    r.add("theme", "heartbreak", "qloo", "Qloo", 0.7, "B");
     expect(a.side).toBe("shared");
     expect(b.side).toBe("B");
     expect(r.all()).toHaveLength(2);
   });
 
   it("adds no side for a solo run", () => {
-    expect(new SignalRegistry().add("theme", "Heartbreak", "Qloo", 0.8).side).toBeUndefined();
+    expect(new SignalRegistry().add("theme", "Heartbreak", "qloo", "Qloo", 0.8).side).toBeUndefined();
   });
 });
 

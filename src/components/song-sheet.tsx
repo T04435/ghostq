@@ -5,7 +5,7 @@ import { cn } from "cn";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { InlineCitation, InlineCitationCard, InlineCitationCardBody, InlineCitationText } from "@/components/ai-elements/inline-citation";
-import { isQloo, KIND_NAME, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark, RemixGlyph } from "@/components/brand/receipt";
+import { KIND_NAME, ORIGIN_TONE, KIND_ORDER, KindGlyph, ReceiptCardBody, ReceiptChip, SIDE_SHORT, SideMark, RemixGlyph } from "@/components/brand/receipt";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { Sheet as SidePanel, SheetContent, SheetDescription, SheetHeader, SheetT
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import { possessive } from "@/lib/possessive";
-import type { Signal } from "@/lib/signals";
+import { originOf, type Signal } from "@/lib/signals";
 import { songArtist, type SongSheet as Sheet } from "@/lib/song-sheet";
 import { SongTitle } from "@/components/song-title";
 
@@ -288,7 +288,7 @@ export function SongSheet({
                   </div>
                   <ul>
                     {g.items.map((s) => {
-                      const q = isQloo(s.source);
+                      const tone = ORIGIN_TONE[originOf(s)];
                       const on = active === s.id;
                       return (
                         <li
@@ -303,7 +303,7 @@ export function SongSheet({
                           <span
                             className={cn(
                               "justify-self-start rounded-full px-1.5 py-0.5 pixel-circle text-[13px] leading-none transition-colors",
-                              on ? (q ? "bg-signal-foreground text-signal" : "bg-foreground text-background") : q ? "bg-signal text-signal-foreground" : "bg-muted text-foreground",
+                              on ? tone.active : tone.chip,
                             )}
                           >
                             {s.id}

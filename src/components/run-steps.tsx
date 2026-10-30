@@ -7,7 +7,7 @@ import { AGENT_NAME_INLINE, AGENT_NAME_START } from "@/lib/agent-persona";
 import { AgentNote, StatusLine, StatusPill, StepCard, StepNumber, type StepStatus } from "@/components/step";
 import { Trace } from "@/components/ui/trace";
 import type { RunEvent } from "@/lib/run-events";
-import type { Signal } from "@/lib/signals";
+import { originOf, type Origin, type Signal } from "@/lib/signals";
 import { cn } from "cn";
 
 /** The agent's pick, from its ready_to_write call: the angle and the signals the song is built on. */
@@ -107,6 +107,10 @@ const statusOf = (item: { status: Step["status"]; summary?: string }): StepStatu
 
 /** Where a step's data came from: Qloo, except GhostQ's own craft pass and Wikipedia's "How they sing". */
 const sourceOf = (tool: string) => (tool === "craft_pass" ? "GhostQ" : tool === "vocal_style" ? "Wikipedia" : "Qloo");
+/** Whose work a step is, from its tool and the origins of what it found: Qloo's tools are Qloo's, unless everything
+ * the step found is NotOnQ's (finding an artist Qloo has no record of); the Ghost's own passes and Wikipedia are other. */
+const originOfStep = (tool: string, receipts: Signal[]): Origin =>
+  tool === "craft_pass" || tool === "vocal_style" ? "other" : receipts.length && receipts.every((s) => originOf(s) === "notonq") ? "notonq" : "qloo";
 
 /** How many steps a run shows (calls to one tool between two notes count once), for "8 steps · 7 Qloo calls". */
 export function stepCount(items: StepItem[]): number {
@@ -150,6 +154,7 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
               title={GROUP_LABELS[item.tool] ?? item.steps[0].label}
               status={STATUS[status]}
               source={sourceOf(item.tool)}
+              origin={originOfStep(item.tool, item.steps.flatMap((x) => x.signals))}
               calls={item.steps.map((x) => ({ key: x.key, who: x.artist ?? x.label, summary: x.summary, receipts: x.signals, side: x.signals.find((s) => s.side)?.side }))}
               receipts={item.steps.flatMap((x) => x.signals)}
               collapsed={collapsed && status !== "running"}
@@ -166,6 +171,7 @@ export function RunSteps({ items, notes = true, collapsed = false, grid = false 
             status={statusOf(item)}
             summary={item.summary}
             source={sourceOf(item.tool)}
+            origin={originOfStep(item.tool, item.signals)}
             receipts={item.signals}
             collapsed={collapsed && item.status !== "running"}
             retried={item.retried}
