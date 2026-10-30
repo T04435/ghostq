@@ -74,11 +74,11 @@ export const throughStandIns = (x: { act?: Pick<QlooEntity, "notonq"> | null }) 
 /**
  * What NotOnQ did with a record, from its structured answer only (the user, 31 Oct: never from the description text):
  * its block keyed by the record's id in the response's `notonq` object, `{ kind: "filled" | "candidate" | "picked" |
- * "matched", proxy: { stand_ins } }`. "unknown": NotOnQ answered (`served_by` isn't "qloo") but keyed no record, as
+ * "matched" | "gaps", proxy: { stand_ins } }`. "gaps": Qloo's own record, with fields NotOnQ added (notonq:-prefixed). "unknown": NotOnQ answered (`served_by` isn't "qloo") but keyed no record, as
  * an older NotOnQ did, so nothing says which result is Qloo's: its signals are "other", never Qloo's by guess.
  */
-export type NotOnQKind = "filled" | "picked" | "matched" | "candidate" | "unknown";
-const KINDS = new Set(["filled", "picked", "matched", "candidate"]);
+export type NotOnQKind = "filled" | "picked" | "matched" | "candidate" | "gaps" | "unknown";
+const KINDS = new Set(["filled", "picked", "matched", "candidate", "gaps"]);
 type Top = Record<string, unknown> | undefined;
 type Block = { kind?: string; proxy?: { stand_ins?: { name?: string }[] } };
 
