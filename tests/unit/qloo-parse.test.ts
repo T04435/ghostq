@@ -199,6 +199,31 @@ describe("NotOnQ's keyed blocks, its real shape (feat/keyed-notonq-blocks, 31 Oc
     expect(pickArtist(all, "6 foot 4")).toBeUndefined();
   });
 
+  it("gaps: Qloo's own record with NotOnQ's fields (Kitebird, NotOnQ's fixture)", () => {
+    const id = "4e4f544f-0000-4000-8000-000000000005";
+    const json = {
+      results: [
+        {
+          entity_id: id,
+          name: "Kitebird",
+          properties: {
+            external: { "notonq:musicbrainz": { id: "00000000-0000-4000-a000-000000000040" }, "notonq:wikidata": { id: "Q123" } },
+            "notonq:home": { name: "Osaka", country: "Japan", country_code: "JP", source: "musicbrainz" },
+            "notonq:languages": [{ code: "jpn", releases: 1, name: "Japanese" }],
+          },
+          tags: [{ name: "Indie", tag_id: "urn:tag:genre:music:indie", type: "urn:tag:genre:music" }, { name: "emo", tag_id: "notonq:urn:tag:genre:emo", type: "urn:tag:genre" }],
+        },
+      ],
+      notonq: { served_by: "mixed", gap: { kind: "G5" }, facts: { [id]: { provenance: {} } }, [id]: { kind: "gaps", fields: ["musicbrainz_id", "wikidata_id", "home", "languages", "genres"], provenance: {} } },
+    };
+    const [e] = parseSearch(json);
+    expect(e.notonq?.kind).toBe("gaps");
+    expect(e.gaps).toEqual({ home: { name: "Osaka", country: "Japan", countryCode: "JP" }, languages: ["Japanese"], musicbrainzId: true, wikidataId: true });
+    expect(e.tags.map((t) => [t.name, t.notonq ?? false])).toEqual([["Indie", false], ["emo", true]]);
+    expect(pickArtist([e], "Kitebird")?.id).toBe(id);
+    expect(throughStandIns({ act: e })).toBe("");
+  });
+
   it("picked and matched blocks mark Qloo's own records", () => {
     const json = { results: qloo, notonq: { served_by: "mixed", "Q-BR": { kind: "matched", query: "Blonde Redhead", note: "…" }, "Q-YM": { kind: "picked", ranked_by_qloo: true } } };
     expect(parseSearch(json).map((e) => e.notonq?.kind ?? null)).toEqual(["matched", "picked", null]);
