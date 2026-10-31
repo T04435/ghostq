@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { briefSchema, remixSchema } from "@/lib/brief";
-import { changedLines } from "@/lib/remix";
+import { changedLines, lineDiffs, wordDiff } from "@/lib/remix";
 import type { SongSheet } from "@/lib/song-sheet";
 
 // RemixQ. Qloo is replaced: the test checks which calls a remix skips, not Qloo's answers.
@@ -64,6 +64,30 @@ describe("changedLines", () => {
       ["Bridge", ["New here"]],
     ]);
     expect([...changedLines(original, remix)]).toEqual(["0:0", "2:0"]);
+  });
+});
+
+describe("wordDiff and lineDiffs", () => {
+  it("keeps the words both lines share, case and punctuation aside, and marks the rest", () => {
+    const { before, after } = wordDiff("Mi abuelo se levanta con el gallo", "En Tepoztlán la niebla se va con el Gallo,");
+    expect(before.filter((w) => w.changed).map((w) => w.text)).toEqual(["Mi", "abuelo", "levanta"]);
+    expect(after.filter((w) => !w.changed).map((w) => w.text)).toEqual(["se", "con", "el", "Gallo,"]);
+  });
+
+  it("gives each side its own keys, and a new section only a remix side", () => {
+    const original = sheet([
+      ["Chorus", ["Last light"]],
+      ["Verse 1", ["Down the shore road", "Salt on the glass"]],
+    ]);
+    const remix = sheet([
+      ["Verse 1", ["Down the Tagus steps", "salt on the glass!"]],
+      ["Chorus", ["Last light"]],
+      ["Bridge", ["New here"]],
+    ]);
+    const d = lineDiffs(original, remix);
+    expect([...d.remix.keys()]).toEqual(["0:0", "2:0"]);
+    expect([...d.original.keys()]).toEqual(["1:0"]);
+    expect(d.remix.get("2:0")!.every((w) => w.changed)).toBe(true);
   });
 });
 
