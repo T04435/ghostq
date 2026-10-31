@@ -16,6 +16,7 @@ import { Sheet as SidePanel, SheetContent, SheetDescription, SheetHeader, SheetT
 import { describeCrowd } from "@/lib/brief";
 import { draftLabel } from "@/lib/draft-label";
 import { possessive } from "@/lib/possessive";
+import { wordRuns, type DiffWord } from "@/lib/remix";
 import { originOf, type Signal } from "@/lib/signals";
 import { songArtist, type SongSheet as Sheet } from "@/lib/song-sheet";
 import { SongTitle } from "@/components/song-title";
@@ -43,12 +44,13 @@ export function sideName(sheet: Sheet, side: NonNullable<Signal["side"]>): strin
  * tempo, the draft label, the feel), then chords over lyrics with a receipt chip on every line (no glyph legend: the
  * panel's group headings name each kind). Clicking a chip (or "Receipts") opens the receipts in a side Sheet, one column, the clicked one highlighted
  * and scrolled to (the user's call, 25 Oct); hover still previews a chip. The brief lives in the rail (SongBrief).
- * `compact` drops the feel and actions (RemixCompare); `changed` marks rewritten lines ("s:l" keys) for a diff.
+ * `compact` drops the feel and actions (RemixCompare); `diff` shows rewritten lines word by word ("s:l" keys): the
+ * remix's new words underlined (ins), the original's replaced words struck (del), and every line kept as is dimmed.
  */
 export function SongSheet({
   sheet,
   compact = false,
-  changed,
+  diff,
   caption,
   notice,
   sectionAction,
@@ -58,7 +60,7 @@ export function SongSheet({
 }: {
   sheet: Sheet;
   compact?: boolean;
-  changed?: Set<string>;
+  diff?: { side: "original" | "remix"; lines: Map<string, DiffWord[]> };
   caption?: ReactNode;
   /** Anything to show under the header (errors from a rewrite). */
   notice?: ReactNode;
@@ -76,7 +78,6 @@ export function SongSheet({
   const active = hover ?? pinned;
   const byId = new Map(sheet.signals.map((s) => [s.id, s]));
   const collab = Boolean(sheet.featuring);
-  const diff = Boolean(changed);
   const total = sheet.sections.reduce((n, s) => n + s.lines.length, 0);
   const groups = KIND_ORDER.map((kind) => ({
     kind,
@@ -146,7 +147,7 @@ export function SongSheet({
           {!compact && <p className="text-[15px] leading-normal text-pretty text-muted-foreground">{sheet.feel}</p>}
           {diff && (
             <span className="inline-flex items-baseline gap-[5px] self-start rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background">
-              <span className="pixel-square text-sm">{changed!.size}</span> of <span className="pixel-square text-sm">{total}</span> lines changed
+              <span className="pixel-square text-sm">{diff.lines.size}</span> of <span className="pixel-square text-sm">{total}</span> lines changed
             </span>
           )}
         </div>
@@ -181,7 +182,8 @@ export function SongSheet({
                   </div>
                   <div className="flex flex-col gap-3.5">
                     {section.lines.map((line, li) => {
-                      const isChanged = changed?.has(`${si}:${li}`) ?? false;
+                      const words = diff?.lines.get(`${si}:${li}`);
+                      const kept = Boolean(diff && !words);
                       const ids = [...new Set(line.signalIds)];
                       const ti = timed.get(`${si}:${li}`);
                       const at = sing && ti !== undefined ? sing.timing.lines[ti] : undefined;
@@ -191,7 +193,7 @@ export function SongSheet({
                           key={li}
                           data-singing={now || undefined}
                           onClick={at ? (e) => !(e.target as HTMLElement).closest("button") && sing!.seek(Math.max(0, at.start - 0.1)) : undefined}
-                          className={cn("min-w-0 rounded-md px-2.5 py-1.5", diff && "border-l-[3px] border-transparent", isChanged && "border-foreground bg-muted", at && "cursor-pointer hover:bg-muted/60")}
+                          className={cn("min-w-0 rounded-md px-2.5 py-1.5", at && "cursor-pointer hover:bg-muted/60")}
                         >
                           {/* Every line's receipts as AI Elements' Inline Citation: hover or focus a chip for its signal, click to pin it. */}
                           <InlineCitation className="flex flex-wrap items-end gap-x-4 gap-y-1.5">
@@ -203,17 +205,35 @@ export function SongSheet({
                                 </>
                               ) : (
                                 <>
-                                  <span className="min-h-3.5 pr-2 font-mono text-[13px] leading-[1.1] font-semibold whitespace-pre-wrap">{line.chords}</span>
-                                  <span className="text-[17px] leading-[1.35] font-medium">{line.text}</span>
+                                  <span className={cn("min-h-3.5 pr-2 font-mono text-[13px] leading-[1.1] font-semibold whitespace-pre-wrap", kept && "text-muted-foreground")}>{line.chords}</span>
+                                  <span className={cn("text-[17px] leading-[1.35] font-medium", kept && "text-muted-foreground")}>
+                                    {words ? (
+                                      <>
+                                        <span className="sr-only">{diff!.side === "remix" ? "Rewritten line: " : "Line the remix rewrote: "}</span>
+                                        {wordRuns(words).map((w, i) => {
+                                          const gap = i > 0 ? " " : "";
+                                          if (!w.changed) return gap + w.text;
+                                          return diff!.side === "remix" ? (
+                                            <span key={i}>
+                                              {gap}
+                                              <ins className="underline decoration-2 underline-offset-[5px]">{w.text}</ins>
+                                            </span>
+                                          ) : (
+                                            <span key={i}>
+                                              {gap}
+                                              <del className="text-muted-foreground decoration-1">{w.text}</del>
+                                            </span>
+                                          );
+                                        })}
+                                      </>
+                                    ) : (
+                                      line.text
+                                    )}
+                                  </span>
                                 </>
                               )}
                             </InlineCitationText>
                             <span className="flex flex-none flex-wrap items-center gap-1 pb-[3px]">
-                              {isChanged && (
-                                <span className="rounded-full border border-foreground px-1.5 py-0.5 font-mono text-[9px] tracking-[.06em] whitespace-nowrap">
-                                  CHANGED<span className="sr-only"> line</span>
-                                </span>
-                              )}
                               {ids.map((id) => {
                                 const s = byId.get(id);
                                 if (!s) return <span key={id} className="font-mono text-[11px] text-muted-foreground">{id}</span>;
